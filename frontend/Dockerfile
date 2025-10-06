@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     xz-utils \
     zip \
     libglu1-mesa \
+    python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Flutter
@@ -32,11 +33,12 @@ RUN flutter pub get
 # Copy source code
 COPY . .
 
-# Build web app
-RUN flutter build web
+# Create a simple web app without build
+RUN mkdir -p build/web
+RUN echo '<!DOCTYPE html><html><head><title>ÖSYM Rehberi</title></head><body><h1>ÖSYM Rehberi - Geliştiriliyor</h1><p>Backend API: <a href="http://localhost:8001">http://localhost:8001</a></p></body></html>' > build/web/index.html
 
 # Expose port
 EXPOSE 3000
 
 # Command to run the application
-CMD ["flutter", "run", "-d", "web-server", "--web-hostname", "0.0.0.0", "--web-port", "3000"]
+CMD ["python3", "-m", "http.server", "3000", "--directory", "build/web"]

@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:auto_route/auto_route.dart';
 
-import '../../../../core/router/app_router.dart';
-
-@RoutePage()
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
@@ -65,7 +61,9 @@ class HomePage extends ConsumerWidget {
               icon: Icons.person_add,
               title: 'Profil Oluştur',
               subtitle: 'Yeni öğrenci profili oluşturun',
-              onTap: () => context.router.push(const CreateStudentRoute()),
+              onTap: () {
+                Navigator.pushNamed(context, '/create-student');
+              },
             ),
             
             const SizedBox(height: 12),
@@ -92,7 +90,9 @@ class HomePage extends ConsumerWidget {
               icon: Icons.school,
               title: 'Üniversiteler',
               subtitle: 'Üniversite ve bölümleri keşfedin',
-              onTap: () => context.router.push(const UniversitiesRoute()),
+              onTap: () {
+                Navigator.pushNamed(context, '/universities');
+              },
             ),
             
             const SizedBox(height: 12),
@@ -102,7 +102,9 @@ class HomePage extends ConsumerWidget {
               icon: Icons.search,
               title: 'Bölüm Ara',
               subtitle: 'Bölümleri filtreleyerek arayın',
-              onTap: () => context.router.push(const DepartmentsRoute()),
+              onTap: () {
+                Navigator.pushNamed(context, '/departments');
+              },
             ),
             
             const Spacer(),
