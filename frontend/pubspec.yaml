@@ -1,0 +1,72 @@
+name: osym_rehberi
+description: ÖSYM Rehberi - Yapay zeka destekli üniversite öneri sistemi
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  flutter_riverpod: ^2.4.9
+  hooks_riverpod: ^2.4.9
+  flutter_hooks: ^0.20.3
+  
+  # Data Classes
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.8.1
+  
+  # HTTP Client
+  dio: ^5.4.0
+  
+  # Navigation
+  auto_route: ^7.8.4
+  
+  # UI Components
+  cupertino_icons: ^1.0.6
+  flutter_svg: ^2.0.9
+  cached_network_image: ^3.3.0
+  
+  # Utilities
+  get_it: ^7.6.4
+  injectable: ^2.3.2
+  shared_preferences: ^2.2.2
+  intl: ^0.19.0
+  
+  # Form Validation
+  formz: ^0.6.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  # Code Generation
+  build_runner: ^2.4.7
+  freezed: ^2.4.6
+  json_serializable: ^6.7.1
+  auto_route_generator: ^7.3.2
+  injectable_generator: ^2.4.1
+  
+  # Linting
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/icons/
+  
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700

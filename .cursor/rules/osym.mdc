@@ -1,0 +1,113 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+// Cursor Rules — Custom for "ÖSYM Rehberi" Project
+
+
+
+# GENERAL PRINCIPLES
+
+- Use English for all identifiers, comments, and documentation
+- Declare type for all variables, parameters, and return values
+- One export per file (avoid barrel exports for unrelated modules)
+- Use PascalCase for classes, camelCase for functions/variables
+- Avoid using `any` or dynamic types — prefer typed interfaces
+- Use meaningful complete names (no abbreviations)
+
+# FILE STRUCTURE & NAMING
+
+- Use folders: features/, shared/, core/
+- Module-specific folders: features/student_profile/, features/university_data/, features/recommendation_engine/
+- Use underscores_case for files: student_controller.dart, net_calculator_service.dart
+- Separate UI from logic: ui/, controller/, service/, repository/, model/, data/
+- If docker compose files will be written more than once, they will be created in a folder named docker/
+- Backend Dockerfile is located in the backend folder, and the frontend Dockerfile is located in the frontend folder.
+
+# DEBUGGING & LOGGING RULES
+
+## BACKEND (FastAPI - Python)
+
+- Use the `logging` module for all backend logs. Avoid using print.
+- Set log level based on the importance: DEBUG, INFO, WARNING, ERROR, CRITICAL.
+- Log structure should include: timestamp, module, log level, user ID, message.
+- Log errors into a rotating file (e.g., `logs/app.log`) using `RotatingFileHandler`.
+- Use structured logs in JSON if logs will be consumed externally.
+- Use `HTTPException` for known API errors (e.g. user not found, invalid request).
+- Wrap every endpoint with try/except block and log all caught exceptions.
+- Avoid exposing internal error messages to users — show generic message instead.
+
+### Example Log Format
+```
+2025-10-06 12:43:15 — api.recommendation — ERROR — Invalid input — user_id=51
+```
+
+## FRONTEND (Flutter - Dart)
+
+- Use `FlutterError.onError` to catch global Flutter errors.
+- Use `debugPrint()` instead of `print()` for better control and filtering.
+- Add try/catch blocks around all async API calls.
+- Use Riverpod’s `ProviderObserver` or custom `LoggerObserver` to log state errors.
+- Avoid exposing technical details in user-facing error messages.
+- Use snackbar or error widgets to inform user of failures.
+- Prefer immutable error models to track API or form-level errors.
+
+### Example Dart Log
+```dart
+API error: RecommendationService failed — Error: 500 Internal Server Error
+```
+
+# DOCKER & DEPLOYMENT
+
+- Check logs via `docker logs <container_name>` during development.
+- Bind logs from inside container to host machine: `/logs:/app/logs`
+- Use `healthcheck` in `docker-compose.yml` to ensure service health.
+- Keep `Dockerfile` clean and minimal: separate `requirements.txt`, use `.dockerignore`.
+- Use multi-stage builds if optimizing frontend Flutter web builds.
+- Assign container names in `docker-compose.yml` for easy tracking.
+- Expose necessary ports only: 8000 for FastAPI, 3000 or 8080 for frontend.
+- Use volumes for persistent logs and `.env` configuration management.
+- Create `.env.docker` for container environment variables and reference them from compose.
+
+# DEBUGGING STRATEGY
+
+1. Identify error origin: Backend / Frontend / Network
+2. Check logs in container and Flutter console
+3. Isolate failing component using test inputs
+4. Reproduce and fix issue
+5. Re-test the same case and confirm fix
+6. Log resolution with context (e.g. "solved in commit X")
+
+# DEVELOPMENT LOGGING RULES
+
+- Log when:
+  - A user logs in or fails login
+  - API request fails or bad params received
+  - Recommendation engine makes a decision (with student ID)
+- Add custom tags to logs: `[RECOMMENDER]`, `[AUTH]`, `[NET_CALC]`
+- If `debug=True`, logs must include request/response bodies
+- Never log passwords or private user data
+
+# EXCEPTIONS HANDLING RULES
+
+- Use custom exceptions for domain-specific errors
+- Avoid silently passing exceptions — always log them
+- Provide fallback logic or retries for recoverable failures
+- Use FastAPI’s dependency overrides for consistent error handling
+- On Flutter: define `AppException` and show user-friendly errors on UI
+
+# TOOLS & EXTENSIONS (RECOMMENDED)
+
+- Backend: `Sentry`, `Loguru`, or `structlog` for extended logs
+- Frontend: `LoggerService` with `FlutterRiverpod` or `getIt`
+- Monitoring: `Docker healthcheck`, `Grafana + Prometheus` (for production)
+- CI/CD: Use GitHub Actions or GitLab CI for container build/deploy
+
+# FUTURE-PROOFING
+
+- Keep logging rules consistent for all modules (KPSS or other additions)
+- Use environment flags to toggle debug mode for production vs dev
+- Include version number in logs at startup
+- Separate logs by module using loggers by file/module name
+
