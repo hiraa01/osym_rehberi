@@ -1,4 +1,5 @@
 /// Custom exceptions for ÖSYM Rehberi Flutter app
+library;
 
 abstract class AppException implements Exception {
   final String message;
@@ -44,30 +45,28 @@ class DatabaseException extends AppException {
 /// Exception handling utilities
 class ExceptionHandler {
   static String getUserFriendlyMessage(AppException exception) {
-    switch (exception.runtimeType) {
-      case NetworkException:
-        return 'İnternet bağlantınızı kontrol edin ve tekrar deneyin.';
-      case ApiException:
-        final apiException = exception as ApiException;
-        if (apiException.statusCode == 404) {
-          return 'Aradığınız bilgi bulunamadı.';
-        } else if (apiException.statusCode == 500) {
-          return 'Sunucu hatası. Lütfen daha sonra tekrar deneyin.';
-        }
-        return 'Bir hata oluştu. Lütfen tekrar deneyin.';
-      case ValidationException:
-        return 'Lütfen giriş bilgilerinizi kontrol edin.';
-      case StudentNotFoundException:
-        return 'Öğrenci profili bulunamadı.';
-      case RecommendationException:
-        return 'Tercih önerileri oluşturulamadı. Lütfen tekrar deneyin.';
-      case ScoreCalculationException:
-        return 'Puan hesaplama sırasında bir hata oluştu.';
-      case DatabaseException:
-        return 'Veri işleme hatası. Lütfen tekrar deneyin.';
-      default:
-        return 'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.';
-    }
+    return switch (exception) {
+      NetworkException _ =>
+        'İnternet bağlantınızı kontrol edin ve tekrar deneyin.',
+      ApiException(statusCode: 404) =>
+        'Aradığınız bilgi bulunamadı.',
+      ApiException(statusCode: 500) =>
+        'Sunucu hatası. Lütfen daha sonra tekrar deneyin.',
+      ApiException _ =>
+        'Bir hata oluştu. Lütfen tekrar deneyin.',
+      ValidationException _ =>
+        'Lütfen giriş bilgilerinizi kontrol edin.',
+      StudentNotFoundException _ =>
+        'Öğrenci profili bulunamadı.',
+      RecommendationException _ =>
+        'Tercih önerileri oluşturulamadı. Lütfen tekrar deneyin.',
+      ScoreCalculationException _ =>
+        'Puan hesaplama sırasında bir hata oluştu.',
+      DatabaseException _ =>
+        'Veri işleme hatası. Lütfen tekrar deneyin.',
+      _ =>
+        'Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.',
+    };
   }
   
   static void logException(AppException exception, {String? context}) {

@@ -30,82 +30,95 @@ class RecommendationEngine:
                     user_id=student_id
                 )
                 raise StudentNotFoundError(f"Student with ID {student_id} not found")
-        
-        # Öğrencinin alan türüne uygun bölümleri getir
-        departments = self.db.query(Department).filter(
-            Department.field_type == student.field_type
-        ).all()
-        
-        recommendations = []
-        
-        for department in departments:
-            # Uyumluluk skorunu hesapla
-            compatibility_score = self._calculate_compatibility_score(student, department)
             
-            # Başarı olasılığını hesapla
-            success_probability = self._calculate_success_probability(student, department)
+            # Öğrencinin alan türüne uygun bölümleri getir
+            departments = self.db.query(Department).filter(
+                Department.field_type == student.field_type
+            ).all()
             
-            # Tercih skorunu hesapla
-            preference_score = self._calculate_preference_score(student, department)
+            recommendations = []
             
-            # Final skorunu hesapla (ağırlıklı ortalama)
-            final_score = (
-                compatibility_score * 0.4 +
-                success_probability * 0.4 +
-                preference_score * 0.2
+            for department in departments:
+                # Uyumluluk skorunu hesapla
+                compatibility_score = self._calculate_compatibility_score(student, department)
+                
+                # Başarı olasılığını hesapla
+                success_probability = self._calculate_success_probability(student, department)
+                
+                # Tercih skorunu hesapla
+                preference_score = self._calculate_preference_score(student, department)
+                
+                # Final skorunu hesapla (ağırlıklı ortalama)
+                final_score = (
+                    compatibility_score * 0.4 +
+                    success_probability * 0.4 +
+                    preference_score * 0.2
+                )
+                
+                # Öneri türünü belirle
+                is_safe = success_probability >= 80
+                is_dream = success_probability <= 30
+                is_realistic = 30 < success_probability < 80
+                
+                # Öneri sebebini oluştur
+                reason = self._generate_recommendation_reason(
+                    student, department, compatibility_score, 
+                    success_probability, preference_score
+                )
+                
+                # Veritabanına kaydet
+                recommendation = Recommendation(
+                    student_id=student_id,
+                    department_id=department.id,
+                    compatibility_score=compatibility_score,
+                    success_probability=success_probability,
+                    preference_score=preference_score,
+                    final_score=final_score,
+                    recommendation_reason=reason,
+                    is_safe_choice=is_safe,
+                    is_dream_choice=is_dream,
+                    is_realistic_choice=is_realistic
+                )
+                
+                self.db.add(recommendation)
+                recommendations.append(recommendation)
+            
+            self.db.commit()
+            
+            # Final skora göre sırala ve limit uygula
+            recommendations.sort(key=lambda x: x.final_score, reverse=True)
+            recommendations = recommendations[:limit]
+            
+            # Response formatına çevir
+            result = []
+            for rec in recommendations:
+                department = self.db.query(Department).filter(Department.id == rec.department_id).first()
+                university = self.db.query(University).filter(University.id == department.university_id).first()
+                
+                department_response = DepartmentWithUniversityResponse(
+                    **department.__dict__,
+                    university=university
+                )
+                
+                result.append(RecommendationResponse(
+                    **rec.__dict__,
+                    department=department_response
+                ))
+            
+            recommendation_logger.info(
+                "Recommendations generated successfully",
+                user_id=student_id,
+                count=len(result)
             )
+            return result
             
-            # Öneri türünü belirle
-            is_safe = success_probability >= 80
-            is_dream = success_probability <= 30
-            is_realistic = 30 < success_probability < 80
-            
-            # Öneri sebebini oluştur
-            reason = self._generate_recommendation_reason(
-                student, department, compatibility_score, 
-                success_probability, preference_score
-            )
-            
-            # Veritabanına kaydet
-            recommendation = Recommendation(
-                student_id=student_id,
-                department_id=department.id,
-                compatibility_score=compatibility_score,
-                success_probability=success_probability,
-                preference_score=preference_score,
-                final_score=final_score,
-                recommendation_reason=reason,
-                is_safe_choice=is_safe,
-                is_dream_choice=is_dream,
-                is_realistic_choice=is_realistic
-            )
-            
-            self.db.add(recommendation)
-            recommendations.append(recommendation)
-        
-        self.db.commit()
-        
-        # Final skora göre sırala ve limit uygula
-        recommendations.sort(key=lambda x: x.final_score, reverse=True)
-        recommendations = recommendations[:limit]
-        
-        # Response formatına çevir
-        result = []
-        for rec in recommendations:
-            department = self.db.query(Department).filter(Department.id == rec.department_id).first()
-            university = self.db.query(University).filter(University.id == department.university_id).first()
-            
-            department_response = DepartmentWithUniversityResponse(
-                **department.__dict__,
-                university=university
-            )
-            
-            result.append(RecommendationResponse(
-                **rec.__dict__,
-                department=department_response
-            ))
-        
-        return result
+        except StudentNotFoundError:
+            recommendation_logger.error("Student not found", user_id=student_id)
+            raise
+        except Exception as e:
+            recommendation_logger.error(f"Error generating recommendations: {str(e)}", user_id=student_id)
+            self.db.rollback()
+            raise RecommendationError(f"Tercih önerileri oluşturulurken bir hata oluştu: {str(e)}")
     
     def _calculate_compatibility_score(self, student: Student, department: Department) -> float:
         """Uyumluluk skorunu hesapla (0-100)"""

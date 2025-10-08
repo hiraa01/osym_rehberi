@@ -22,48 +22,58 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_db)):
         # Puanları hesapla
         student_data = student.dict()
         scores = ScoreCalculator.calculate_all_scores(student_data)
-    
-    # JSON alanları için dönüşüm
-    preferred_cities = json.dumps(student.preferred_cities) if student.preferred_cities else None
-    preferred_university_types = json.dumps(student.preferred_university_types) if student.preferred_university_types else None
-    interest_areas = json.dumps(student.interest_areas) if student.interest_areas else None
-    
-    # Veritabanı nesnesi oluştur
-    db_student = Student(
-        name=student.name,
-        email=student.email,
-        phone=student.phone,
-        class_level=student.class_level,
-        exam_type=student.exam_type,
-        field_type=student.field_type,
-        tyt_turkish_net=student.tyt_turkish_net,
-        tyt_math_net=student.tyt_math_net,
-        tyt_social_net=student.tyt_social_net,
-        tyt_science_net=student.tyt_science_net,
-        ayt_math_net=student.ayt_math_net,
-        ayt_physics_net=student.ayt_physics_net,
-        ayt_chemistry_net=student.ayt_chemistry_net,
-        ayt_biology_net=student.ayt_biology_net,
-        ayt_literature_net=student.ayt_literature_net,
-        ayt_history1_net=student.ayt_history1_net,
-        ayt_geography1_net=student.ayt_geography1_net,
-        ayt_philosophy_net=student.ayt_philosophy_net,
-        ayt_history2_net=student.ayt_history2_net,
-        ayt_geography2_net=student.ayt_geography2_net,
-        ayt_foreign_language_net=student.ayt_foreign_language_net,
-        preferred_cities=preferred_cities,
-        preferred_university_types=preferred_university_types,
-        budget_preference=student.budget_preference,
-        scholarship_preference=student.scholarship_preference,
-        interest_areas=interest_areas,
-        **scores
-    )
-    
-    db.add(db_student)
-    db.commit()
-    db.refresh(db_student)
-    
-    return db_student
+        
+        # JSON alanları için dönüşüm
+        preferred_cities = json.dumps(student.preferred_cities) if student.preferred_cities else None
+        preferred_university_types = json.dumps(student.preferred_university_types) if student.preferred_university_types else None
+        interest_areas = json.dumps(student.interest_areas) if student.interest_areas else None
+        
+        # Veritabanı nesnesi oluştur
+        db_student = Student(
+            name=student.name,
+            email=student.email,
+            phone=student.phone,
+            class_level=student.class_level,
+            exam_type=student.exam_type,
+            field_type=student.field_type,
+            tyt_turkish_net=student.tyt_turkish_net,
+            tyt_math_net=student.tyt_math_net,
+            tyt_social_net=student.tyt_social_net,
+            tyt_science_net=student.tyt_science_net,
+            ayt_math_net=student.ayt_math_net,
+            ayt_physics_net=student.ayt_physics_net,
+            ayt_chemistry_net=student.ayt_chemistry_net,
+            ayt_biology_net=student.ayt_biology_net,
+            ayt_literature_net=student.ayt_literature_net,
+            ayt_history1_net=student.ayt_history1_net,
+            ayt_geography1_net=student.ayt_geography1_net,
+            ayt_philosophy_net=student.ayt_philosophy_net,
+            ayt_history2_net=student.ayt_history2_net,
+            ayt_geography2_net=student.ayt_geography2_net,
+            ayt_foreign_language_net=student.ayt_foreign_language_net,
+            preferred_cities=preferred_cities,
+            preferred_university_types=preferred_university_types,
+            budget_preference=student.budget_preference,
+            scholarship_preference=student.scholarship_preference,
+            interest_areas=interest_areas,
+            **scores
+        )
+        
+        db.add(db_student)
+        db.commit()
+        db.refresh(db_student)
+        
+        api_logger.info("Student profile created successfully", student_id=db_student.id)
+        return db_student
+        
+    except InvalidScoreError as e:
+        api_logger.error(f"Invalid score error: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        api_logger.error(f"Error creating student: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Öğrenci profili oluşturulurken bir hata oluştu")
 
 
 @router.get("/", response_model=StudentListResponse)

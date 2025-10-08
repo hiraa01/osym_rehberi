@@ -18,7 +18,7 @@ Yapay zeka destekli üniversite ve bölüm öneri sistemi. Öğrenci profillerin
 - **Pydantic** - Veri validasyonu
 - **scikit-learn** - Makine öğrenmesi
 
-### Frontend
+### Frontendooo
 - **Flutter** (Dart) - Mobil uygulama
 - **Riverpod** - Durum yönetimi
 - **AutoRoute** - Navigasyon

@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:auto_route/auto_route.dart';
 
+import '../../../../core/router/app_router.dart';
+import '../../../../core/utils/responsive_utils.dart';
+
+@RoutePage()
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
@@ -11,128 +16,152 @@ class HomePage extends ConsumerWidget {
         title: const Text('ÖSYM Rehberi'),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Welcome Card
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
+      body: ResponsiveBuilder(
+        builder: (context, deviceType) {
+          return SingleChildScrollView(
+            padding: ResponsiveUtils.getResponsivePadding(context),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: ResponsiveUtils.getMaxContentWidth(context),
+                ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(
-                      Icons.school,
-                      size: 64,
-                      color: Theme.of(context).primaryColor,
+                    // Welcome Card
+                    Card(
+                      child: Padding(
+                        padding: ResponsiveUtils.getResponsivePadding(context),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.school,
+                              size: ResponsiveUtils.getResponsiveIconSize(context, 64),
+                              color: Theme.of(context).primaryColor,
+                            ),
+                            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+                            Text(
+                              'Yapay Zeka Destekli\nÜniversite Öneri Sistemi',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 24),
+                              ),
+                            ),
+                            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+                            Text(
+                              'Profilinizi oluşturun, deneme sonuçlarınızı girin ve size en uygun bölümleri keşfedin!',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.7),
+                                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 16),
+            
+                    SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
+                    
+                    // Quick Actions
                     Text(
-                      'Yapay Zeka Destekli\nÜniversite Öneri Sistemi',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium,
+                      'Hızlı İşlemler',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Profilinizi oluşturun, deneme sonuçlarınızı girin ve size en uygun bölümleri keşfedin!',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.7),
+                    SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+            
+                    // Action Buttons - Responsive Grid
+                    ResponsiveBuilder(
+                      builder: (context, deviceType) {
+                        return GridView.count(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisCount: ResponsiveUtils.getGridColumns(context),
+                          crossAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 12),
+                          mainAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 12),
+                          childAspectRatio: deviceType == DeviceType.mobile ? 3.5 : 2.5,
+                          children: [
+                            _buildActionButton(
+                              context,
+                              icon: Icons.person_add,
+                              title: 'Profil Oluştur',
+                              subtitle: 'Yeni öğrenci profili oluşturun',
+                              onTap: () {
+                                context.router.push(StudentCreateRoute());
+                              },
+                            ),
+                            _buildActionButton(
+                              context,
+                              icon: Icons.analytics,
+                              title: 'Tercih Önerileri',
+                              subtitle: 'Size uygun bölümleri görün',
+                              onTap: () {
+                                // TODO: Navigate to student selection first, then recommendations
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Önce bir profil oluşturun'),
+                                  ),
+                                );
+                              },
+                            ),
+                            _buildActionButton(
+                              context,
+                              icon: Icons.school,
+                              title: 'Üniversiteler',
+                              subtitle: 'Üniversite ve bölümleri keşfedin',
+                              onTap: () {
+                                context.router.push(UniversityListRoute());
+                              },
+                            ),
+                            _buildActionButton(
+                              context,
+                              icon: Icons.search,
+                              title: 'Bölüm Ara',
+                              subtitle: 'Bölümleri filtreleyerek arayın',
+                              onTap: () {
+                                context.router.push(DepartmentListRoute());
+                              },
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+            
+                    SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
+                    
+                    // Info Card
+                    Card(
+                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      child: Padding(
+                        padding: ResponsiveUtils.getResponsivePadding(context),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: Theme.of(context).primaryColor,
+                              size: ResponsiveUtils.getResponsiveIconSize(context, 24),
+                            ),
+                            SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+                            Expanded(
+                              child: Text(
+                                'Sistem YÖK Atlas verilerini kullanarak size en uygun tercih önerilerini sunar.',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            
-            const SizedBox(height: 24),
-            
-            // Quick Actions
-            Text(
-              'Hızlı İşlemler',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 16),
-            
-            // Action Buttons
-            _buildActionButton(
-              context,
-              icon: Icons.person_add,
-              title: 'Profil Oluştur',
-              subtitle: 'Yeni öğrenci profili oluşturun',
-              onTap: () {
-                Navigator.pushNamed(context, '/create-student');
-              },
-            ),
-            
-            const SizedBox(height: 12),
-            
-            _buildActionButton(
-              context,
-              icon: Icons.analytics,
-              title: 'Tercih Önerileri',
-              subtitle: 'Size uygun bölümleri görün',
-              onTap: () {
-                // TODO: Navigate to recommendations with student selection
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Önce bir profil oluşturun'),
-                  ),
-                );
-              },
-            ),
-            
-            const SizedBox(height: 12),
-            
-            _buildActionButton(
-              context,
-              icon: Icons.school,
-              title: 'Üniversiteler',
-              subtitle: 'Üniversite ve bölümleri keşfedin',
-              onTap: () {
-                Navigator.pushNamed(context, '/universities');
-              },
-            ),
-            
-            const SizedBox(height: 12),
-            
-            _buildActionButton(
-              context,
-              icon: Icons.search,
-              title: 'Bölüm Ara',
-              subtitle: 'Bölümleri filtreleyerek arayın',
-              onTap: () {
-                Navigator.pushNamed(context, '/departments');
-              },
-            ),
-            
-            const Spacer(),
-            
-            // Info Card
-            Card(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: Theme.of(context).primaryColor,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Sistem YÖK Atlas verilerini kullanarak size en uygun tercih önerilerini sunar.',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -149,11 +178,11 @@ class HomePage extends ConsumerWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: ResponsiveUtils.getResponsivePadding(context),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: EdgeInsets.all(ResponsiveUtils.getResponsiveSpacing(context, 12)),
                 decoration: BoxDecoration(
                   color: Theme.of(context).primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -161,23 +190,26 @@ class HomePage extends ConsumerWidget {
                 child: Icon(
                   icon,
                   color: Theme.of(context).primaryColor,
-                  size: 24,
+                  size: ResponsiveUtils.getResponsiveIconSize(context, 24),
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 16)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: Theme.of(context).textTheme.titleLarge,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
+                      ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 4)),
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                        fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
                       ),
                     ),
                   ],
@@ -185,7 +217,7 @@ class HomePage extends ConsumerWidget {
               ),
               Icon(
                 Icons.arrow_forward_ios,
-                size: 16,
+                size: ResponsiveUtils.getResponsiveIconSize(context, 16),
                 color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.5),
               ),
             ],

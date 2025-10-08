@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from database import create_tables
-from routers import students, universities, recommendations
+from routers import students, universities, recommendations, ml_recommendations
 
 
 @asynccontextmanager
@@ -17,9 +17,43 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="ÖSYM Rehberi API",
-    description="Yapay zeka destekli üniversite ve bölüm öneri sistemi",
+    description="""
+    ## Yapay Zeka Destekli Üniversite ve Bölüm Öneri Sistemi
+    
+    Bu API, öğrenci profillerini analiz ederek YÖK Atlas verilerini kullanarak en uygun tercih önerilerini sunar.
+    
+    ### Özellikler
+    
+    * **Öğrenci Yönetimi**: Öğrenci profilleri oluşturma, güncelleme ve listeleme
+    * **Puan Hesaplama**: TYT ve AYT netlerinden otomatik puan hesaplama
+    * **Üniversite Verileri**: Üniversite ve bölüm bilgilerini listeleme
+    * **Yapay Zeka Önerileri**: Öğrenci profiline göre kişiselleştirilmiş tercih önerileri
+    * **Filtreleme**: Şehir, üniversite türü, alan türü gibi kriterlere göre filtreleme
+    
+    ### Kullanım
+    
+    1. Öğrenci profili oluşturun
+    2. Deneme sonuçlarınızı girin
+    3. Tercihlerinizi belirtin
+    4. Yapay zeka destekli önerileri alın
+    
+    ### API Endpoints
+    
+    * **Students**: `/api/students/` - Öğrenci yönetimi
+    * **Universities**: `/api/universities/` - Üniversite ve bölüm verileri
+    * **Recommendations**: `/api/recommendations/` - Tercih önerileri
+    """,
     version="1.0.0",
-    lifespan=lifespan
+    contact={
+        "name": "ÖSYM Rehberi API Support",
+        "email": "support@osymrehberi.com",
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT",
+    },
+    lifespan=lifespan,
+    redirect_slashes=False  # Disable automatic trailing slash redirects
 )
 
 # CORS middleware
@@ -35,6 +69,7 @@ app.add_middleware(
 app.include_router(students.router, prefix="/api/students", tags=["students"])
 app.include_router(universities.router, prefix="/api/universities", tags=["universities"])
 app.include_router(recommendations.router, prefix="/api/recommendations", tags=["recommendations"])
+app.include_router(ml_recommendations.router, prefix="/api/ml", tags=["ml-recommendations"])
 
 
 @app.get("/")

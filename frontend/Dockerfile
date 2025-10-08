@@ -33,6 +33,9 @@ RUN flutter pub get
 # Copy source code
 COPY . .
 
+# Generate code
+RUN flutter packages pub run build_runner build --delete-conflicting-outputs
+
 # Create a simple web app without build
 RUN mkdir -p build/web
 RUN echo '<!DOCTYPE html><html><head><title>ÖSYM Rehberi</title></head><body><h1>ÖSYM Rehberi - Geliştiriliyor</h1><p>Backend API: <a href="http://localhost:8001">http://localhost:8001</a></p></body></html>' > build/web/index.html
