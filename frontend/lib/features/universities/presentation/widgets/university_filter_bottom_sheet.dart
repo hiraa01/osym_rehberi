@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class UniversityFilterBottomSheet extends StatefulWidget {
+import '../../../../core/widgets/searchable_dropdown.dart';
+import '../../data/providers/university_api_provider.dart';
+
+class UniversityFilterBottomSheet extends ConsumerStatefulWidget {
   final String selectedCity;
   final String selectedType;
   final Function(String city, String type) onApply;
@@ -13,38 +17,17 @@ class UniversityFilterBottomSheet extends StatefulWidget {
   });
 
   @override
-  State<UniversityFilterBottomSheet> createState() => _UniversityFilterBottomSheetState();
+  ConsumerState<UniversityFilterBottomSheet> createState() => _UniversityFilterBottomSheetState();
 }
 
-class _UniversityFilterBottomSheetState extends State<UniversityFilterBottomSheet> {
+class _UniversityFilterBottomSheetState extends ConsumerState<UniversityFilterBottomSheet> {
   late String _selectedCity;
   late String _selectedType;
 
-  final List<String> _cities = [
-    'Tümü',
-    'İstanbul',
-    'Ankara',
-    'İzmir',
-    'Bursa',
-    'Antalya',
-    'Adana',
-    'Konya',
-    'Gaziantep',
-    'Mersin',
-    'Diyarbakır',
-    'Kayseri',
-    'Eskişehir',
-    'Urfa',
-    'Malatya',
-    'Erzurum',
-    'Van',
-  ];
-
   final List<String> _types = [
     'Tümü',
-    'Devlet',
-    'Vakıf',
-    'Özel',
+    'devlet',
+    'vakif',
   ];
 
   @override
@@ -56,6 +39,8 @@ class _UniversityFilterBottomSheetState extends State<UniversityFilterBottomShee
 
   @override
   Widget build(BuildContext context) {
+    final citiesAsync = ref.watch(cityListProvider);
+    
     return Container(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -88,21 +73,24 @@ class _UniversityFilterBottomSheetState extends State<UniversityFilterBottomShee
             ),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _cities.map((city) {
-              final isSelected = _selectedCity == city;
-              return FilterChip(
-                label: Text(city),
-                selected: isSelected,
-                onSelected: (selected) {
-                  setState(() {
-                    _selectedCity = city;
-                  });
+          citiesAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, __) => const Text('Şehirler yüklenemedi'),
+            data: (cities) {
+              final allCities = ['Tümü', ...cities];
+              return SearchableDropdown<String>(
+                items: allCities,
+                itemAsString: (item) => item,
+                selectedItem: _selectedCity,
+                hintText: 'Şehir seçiniz',
+                searchHintText: 'Şehir ara...',
+                onChanged: (city) {
+                  if (city != null) {
+                    setState(() => _selectedCity = city);
+                  }
                 },
               );
-            }).toList(),
+            },
           ),
           
           const SizedBox(height: 24),

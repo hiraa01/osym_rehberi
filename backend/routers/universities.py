@@ -12,6 +12,83 @@ from schemas.university import (
 router = APIRouter()
 
 
+# ⚠️ ÖNEMLİ: FastAPI'da spesifik route'lar önce, genel pattern'ler sonda olmalı!
+# Yoksa /{university_id} tüm istekleri yakalar
+
+# Spesifik endpoints (önce bunlar)
+@router.get("/cities/", response_model=List[str])
+async def get_cities(db: Session = Depends(get_db)):
+    """81 il + KKTC şehirlerini getir (81 il öncelikli)"""
+    # 81 il listesi (seed_yok_data.py'den)
+    TURKISH_81_CITIES = [
+        "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Aksaray", "Amasya", "Ankara", "Antalya",
+        "Ardahan", "Artvin", "Aydın", "Balıkesir", "Bartın", "Batman", "Bayburt", "Bilecik",
+        "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale", "Çankırı", "Çorum",
+        "Denizli", "Diyarbakır", "Düzce", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir",
+        "Gaziantep", "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Iğdır", "Isparta", "İstanbul",
+        "İzmir", "Kahramanmaraş", "Karabük", "Karaman", "Kars", "Kastamonu", "Kayseri", "Kırıkkale",
+        "Kırklareli", "Kırşehir", "Kilis", "Kocaeli", "Konya", "Kütahya", "Malatya", "Manisa",
+        "Mardin", "Mersin", "Muğla", "Muş", "Nevşehir", "Niğde", "Ordu", "Osmaniye",
+        "Rize", "Sakarya", "Samsun", "Siirt", "Sinop", "Sivas", "Şanlıurfa", "Şırnak",
+        "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Uşak", "Van", "Yalova", "Yozgat", "Zonguldak"
+    ]
+    
+    # Database'den gelen şehirler
+    cities = db.query(University.city).distinct().all()
+    db_cities = [city[0] for city in cities if city[0]]
+    
+    # KKTC şehirlerini bul
+    kktc_cities = [city for city in db_cities if 'kktc' in city.lower()]
+    
+    # Yabancı ülkeleri filtrele
+    foreign_cities = [city for city in db_cities if any(keyword in city.lower() for keyword in [
+        'azerbaycan', 'kırgızistan', 'bosna', 'arnavutluk', 
+        'makedonya', 'kazakistan', 'moldova', 'bakü', 'bişkek',
+        'saraybosna', 'tiran', 'üsküp', 'türkistan', 'komrat'
+    ])]
+    
+    # "Bilinmiyor" şehirleri
+    unknown_cities = [city for city in db_cities if 'bilinmiyor' in city.lower()]
+    
+    # Sıralama: 81 il + KKTC + diğerleri
+    result = []
+    
+    # Türkçe karakterler için özel sıralama
+    def turkish_sort_key(text):
+        # Türkçe karakterleri İngilizce karşılıklarına çevir
+        replacements = {
+            'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u',
+            'Ç': 'C', 'Ğ': 'G', 'İ': 'I', 'Ö': 'O', 'Ş': 'S', 'Ü': 'U'
+        }
+        result = text
+        for tr, en in replacements.items():
+            result = result.replace(tr, en)
+        return result.lower()
+    
+    # 1. 81 il (Türkçe alfabetik sıralı)
+    result.extend(sorted(TURKISH_81_CITIES, key=turkish_sort_key))
+    
+    # 2. KKTC şehirleri (Türkçe alfabetik sıralı)
+    result.extend(sorted(kktc_cities, key=turkish_sort_key))
+    
+    # 3. Diğer şehirler (yabancı ülkeler hariç)
+    other_cities = [city for city in db_cities 
+                   if city not in TURKISH_81_CITIES 
+                   and city not in kktc_cities 
+                   and city not in foreign_cities 
+                   and city not in unknown_cities]
+    result.extend(sorted(other_cities, key=turkish_sort_key))
+    
+    return result
+
+
+@router.get("/field-types/", response_model=List[str])
+async def get_field_types(db: Session = Depends(get_db)):
+    """Tüm alan türlerini getir"""
+    field_types = db.query(Department.field_type).distinct().all()
+    return [field_type[0] for field_type in field_types]
+
+
 # University endpoints
 @router.post("/", response_model=UniversityResponse)
 async def create_university(university: UniversityCreate, db: Session = Depends(get_db)):
@@ -39,10 +116,14 @@ async def get_universities(
     if university_type:
         query = query.filter(University.university_type == university_type)
     
+    # ✅ Üniversite adına göre alfabetik sıralama
+    query = query.order_by(University.name)
+    
     universities = query.offset(skip).limit(limit).all()
     return universities
 
 
+# Genel pattern'ler (SON SIRA - yoksa her şeyi yakalar!)
 @router.get("/{university_id}", response_model=UniversityResponse)
 async def get_university(university_id: int, db: Session = Depends(get_db)):
     """Belirli bir üniversiteyi getir"""
@@ -114,7 +195,11 @@ async def get_departments(
     db: Session = Depends(get_db)
 ):
     """Bölüm listesini getir"""
-    query = db.query(Department).join(University)
+    # Sadece city veya university_type filtresi varsa join yap
+    query = db.query(Department)
+    
+    if city or university_type:
+        query = query.join(University, Department.university_id == University.id)
     
     if field_type:
         query = query.filter(Department.field_type == field_type)
@@ -130,6 +215,9 @@ async def get_departments(
         query = query.filter(Department.min_score <= max_score)
     if has_scholarship is not None:
         query = query.filter(Department.has_scholarship == has_scholarship)
+    
+    # ✅ Bölüm adına göre alfabetik sıralama
+    query = query.order_by(Department.name)
     
     departments = query.offset(skip).limit(limit).all()
     
@@ -193,15 +281,4 @@ async def delete_department(department_id: int, db: Session = Depends(get_db)):
     return {"message": "Bölüm başarıyla silindi"}
 
 
-@router.get("/cities/", response_model=List[str])
-async def get_cities(db: Session = Depends(get_db)):
-    """Tüm şehirleri getir"""
-    cities = db.query(University.city).distinct().all()
-    return [city[0] for city in cities]
-
-
-@router.get("/field-types/", response_model=List[str])
-async def get_field_types(db: Session = Depends(get_db)):
-    """Tüm alan türlerini getir"""
-    field_types = db.query(Department.field_type).distinct().all()
-    return [field_type[0] for field_type in field_types]
+# Cities ve field-types endpoint'leri dosyanın başına taşındı (satır 19-30)

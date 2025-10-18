@@ -6,18 +6,21 @@ class ApiService {
   late final Dio _dio;
 
   ApiService() {
-    // Android emulator için: 10.0.2.2
-    // Gerçek cihaz için: Bilgisayarınızın IP adresi (örn: 192.168.1.100 veya 172.x.x.x)
-    // Web için: localhost veya bilgisayar IP'si
+    // ⚠️ IP ADRESİNİ DURUMUNUZA GÖRE DEĞİŞTİRİN:
+    // 🖥️  Android Emulator:    10.0.2.2:8001
+    // 📱 Gerçek Android Cihaz: Bilgisayarınızın WiFi IP'si (cmd: ipconfig)
+    // 🌐 Web:                  localhost:8001
+    
+    // ✅ Güncel WiFi IP: ipconfig.exe ile kontrol edin
     const String baseUrl = kIsWeb 
         ? 'http://localhost:8001/api'
-        : 'http://172.31.88.134:8001/api'; // Okul WiFi IP adresi
+        : 'http://172.31.88.134:8001/api'; // 👈 Windows WiFi IP (değişebilir!)
     
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(minutes: 2), // 2 dakika
-      receiveTimeout: const Duration(minutes: 2), // 2 dakika
-      sendTimeout: const Duration(minutes: 2), // 2 dakika
+      connectTimeout: const Duration(seconds: 5), // Backend'e bağlanma için 5 saniye (hızlı fail)
+      receiveTimeout: const Duration(seconds: 10), // Cevap almak için 10 saniye
+      sendTimeout: const Duration(seconds: 10), // Veri göndermek için 10 saniye
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -78,11 +81,51 @@ class ApiService {
   }
 
   Future<Response> getDepartments() async {
-    return await _dio.get('/universities/departments');
+    return await _dio.get('/universities/departments/');  // ✅ Trailing slash eklendi
   }
 
   Future<Response> getCities() async {
-    return await _dio.get('/universities/cities');
+    return await _dio.get('/universities/cities/');  // ✅ Trailing slash eklendi
+  }
+
+  Future<Response> getFieldTypes() async {
+    return await _dio.get('/universities/field-types/');  // ✅ Trailing slash eklendi
+  }
+
+  Future<Response> getDepartmentsFiltered({
+    String? fieldType,
+    String? city,
+    String? universityType,
+    double? minScore,
+    double? maxScore,
+    bool? hasScholarship,
+    int skip = 0,
+    int limit = 100,
+  }) async {
+    return await _dio.get('/universities/departments', queryParameters: {
+      if (fieldType != null) 'field_type': fieldType,
+      if (city != null) 'city': city,
+      if (universityType != null) 'university_type': universityType,
+      if (minScore != null) 'min_score': minScore,
+      if (maxScore != null) 'max_score': maxScore,
+      if (hasScholarship != null) 'has_scholarship': hasScholarship,
+      'skip': skip,
+      'limit': limit,
+    });
+  }
+
+  Future<Response> getUniversitiesFiltered({
+    String? city,
+    String? universityType,
+    int skip = 0,
+    int limit = 100,
+  }) async {
+    return await _dio.get('/universities', queryParameters: {
+      if (city != null) 'city': city,
+      if (universityType != null) 'university_type': universityType,
+      'skip': skip,
+      'limit': limit,
+    });
   }
 
   // Recommendation endpoints
@@ -100,9 +143,92 @@ class ApiService {
     return await _dio.get('/recommendations/stats/$studentId');
   }
 
-  // Health check
+  // Health check (not under /api prefix)
   Future<Response> healthCheck() async {
-    return await _dio.get('/health');
+    return await _dio.get(
+      'http://${kIsWeb ? 'localhost' : '172.31.88.134'}:8001/health',
+      options: Options(
+        sendTimeout: const Duration(seconds: 3),
+        receiveTimeout: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  // Auth endpoints
+  Future<Response> register({
+    String? email,
+    String? phone,
+    String? name,
+  }) async {
+    // Register için daha uzun timeout (database işlemleri için)
+    return await _dio.post(
+      '/auth/register',
+      data: {
+        'email': email,
+        'phone': phone,
+        'name': name,
+      },
+      options: Options(
+        receiveTimeout: const Duration(seconds: 30), // 30 saniye timeout
+        sendTimeout: const Duration(seconds: 30),
+      ),
+    );
+  }
+
+  Future<Response> login({
+    String? email,
+    String? phone,
+  }) async {
+    // Login için de uzun timeout
+    return await _dio.post(
+      '/auth/login',
+      data: {
+        'email': email,
+        'phone': phone,
+      },
+      options: Options(
+        receiveTimeout: const Duration(seconds: 30),
+        sendTimeout: const Duration(seconds: 30),
+      ),
+    );
+  }
+
+  Future<Response> getUserInfo(int userId) async {
+    return await _dio.get('/auth/me/$userId');
+  }
+
+  Future<Response> updateUser({
+    required int userId,
+    String? name,
+    String? email,
+    String? phone,
+    bool? isOnboardingCompleted,
+    bool? isInitialSetupCompleted,
+  }) async {
+    return await _dio.put('/auth/me/$userId', data: {
+      if (name != null) 'name': name,
+      if (email != null) 'email': email,
+      if (phone != null) 'phone': phone,
+      if (isOnboardingCompleted != null) 'is_onboarding_completed': isOnboardingCompleted,
+      if (isInitialSetupCompleted != null) 'is_initial_setup_completed': isInitialSetupCompleted,
+    });
+  }
+
+  // Exam Attempt endpoints
+  Future<Response> createExamAttempt(Map<String, dynamic> data) async {
+    return await _dio.post('/exam-attempts/', data: data);
+  }
+
+  Future<Response> getStudentAttempts(int studentId) async {
+    return await _dio.get('/exam-attempts/student/$studentId');
+  }
+
+  Future<Response> updateExamAttempt(int attemptId, Map<String, dynamic> data) async {
+    return await _dio.put('/exam-attempts/$attemptId', data: data);
+  }
+
+  Future<Response> deleteExamAttempt(int attemptId) async {
+    return await _dio.delete('/exam-attempts/$attemptId');
   }
 }
 

@@ -174,16 +174,28 @@ class _StudentCreatePageState extends ConsumerState<StudentCreatePage> {
 
   void _submitForm(BuildContext context, WidgetRef ref) async {
     final formNotifier = ref.read(studentFormProvider.notifier);
-    final success = await formNotifier.submitForm();
-
-    if (success && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Öğrenci profili başarıyla oluşturuldu!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      context.router.maybePop();
+    
+    try {
+      await formNotifier.submitForm();
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Öğrenci profili başarıyla oluşturuldu!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:auto_route/auto_route.dart';
 
-import '../../../../core/router/app_router.dart';
 import '../../../../core/utils/responsive_utils.dart';
+import '../../../student_profile/presentation/pages/student_create_page.dart';
+import '../../../universities/presentation/pages/university_list_page.dart';
+import '../../../universities/presentation/pages/department_list_page.dart';
 
-@RoutePage()
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
@@ -52,7 +52,7 @@ class HomePage extends ConsumerWidget {
                               'Profilinizi oluşturun, deneme sonuçlarınızı girin ve size en uygun bölümleri keşfedin!',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.7),
+                                color: Theme.of(context).textTheme.bodyLarge?.color?.withValues(alpha: 0.7),
                                 fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
                               ),
                             ),
@@ -89,7 +89,11 @@ class HomePage extends ConsumerWidget {
                               title: 'Profil Oluştur',
                               subtitle: 'Yeni öğrenci profili oluşturun',
                               onTap: () {
-                                context.router.push(StudentCreateRoute());
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const StudentCreatePage(),
+                                  ),
+                                );
                               },
                             ),
                             _buildActionButton(
@@ -112,7 +116,11 @@ class HomePage extends ConsumerWidget {
                               title: 'Üniversiteler',
                               subtitle: 'Üniversite ve bölümleri keşfedin',
                               onTap: () {
-                                context.router.push(UniversityListRoute());
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const UniversityListPage(),
+                                  ),
+                                );
                               },
                             ),
                             _buildActionButton(
@@ -121,7 +129,11 @@ class HomePage extends ConsumerWidget {
                               title: 'Bölüm Ara',
                               subtitle: 'Bölümleri filtreleyerek arayın',
                               onTap: () {
-                                context.router.push(DepartmentListRoute());
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const DepartmentListPage(),
+                                  ),
+                                );
                               },
                             ),
                           ],
@@ -133,7 +145,7 @@ class HomePage extends ConsumerWidget {
                     
                     // Info Card
                     Card(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                       child: Padding(
                         padding: ResponsiveUtils.getResponsivePadding(context),
                         child: Row(
@@ -184,7 +196,7 @@ class HomePage extends ConsumerWidget {
               Container(
                 padding: EdgeInsets.all(ResponsiveUtils.getResponsiveSpacing(context, 12)),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -208,7 +220,7 @@ class HomePage extends ConsumerWidget {
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                        color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
                         fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
                       ),
                     ),
@@ -218,7 +230,7 @@ class HomePage extends ConsumerWidget {
               Icon(
                 Icons.arrow_forward_ios,
                 size: ResponsiveUtils.getResponsiveIconSize(context, 16),
-                color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.5),
+                color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
               ),
             ],
           ),

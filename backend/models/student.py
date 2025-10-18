@@ -38,6 +38,7 @@ class Student(Base):
     tyt_total_score = Column(Float, default=0.0)
     ayt_total_score = Column(Float, default=0.0)
     total_score = Column(Float, default=0.0)
+    obp_score = Column(Float, default=0.0, nullable=True)  # ✅ OBP (Okul Başarı Puanı) - Opsiyonel
     rank = Column(Integer, default=0)
     percentile = Column(Float, default=0.0)
     

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from database import create_tables
-from routers import students, universities, recommendations, ml_recommendations
+from routers import students, universities, recommendations, ml_recommendations, auth, exam_attempts
 
 
 @asynccontextmanager
@@ -66,10 +66,12 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(students.router, prefix="/api/students", tags=["students"])
 app.include_router(universities.router, prefix="/api/universities", tags=["universities"])
 app.include_router(recommendations.router, prefix="/api/recommendations", tags=["recommendations"])
 app.include_router(ml_recommendations.router, prefix="/api/ml", tags=["ml-recommendations"])
+app.include_router(exam_attempts.router, prefix="/api/exam-attempts", tags=["exam-attempts"])
 
 
 @app.get("/")

@@ -96,6 +96,7 @@ class StudentResponse(StudentBase):
     tyt_total_score: float
     ayt_total_score: float
     total_score: float
+    obp_score: Optional[float] = 0.0  # ✅ OBP eklendi
     rank: int
     percentile: float
     created_at: datetime

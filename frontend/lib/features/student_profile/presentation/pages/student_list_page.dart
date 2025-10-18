@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:auto_route/auto_route.dart';
 
-import '../../../../core/router/app_router.dart';
+import './student_create_page.dart';
 
-@RoutePage()
 class StudentListPage extends ConsumerWidget {
   const StudentListPage({super.key});
 
@@ -44,7 +42,11 @@ class StudentListPage extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          context.router.push(const StudentCreateRoute());
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const StudentCreatePage(),
+            ),
+          );
         },
         child: const Icon(Icons.add),
       ),

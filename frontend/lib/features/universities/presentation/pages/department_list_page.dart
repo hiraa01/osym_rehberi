@@ -1,13 +1,11 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/router/app_router.dart';
 import '../../data/models/department_model.dart';
 import '../widgets/department_card.dart';
 import '../widgets/department_filter_bottom_sheet.dart';
+import './department_detail_page.dart';
 
-@RoutePage()
 class DepartmentListPage extends ConsumerStatefulWidget {
   const DepartmentListPage({super.key});
 
@@ -19,7 +17,6 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage> {
   String _selectedField = 'Tümü';
   String _selectedCity = 'Tümü';
   String _selectedType = 'Tümü';
-  String _searchQuery = ''; // TODO: Implement search functionality
 
   @override
   Widget build(BuildContext context) {
@@ -50,9 +47,7 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage> {
                 fillColor: Colors.grey[100],
               ),
               onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
+                // TODO: Implement search functionality
               },
             ),
           ),
@@ -144,7 +139,13 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage> {
         return DepartmentCard(
           department: department,
           onTap: () {
-            context.router.push(DepartmentDetailRoute(departmentId: department.id!));
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => DepartmentDetailPage(
+                  departmentId: department.id ?? 0,
+                ),
+              ),
+            );
           },
         );
       },

@@ -1,10 +1,10 @@
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/student_model.dart';
 import '../../data/providers/student_api_provider.dart';
 
-part 'student_form_provider.g.dart';
+// ✅ Build runner GEREKTIRMEZ - Basit StateNotifier pattern
 
-// The state of our form
+// Form State
 class StudentFormState {
   final StudentModel student;
   final bool isLoading;
@@ -21,117 +21,148 @@ class StudentFormState {
   StudentFormState copyWith({
     StudentModel? student,
     bool? isLoading,
-    Object? error,
-    bool clearError = false,
+    String? error,
     int? currentStep,
   }) {
     return StudentFormState(
       student: student ?? this.student,
       isLoading: isLoading ?? this.isLoading,
-      error: clearError ? null : error?.toString(),
+      error: error ?? this.error,
       currentStep: currentStep ?? this.currentStep,
     );
   }
 }
 
-// The notifier for our form, using the new Riverpod Generator syntax
-@riverpod
-class StudentForm extends _$StudentForm {
+// Form Notifier (StateNotifier kullanmadan basit bir sınıf)
+class StudentFormNotifier extends Notifier<StudentFormState> {
   @override
   StudentFormState build() {
-    return const StudentFormState(
-      student: StudentModel(
+    return StudentFormState(
+      student: const StudentModel(
         name: '',
-        classLevel: '12',
-        examType: 'TYT+AYT',
+        classLevel: '11',
+        examType: 'YKS',
         fieldType: 'SAY',
       ),
     );
   }
 
-  void updateField(String field, dynamic value) {
-    StudentModel updatedStudent = state.student;
+  void updateStudent(StudentModel student) {
+    state = state.copyWith(student: student);
+  }
 
-    switch (field) {
+  void updateName(String name) {
+    state = state.copyWith(
+      student: state.student.copyWith(name: name),
+    );
+  }
+
+  void updateFieldType(String fieldType) {
+    state = state.copyWith(
+      student: state.student.copyWith(fieldType: fieldType),
+    );
+  }
+
+  void updateClassLevel(String classLevel) {
+    state = state.copyWith(
+      student: state.student.copyWith(classLevel: classLevel),
+    );
+  }
+
+  void updateExamType(String examType) {
+    state = state.copyWith(
+      student: state.student.copyWith(examType: examType),
+    );
+  }
+
+  // Dinamik field update metodu (form widget'ları için)
+  void updateField(String fieldName, dynamic value) {
+    final currentStudent = state.student;
+    StudentModel updatedStudent;
+
+    switch (fieldName) {
       case 'name':
-        updatedStudent = state.student.copyWith(name: value as String);
+        updatedStudent = currentStudent.copyWith(name: value as String);
         break;
       case 'email':
-        updatedStudent = state.student.copyWith(email: value as String?);
+        updatedStudent = currentStudent.copyWith(email: value as String?);
         break;
       case 'phone':
-        updatedStudent = state.student.copyWith(phone: value as String?);
+        updatedStudent = currentStudent.copyWith(phone: value as String?);
         break;
       case 'classLevel':
-        updatedStudent = state.student.copyWith(classLevel: value as String);
+        updatedStudent = currentStudent.copyWith(classLevel: value as String);
         break;
       case 'examType':
-        updatedStudent = state.student.copyWith(examType: value as String);
+        updatedStudent = currentStudent.copyWith(examType: value as String);
         break;
       case 'fieldType':
-        updatedStudent = state.student.copyWith(fieldType: value as String);
+        updatedStudent = currentStudent.copyWith(fieldType: value as String);
         break;
       case 'tytTurkishNet':
-        updatedStudent = state.student.copyWith(tytTurkishNet: value as double);
+        updatedStudent = currentStudent.copyWith(tytTurkishNet: value as double);
         break;
       case 'tytMathNet':
-        updatedStudent = state.student.copyWith(tytMathNet: value as double);
+        updatedStudent = currentStudent.copyWith(tytMathNet: value as double);
         break;
       case 'tytSocialNet':
-        updatedStudent = state.student.copyWith(tytSocialNet: value as double);
+        updatedStudent = currentStudent.copyWith(tytSocialNet: value as double);
         break;
       case 'tytScienceNet':
-        updatedStudent = state.student.copyWith(tytScienceNet: value as double);
+        updatedStudent = currentStudent.copyWith(tytScienceNet: value as double);
         break;
       case 'aytMathNet':
-        updatedStudent = state.student.copyWith(aytMathNet: value as double);
+        updatedStudent = currentStudent.copyWith(aytMathNet: value as double);
         break;
       case 'aytPhysicsNet':
-        updatedStudent = state.student.copyWith(aytPhysicsNet: value as double);
+        updatedStudent = currentStudent.copyWith(aytPhysicsNet: value as double);
         break;
       case 'aytChemistryNet':
-        updatedStudent = state.student.copyWith(aytChemistryNet: value as double);
+        updatedStudent = currentStudent.copyWith(aytChemistryNet: value as double);
         break;
       case 'aytBiologyNet':
-        updatedStudent = state.student.copyWith(aytBiologyNet: value as double);
+        updatedStudent = currentStudent.copyWith(aytBiologyNet: value as double);
         break;
       case 'aytLiteratureNet':
-        updatedStudent = state.student.copyWith(aytLiteratureNet: value as double);
+        updatedStudent = currentStudent.copyWith(aytLiteratureNet: value as double);
         break;
       case 'aytHistory1Net':
-        updatedStudent = state.student.copyWith(aytHistory1Net: value as double);
+        updatedStudent = currentStudent.copyWith(aytHistory1Net: value as double);
         break;
       case 'aytGeography1Net':
-        updatedStudent = state.student.copyWith(aytGeography1Net: value as double);
+        updatedStudent = currentStudent.copyWith(aytGeography1Net: value as double);
         break;
       case 'aytPhilosophyNet':
-        updatedStudent = state.student.copyWith(aytPhilosophyNet: value as double);
+        updatedStudent = currentStudent.copyWith(aytPhilosophyNet: value as double);
         break;
       case 'aytHistory2Net':
-        updatedStudent = state.student.copyWith(aytHistory2Net: value as double);
+        updatedStudent = currentStudent.copyWith(aytHistory2Net: value as double);
         break;
       case 'aytGeography2Net':
-        updatedStudent = state.student.copyWith(aytGeography2Net: value as double);
+        updatedStudent = currentStudent.copyWith(aytGeography2Net: value as double);
         break;
       case 'aytForeignLanguageNet':
-        updatedStudent = state.student.copyWith(aytForeignLanguageNet: value as double);
+        updatedStudent = currentStudent.copyWith(aytForeignLanguageNet: value as double);
         break;
       case 'preferredCities':
-        updatedStudent = state.student.copyWith(preferredCities: value as List<String>?);
+        updatedStudent = currentStudent.copyWith(preferredCities: value as List<String>?);
         break;
       case 'preferredUniversityTypes':
-        updatedStudent = state.student.copyWith(preferredUniversityTypes: value as List<String>?);
+        updatedStudent = currentStudent.copyWith(preferredUniversityTypes: value as List<String>?);
         break;
       case 'budgetPreference':
-        updatedStudent = state.student.copyWith(budgetPreference: value as String?);
+        updatedStudent = currentStudent.copyWith(budgetPreference: value as String?);
         break;
       case 'scholarshipPreference':
-        updatedStudent = state.student.copyWith(scholarshipPreference: value as bool);
+        updatedStudent = currentStudent.copyWith(scholarshipPreference: value as bool);
         break;
       case 'interestAreas':
-        updatedStudent = state.student.copyWith(interestAreas: value as List<String>?);
+        updatedStudent = currentStudent.copyWith(interestAreas: value as List<String>?);
         break;
+      default:
+        return; // Bilinmeyen field, güncelleme yapma
     }
+
     state = state.copyWith(student: updatedStudent);
   }
 
@@ -151,36 +182,26 @@ class StudentForm extends _$StudentForm {
     }
   }
 
-  Future<bool> submitForm() async {
-    if (state.student.name.isEmpty) {
-      state = state.copyWith(error: 'Ad soyad gereklidir', isLoading: false);
-      return false;
-    }
-
-    state = state.copyWith(isLoading: true, clearError: true);
-
+  Future<void> submitForm() async {
+    state = state.copyWith(isLoading: true, error: null);
     try {
-      final studentCreationNotifier = ref.read(studentCreationProvider.notifier);
-      final createdStudent = await studentCreationNotifier.createStudent(state.student);
-      
-      // If successful, update state and indicate success
-      state = state.copyWith(isLoading: false, student: createdStudent);
-      return true;
+      final creationService = ref.read(studentCreationServiceProvider);
+      final createdStudent = await creationService.createStudent(state.student);
+      state = state.copyWith(
+        student: createdStudent,
+        isLoading: false,
+      );
     } catch (e) {
-      // If any error occurs during creation, update the state with the error
-      state = state.copyWith(isLoading: false, error: e.toString());
-      return false;
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+      rethrow;
     }
-  }
-
-  void reset() {
-    state = const StudentFormState(
-      student: StudentModel(
-        name: '',
-        classLevel: '12',
-        examType: 'TYT+AYT',
-        fieldType: 'SAY',
-      ),
-    );
   }
 }
+
+// Provider
+final studentFormProvider = NotifierProvider<StudentFormNotifier, StudentFormState>(
+  StudentFormNotifier.new,
+);

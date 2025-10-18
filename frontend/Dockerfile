@@ -33,12 +33,11 @@ RUN flutter pub get
 # Copy source code
 COPY . .
 
-# Generate code
-RUN flutter packages pub run build_runner build --delete-conflicting-outputs
+# ⚠️ BUILD RUNNER KALDIRILDI - Projede build_runner gerektiren paketler yok!
+# Build_runner gerektirmeyen yaklaşım kullanıldı (riverpod, json_serializable vs)
 
-# Create a simple web app without build
-RUN mkdir -p build/web
-RUN echo '<!DOCTYPE html><html><head><title>ÖSYM Rehberi</title></head><body><h1>ÖSYM Rehberi - Geliştiriliyor</h1><p>Backend API: <a href="http://localhost:8001">http://localhost:8001</a></p></body></html>' > build/web/index.html
+# Flutter web build
+RUN flutter build web --release
 
 # Expose port
 EXPOSE 3000

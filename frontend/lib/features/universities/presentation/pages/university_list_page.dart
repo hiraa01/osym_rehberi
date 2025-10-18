@@ -18,7 +18,6 @@ class UniversityListPage extends ConsumerStatefulWidget {
 class _UniversityListPageState extends ConsumerState<UniversityListPage> {
   String _selectedCity = 'Tümü';
   String _selectedType = 'Tümü';
-  String _searchQuery = ''; // TODO: Implement search functionality
 
   @override
   Widget build(BuildContext context) {
@@ -58,9 +57,7 @@ class _UniversityListPageState extends ConsumerState<UniversityListPage> {
                     ),
                   ),
                   onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
+                    // TODO: Implement search functionality
                   },
                 ),
               ),

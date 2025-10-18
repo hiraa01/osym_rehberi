@@ -15,6 +15,7 @@ alwaysApply: true
 - Use PascalCase for classes, camelCase for functions/variables
 - Avoid using `any` or dynamic types — prefer typed interfaces
 - Use meaningful complete names (no abbreviations)
+- Don't use emulator, always use mobile app with phone connection
 
 # FILE STRUCTURE & NAMING
 

@@ -1,13 +1,11 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/router/app_router.dart';
 import '../../data/models/recommendation_model.dart';
 import '../widgets/recommendation_card.dart';
 import '../widgets/recommendation_filter_bottom_sheet.dart';
+import './recommendation_detail_page.dart';
 
-@RoutePage()
 class RecommendationListPage extends ConsumerStatefulWidget {
   final int studentId;
 
@@ -149,10 +147,12 @@ class _RecommendationListPageState extends ConsumerState<RecommendationListPage>
         return RecommendationCard(
           recommendation: recommendation,
           onTap: () {
-            context.router.push(
-              RecommendationDetailRoute(
-                studentId: widget.studentId,
-                recommendationId: recommendation.id!,
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => RecommendationDetailPage(
+                  studentId: widget.studentId,
+                  recommendationId: recommendation.id!,
+                ),
               ),
             );
           },

@@ -1,0 +1,3 @@
+2025-10-11 18:41:13,776 — api — INFO — User registration attempt —  email=test@test.com phone=None
+2025-10-11 18:41:13,885 — api — INFO — User registered successfully — user_id=1
+2025-10-11 19:10:49,362 — api — INFO — User registration attempt —  email=test@test.com phone=None
