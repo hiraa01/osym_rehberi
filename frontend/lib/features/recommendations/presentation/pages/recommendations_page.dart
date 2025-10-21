@@ -175,7 +175,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                       DropdownMenuItem(value: 'ankara', child: Text('Ankara')),
                       DropdownMenuItem(value: 'izmir', child: Text('İzmir')),
                     ],
-                    initialValue: _selectedCity,
+                    value: _selectedCity,
                     onChanged: (value) {
                       if (value != null) {
                         setState(() => _selectedCity = value);
@@ -196,7 +196,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
                       DropdownMenuItem(value: 'devlet', child: Text('Devlet')),
                       DropdownMenuItem(value: 'vakif', child: Text('Vakıf')),
                     ],
-                    initialValue: _selectedType,
+                    value: _selectedType,
                     onChanged: (value) {
                       if (value != null) {
                         setState(() => _selectedType = value);
@@ -358,7 +358,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(

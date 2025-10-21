@@ -74,14 +74,14 @@ cd backend
 
 # Docker container oluştur ve çalıştır
 docker build -t osym-backend .
-docker run -d -p 8001:8001 --name osym-backend-container osym-backend
+docker run -d -p 8002:8002 --name osym-backend-container osym-backend
 
 # Veya docker-compose kullanarak
 cd ../docker
 docker-compose up -d backend
 ```
 
-Backend şu adreste çalışacak: http://localhost:8001
+Backend şu adreste çalışacak: http://localhost:8002
 
 ### 3. Frontend Build ve Çalıştırma
 
@@ -159,8 +159,8 @@ docker exec -it osym-backend-container python scripts/import_yok_data.py
 **Çözüm**:
 - Backend'in çalıştığından emin olun: `docker ps`
 - API base URL'in doğru olduğunu kontrol edin
-- Android emülatör için: `10.0.2.2:8001`
-- Gerçek cihaz için: Bilgisayarın IP adresi (örn: `192.168.1.100:8001`)
+- Android emülatör için: `10.0.2.2:8002`
+- Gerçek cihaz için: Bilgisayarın IP adresi (örn: `192.168.1.100:8002`)
 
 ### 2. Freezed/JSON Serialization Hataları
 
@@ -214,7 +214,7 @@ dosyasında `_departmentsByField` map'i güncellenerek bölümler değiştirileb
 Herhangi bir sorun yaşarsanız:
 1. Backend loglarını kontrol edin: `docker logs osym-backend-container`
 2. Frontend debug console'u kontrol edin
-3. API endpoint'lerini test edin: http://localhost:8001/docs (Swagger UI)
+3. API endpoint'lerini test edin: http://localhost:8002/docs (Swagger UI)
 
 ## ✨ Sonraki Adımlar
 

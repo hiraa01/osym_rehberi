@@ -50,13 +50,13 @@ docker-compose up --build
 ```
 
 3. **Servislere erişim:**
-- Backend API: http://localhost:8001
-- Frontend Web: http://localhost:3001
-- PostgreSQL: localhost:5434
+- Backend API: http://localhost:8002
+- Frontend Web: http://localhost:3002
+- PostgreSQL: localhost:5435
 
 ### API Dokümantasyonu
 Backend çalıştıktan sonra Swagger UI'ya erişim:
-- http://localhost:8001/docs
+- http://localhost:8002/docs
 
 ## 📁 Proje Yapısı
 

@@ -57,7 +57,7 @@
 ```bash
 cd backend
 docker build -t osym-backend .
-docker run -d -p 8001:8001 --name osym-backend osym-backend
+docker run -d -p 8002:8002 --name osym-backend osym-backend
 ```
 
 ### 2. Frontend'i Çalıştırın

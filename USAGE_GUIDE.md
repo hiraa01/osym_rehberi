@@ -21,9 +21,9 @@ docker-compose up --build
 ```
 
 3. **Servislere erişim:**
-- Backend API: http://localhost:8001
-- Frontend Web: http://localhost:3001
-- PostgreSQL: localhost:5434
+- Backend API: http://localhost:8002
+- Frontend Web: http://localhost:3002
+- PostgreSQL: localhost:5435
 
 ## 📱 Frontend Kullanımı
 
@@ -82,8 +82,8 @@ docker-compose up --build
 ## 🔧 Backend API Kullanımı
 
 ### API Dokümantasyonu
-- Swagger UI: http://localhost:8001/docs
-- ReDoc: http://localhost:8001/redoc
+- Swagger UI: http://localhost:8002/docs
+- ReDoc: http://localhost:8002/redoc
 
 ### Temel Endpoints
 
@@ -260,7 +260,7 @@ docker-compose exec -T db psql -U osym_user osym_rehber < backup.sql
 ### Yaygın Sorunlar
 
 1. **Port çakışması**
-   - 8001, 3001, 5434 portlarının boş olduğundan emin olun
+   - 8002, 3002, 5435 portlarının boş olduğundan emin olun
 
 2. **Docker sorunları**
    - Docker Desktop'ın çalıştığından emin olun

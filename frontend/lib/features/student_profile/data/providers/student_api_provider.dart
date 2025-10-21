@@ -5,7 +5,7 @@ import '../models/student_model.dart';
 // ✅ Build runner GEREKTIRMEZ - Basit provider pattern
 
 // Student List Provider
-final studentListProvider = FutureProvider.autoDispose<List<StudentModel>>((ref) async {
+final studentListProvider = FutureProvider<List<StudentModel>>((ref) async {
   final apiService = ref.read(apiServiceProvider);
   final response = await apiService.getStudents();
   return (response.data as List)
@@ -14,7 +14,7 @@ final studentListProvider = FutureProvider.autoDispose<List<StudentModel>>((ref)
 });
 
 // Student Detail Provider  
-final studentDetailProvider = FutureProvider.autoDispose.family<StudentModel, int>((ref, studentId) async {
+final studentDetailProvider = FutureProvider.family<StudentModel, int>((ref, studentId) async {
   final apiService = ref.read(apiServiceProvider);
   final response = await apiService.getStudent(studentId);
   return StudentModel.fromJson(response.data);

@@ -7,14 +7,14 @@ class ApiService {
 
   ApiService() {
     // ⚠️ IP ADRESİNİ DURUMUNUZA GÖRE DEĞİŞTİRİN:
-    // 🖥️  Android Emulator:    10.0.2.2:8001
+    // 🖥️  Android Emulator:    10.0.2.2:8002
     // 📱 Gerçek Android Cihaz: Bilgisayarınızın WiFi IP'si (cmd: ipconfig)
-    // 🌐 Web:                  localhost:8001
+    // 🌐 Web:                  localhost:8002
     
     // ✅ Güncel WiFi IP: ipconfig.exe ile kontrol edin
     const String baseUrl = kIsWeb 
-        ? 'http://localhost:8001/api'
-        : 'http://172.31.88.134:8001/api'; // 👈 Windows WiFi IP (değişebilir!)
+        ? 'http://localhost:8002/api'
+        : 'http://172.31.88.134:8002/api'; // 👈 Windows WiFi IP (değişebilir!)
     
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
@@ -146,7 +146,7 @@ class ApiService {
   // Health check (not under /api prefix)
   Future<Response> healthCheck() async {
     return await _dio.get(
-      'http://${kIsWeb ? 'localhost' : '172.31.88.134'}:8001/health',
+      'http://${kIsWeb ? 'localhost' : '172.31.88.134'}:8002/health',
       options: Options(
         sendTimeout: const Duration(seconds: 3),
         receiveTimeout: const Duration(seconds: 3),

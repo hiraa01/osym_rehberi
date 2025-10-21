@@ -9,7 +9,12 @@ RUN apt-get update && apt-get install -y \
     zip \
     libglu1-mesa \
     python3 \
+    openjdk-17-jdk \
     && rm -rf /var/lib/apt/lists/*
+
+# Set Java 17 environment
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 # Install Flutter
 RUN git clone https://github.com/flutter/flutter.git -b stable /flutter

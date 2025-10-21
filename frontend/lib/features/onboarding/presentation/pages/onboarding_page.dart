@@ -170,7 +170,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             width: 200,
             height: 200,
             decoration: BoxDecoration(
-              color: content.color.withValues(alpha: 0.1),
+              color: content.color.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(

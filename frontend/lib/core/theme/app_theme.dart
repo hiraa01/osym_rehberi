@@ -45,7 +45,7 @@ class AppTheme {
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: primaryColor,
       ),
-      cardTheme: CardThemeData(
+      cardTheme: CardTheme(
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -70,7 +70,7 @@ class AppTheme {
       appBarTheme: AppBarTheme(
         centerTitle: true,
         elevation: 0,
-        backgroundColor: primaryColor.withValues(alpha: 0.9),
+        backgroundColor: primaryColor.withOpacity(0.9),
         foregroundColor: Colors.white,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -87,14 +87,14 @@ class AppTheme {
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: primaryColor,
       ),
-      cardTheme: CardThemeData(
+      cardTheme: CardTheme(
         elevation: 2,
         color: darkSurface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
       ),
-      dialogTheme: DialogThemeData(
+      dialogTheme: DialogTheme(
         backgroundColor: darkSurface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),

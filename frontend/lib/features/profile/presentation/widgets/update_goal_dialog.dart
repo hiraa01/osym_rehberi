@@ -49,7 +49,7 @@ class _UpdateGoalDialogState extends State<UpdateGoalDialog> {
                   child: Text('Tıp', overflow: TextOverflow.ellipsis),
                 ),
               ],
-              initialValue: _selectedDepartment,
+              value: _selectedDepartment,
               onChanged: (value) {
                 setState(() => _selectedDepartment = value);
               },
@@ -69,7 +69,7 @@ class _UpdateGoalDialogState extends State<UpdateGoalDialog> {
                 DropdownMenuItem(value: 'izmir', child: Text('İzmir', overflow: TextOverflow.ellipsis)),
                 DropdownMenuItem(value: 'bursa', child: Text('Bursa', overflow: TextOverflow.ellipsis)),
               ],
-              initialValue: _selectedCity,
+              value: _selectedCity,
               onChanged: (value) {
                 setState(() => _selectedCity = value);
               },
@@ -97,7 +97,7 @@ class _UpdateGoalDialogState extends State<UpdateGoalDialog> {
                   child: Text('Boğaziçi Ünv.', overflow: TextOverflow.ellipsis),
                 ),
               ],
-              initialValue: _selectedUniversity,
+              value: _selectedUniversity,
               onChanged: (value) {
                 setState(() => _selectedUniversity = value);
               },

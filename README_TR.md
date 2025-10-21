@@ -52,7 +52,7 @@ cd backend
 docker build -t osym-backend .
 
 # Container'ı başlatın
-docker run -d -p 8001:8001 --name osym-backend osym-backend
+docker run -d -p 8002:8002 --name osym-backend osym-backend
 
 # Veya docker-compose ile
 cd ../docker
@@ -60,8 +60,8 @@ docker-compose up -d backend
 ```
 
 Backend şu adreste çalışacak:
-- API: http://localhost:8001
-- Swagger Docs: http://localhost:8001/docs
+- API: http://localhost:8002
+- Swagger Docs: http://localhost:8002/docs
 
 ### 2. Frontend Kurulumu
 
@@ -214,7 +214,7 @@ docker logs osym-backend
 docker restart osym-backend
 
 # Backend'in çalıştığını kontrol edin
-curl http://localhost:8001/health
+curl http://localhost:8002/health
 ```
 
 ### Flutter Build Hataları
@@ -236,11 +236,11 @@ flutter run
 
 ```dart
 const String baseUrl = kIsWeb 
-    ? 'http://localhost:8001/api'  // Web için
-    : 'http://10.0.2.2:8001/api';  // Android emülatör için
+    ? 'http://localhost:8002/api'  // Web için
+    : 'http://10.0.2.2:8002/api';  // Android emülatör için
 
 // Gerçek cihaz için bilgisayarın IP adresini kullanın
-// : 'http://192.168.1.100:8001/api';
+// : 'http://192.168.1.100:8002/api';
 ```
 
 ## 📝 Geliştirme Notları

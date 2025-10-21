@@ -76,7 +76,7 @@ class _ExamCountSelectionStepState extends State<ExamCountSelectionStep> {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                  color: Theme.of(context).primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: Theme.of(context).primaryColor,

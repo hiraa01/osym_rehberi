@@ -26,7 +26,7 @@ class AnimatedBottomBar extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.08),
+            color: Colors.black.withOpacity(isDark ? 0.5 : 0.08),
             blurRadius: 20,
             offset: const Offset(0, -3),
           ),
@@ -76,7 +76,7 @@ class AnimatedBottomBar extends StatelessWidget {
                       ? LinearGradient(
                           colors: [
                             primaryColor,
-                            primaryColor.withValues(alpha: 0.85),
+                            primaryColor.withOpacity(0.85),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -87,7 +87,7 @@ class AnimatedBottomBar extends StatelessWidget {
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: primaryColor.withValues(alpha: 0.4),
+                            color: primaryColor.withOpacity(0.4),
                             blurRadius: 16,
                             spreadRadius: 2,
                           ),

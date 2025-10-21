@@ -5,7 +5,7 @@ import '../models/department_model.dart';
 
 // ✅ autoDispose: Her kullanıcı için fresh data, cache yok!
 // University list provider
-final universityListProvider = FutureProvider.autoDispose<List<UniversityModel>>((ref) async {
+final universityListProvider = FutureProvider<List<UniversityModel>>((ref) async {
   final apiService = ref.read(apiServiceProvider);
   final response = await apiService.getUniversities();
   
@@ -15,7 +15,7 @@ final universityListProvider = FutureProvider.autoDispose<List<UniversityModel>>
 });
 
 // Department list provider
-final departmentListProvider = FutureProvider.autoDispose<List<DepartmentModel>>((ref) async {
+final departmentListProvider = FutureProvider<List<DepartmentModel>>((ref) async {
   final apiService = ref.read(apiServiceProvider);
   final response = await apiService.getDepartments();
   
@@ -25,7 +25,7 @@ final departmentListProvider = FutureProvider.autoDispose<List<DepartmentModel>>
 });
 
 // City list provider
-final cityListProvider = FutureProvider.autoDispose<List<String>>((ref) async {
+final cityListProvider = FutureProvider<List<String>>((ref) async {
   final apiService = ref.read(apiServiceProvider);
   final response = await apiService.getCities();
   
@@ -33,7 +33,7 @@ final cityListProvider = FutureProvider.autoDispose<List<String>>((ref) async {
 });
 
 // Field type list provider
-final fieldTypeListProvider = FutureProvider.autoDispose<List<String>>((ref) async {
+final fieldTypeListProvider = FutureProvider<List<String>>((ref) async {
   final apiService = ref.read(apiServiceProvider);
   final response = await apiService.getFieldTypes();
   
@@ -41,7 +41,7 @@ final fieldTypeListProvider = FutureProvider.autoDispose<List<String>>((ref) asy
 });
 
 // Filtered university list provider - autoDispose eklendi
-final filteredUniversityListProvider = FutureProvider.autoDispose.family<List<UniversityModel>, UniversityFilterParams>((ref, params) async {
+final filteredUniversityListProvider = FutureProvider.family<List<UniversityModel>, UniversityFilterParams>((ref, params) async {
   final universities = await ref.watch(universityListProvider.future);
   
   return universities.where((university) {
@@ -69,7 +69,7 @@ final filteredUniversityListProvider = FutureProvider.autoDispose.family<List<Un
 });
 
 // Filtered department list provider - autoDispose eklendi
-final filteredDepartmentListProvider = FutureProvider.autoDispose.family<List<DepartmentModel>, DepartmentFilterParams>((ref, params) async {
+final filteredDepartmentListProvider = FutureProvider.family<List<DepartmentModel>, DepartmentFilterParams>((ref, params) async {
   final departments = await ref.watch(departmentListProvider.future);
   
   return departments.where((department) {

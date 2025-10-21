@@ -6,6 +6,7 @@ import asyncio
 from database import get_db
 from services.ml_recommendation_engine import MLRecommendationEngine
 from schemas.ml_recommendations import MLRecommendationResponse, MLModelStatusResponse, MLTrainingResponse
+from schemas.university import DepartmentWithUniversityResponse
 from models.university import University
 from core.logging_config import api_logger
 from core.exceptions import StudentNotFoundError

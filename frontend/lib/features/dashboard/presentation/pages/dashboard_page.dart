@@ -305,8 +305,8 @@ class _DashboardPageState extends State<DashboardPage> {
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
             colors: [
-              primaryColor.withValues(alpha: 0.1),
-              primaryColor.withValues(alpha: 0.05),
+              primaryColor.withOpacity(0.1),
+              primaryColor.withOpacity(0.05),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -414,7 +414,7 @@ class _DashboardPageState extends State<DashboardPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.7),
+                color: Colors.white.withOpacity(0.7),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -526,7 +526,7 @@ class _DashboardPageState extends State<DashboardPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
+                  color: color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 28),
