@@ -11,12 +11,12 @@ dependencies:
     sdk: flutter
   
   # State Management
-  flutter_riverpod: ^2.4.9
-  riverpod_annotation: ^2.3.3
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
   provider: ^6.1.1
   
   # Navigation
-  auto_route: ^7.8.4
+  auto_route: ^7.9.2
   
   # HTTP Client
   dio: ^5.4.0
@@ -25,7 +25,7 @@ dependencies:
   cupertino_icons: ^1.0.6
   
   # Utilities
-  shared_preferences: ^2.2.2
+  shared_preferences: ^2.2.3
   intl: ^0.19.0
   
   # Onboarding & UI
@@ -33,9 +33,9 @@ dependencies:
   flutter_svg: ^2.0.10+1
   
   # Data Classes
-  freezed_annotation: ^2.4.1
+  freezed_annotation: ^2.4.4
   json_annotation: ^4.7.0
-  google_generative_ai: ^0.2.2
+  google_generative_ai: ^0.2.3
 
 dev_dependencies:
   flutter_test:
@@ -43,13 +43,13 @@ dev_dependencies:
   
   # Code Generation
   auto_route_generator: ^7.3.2
-  build_runner: ^2.4.7
-  freezed: ^2.4.6
-  json_serializable: ^6.6.2
-  riverpod_generator: ^2.3.9
+  build_runner: ^2.4.9
+  freezed: ^2.5.2
+  json_serializable: ^6.8.0
+  riverpod_generator: ^2.4.0
   
   # Linting
-  flutter_lints: ^3.0.0
+  flutter_lints: ^3.0.2
 
 flutter:
   uses-material-design: true
@@ -68,3 +68,6 @@ flutter:
   #         weight: 600
   #       - asset: assets/fonts/Inter-Bold.ttf
   #         weight: 700
+
+dependency_overrides:
+  web: ^1.1.1

@@ -34,16 +34,57 @@ class ApiService {
         responseBody: true,
         logPrint: (obj) => debugPrint(obj.toString()),
       ));
+    }
 
-      _dio.interceptors.add(InterceptorsWrapper(
-        onError: (error, handler) {
+    // Bağlantı hatası interceptor'ı (hem debug hem production'da çalışır)
+    _dio.interceptors.add(InterceptorsWrapper(
+      onError: (error, handler) {
+        if (kDebugMode) {
           debugPrint('API Error: ${error.message}');
           if (error.response != null) {
             debugPrint('Response: ${error.response?.data}');
           }
-          handler.next(error);
-        },
-      ));
+        }
+        
+        // Bağlantı hatası kontrolü
+        if (error.type == DioExceptionType.connectionTimeout || 
+            error.type == DioExceptionType.receiveTimeout ||
+            error.type == DioExceptionType.sendTimeout ||
+            error.type == DioExceptionType.connectionError) {
+          
+          // Kullanıcı dostu hata mesajı oluştur
+          final userFriendlyError = DioException(
+            requestOptions: error.requestOptions,
+            error: error,
+            type: error.type,
+            message: _getConnectionErrorMessage(error),
+          );
+          handler.next(userFriendlyError);
+          return;
+        }
+        
+        handler.next(error);
+      },
+    ));
+  }
+
+  /// Bağlantı hataları için kullanıcı dostu mesaj oluştur
+  String _getConnectionErrorMessage(DioException error) {
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+        return "⏱️ Bağlantı zaman aşımı! WiFi bağlantınızı kontrol edin ve aynı ağda olduğunuzdan emin olun.";
+      
+      case DioExceptionType.receiveTimeout:
+        return "📡 Sunucudan yanıt alınamadı! WiFi bağlantınızı kontrol edin ve aynı ağda olduğunuzdan emin olun.";
+      
+      case DioExceptionType.sendTimeout:
+        return "📤 Veri gönderilemedi! WiFi bağlantınızı kontrol edin ve aynı ağda olduğunuzdan emin olun.";
+      
+      case DioExceptionType.connectionError:
+        return "🔌 Bağlantı hatası! WiFi bağlantınızı kontrol edin ve aynı ağda olduğunuzdan emin olun.";
+      
+      default:
+        return "🌐 Ağ bağlantı sorunu! WiFi bağlantınızı kontrol edin ve aynı ağda olduğunuzdan emin olun.";
     }
   }
 
@@ -81,7 +122,7 @@ class ApiService {
   }
 
   Future<Response> getDepartments() async {
-    return await _dio.get('/universities/departments/');  // ✅ Trailing slash eklendi
+    return await _dio.get('/universities/departments/?limit=1000');  // ✅ Daha fazla bölüm getir
   }
 
   Future<Response> getCities() async {

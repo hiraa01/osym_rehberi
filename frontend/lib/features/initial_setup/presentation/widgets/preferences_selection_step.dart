@@ -25,7 +25,7 @@ class _PreferencesSelectionStepState
     extends ConsumerState<PreferencesSelectionStep> {
   final List<String> _selectedCities = [];
   final List<String> _selectedDepartments = [];
-  String _fieldType = 'SAY'; // EA, SAY, SÖZ, DİL
+  String? _selectedFieldType; // 'SAY', 'EA', 'SÖZ', 'DİL'
 
   bool _isLoading = false;
 
@@ -62,7 +62,7 @@ class _PreferencesSelectionStepState
       final preferences = {
         'cities': _selectedCities,
         'departments': _selectedDepartments,
-        'field_type': _fieldType,
+        'field_type': _selectedFieldType,
       };
 
       widget.onPreferencesCompleted(preferences);
@@ -109,32 +109,6 @@ class _PreferencesSelectionStepState
           ),
           const SizedBox(height: 24),
 
-          // Alan türü seçimi
-          const Text(
-            'Alan Türünüz',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            children: ['SAY', 'EA', 'SÖZ', 'DİL'].map((field) {
-              final isSelected = _fieldType == field;
-              return ChoiceChip(
-                label: Text(field),
-                selected: isSelected,
-                onSelected: (selected) {
-                  setState(() {
-                    _fieldType = field;
-                    _selectedDepartments.clear();
-                  });
-                },
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 24),
 
           // Şehir seçimi
           const Text(
@@ -201,7 +175,7 @@ class _PreferencesSelectionStepState
           ),
           const SizedBox(height: 24),
 
-          // Bölüm seçimi
+          // Bölüm seçimi - Alan türü ayrımı
           const Text(
             'İlgilendiğiniz Bölümler',
             style: TextStyle(
@@ -210,6 +184,37 @@ class _PreferencesSelectionStepState
             ),
           ),
           const SizedBox(height: 12),
+          
+          // Alan türü seçimi
+          const Text(
+            'Alan Türü',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              'SAY', 'EA', 'SÖZ', 'DİL'
+            ].map((field) {
+              final isSelected = _selectedFieldType == field;
+              return ChoiceChip(
+                label: Text(field),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() {
+                    _selectedFieldType = selected ? field : null;
+                    _selectedDepartments.clear(); // Bölümleri temizle
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+          
           departmentsAsync.when(
             loading: () => const Center(
               child: Padding(
@@ -231,9 +236,17 @@ class _PreferencesSelectionStepState
               ),
             ),
             data: (departments) {
-              // Alan türüne göre bölümleri filtrele
+              // Sadece alan türüne göre filtrele (üniversite türü bilgisi yok)
               final filteredDepartments = departments
-                  .where((dept) => dept.fieldType == _fieldType)
+                  .where((dept) {
+                    // Alan türü filtresi
+                    if (_selectedFieldType != null && 
+                        dept.fieldType != _selectedFieldType) {
+                      return false;
+                    }
+                    
+                    return true;
+                  })
                   .map((dept) => dept.name)
                   .toSet()
                   .toList()
@@ -243,6 +256,12 @@ class _PreferencesSelectionStepState
                   .where((d) => !_selectedDepartments.contains(d))
                   .toList();
 
+              // Durum mesajı
+              String hintText = 'Önce alan türü seçin...';
+              if (_selectedFieldType != null) {
+                hintText = 'Bölüm ekle...';
+              }
+
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -250,13 +269,15 @@ class _PreferencesSelectionStepState
                   SearchableDropdown<String>(
                     items: availableDepartments,
                     itemAsString: (item) => item,
-                    hintText: 'Bölüm ekle...',
+                    hintText: hintText,
                     searchHintText: 'Bölüm ara (örn: bilgisayar)',
-                    onChanged: (dept) {
-                      if (dept != null) {
-                        setState(() => _selectedDepartments.add(dept));
-                      }
-                    },
+                    onChanged: _selectedFieldType != null 
+                        ? (String? dept) {
+                            if (dept != null) {
+                              setState(() => _selectedDepartments.add(dept));
+                            }
+                          }
+                        : (String? dept) {}, // Empty function instead of null
                   ),
                   if (_selectedDepartments.isNotEmpty) ...[
                     const SizedBox(height: 12),

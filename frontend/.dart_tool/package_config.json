@@ -627,9 +627,9 @@
     },
     {
       "name": "web",
-      "rootUri": "file:///C:/Users/hiras/AppData/Local/Pub/Cache/hosted/pub.dev/web-0.3.0",
+      "rootUri": "file:///C:/Users/hiras/AppData/Local/Pub/Cache/hosted/pub.dev/web-1.1.1",
       "packageUri": "lib/",
-      "languageVersion": "3.2"
+      "languageVersion": "3.4"
     },
     {
       "name": "web_socket_channel",
@@ -662,7 +662,7 @@
       "languageVersion": "3.0"
     }
   ],
-  "generated": "2025-10-21T15:59:11.194551Z",
+  "generated": "2025-10-23T13:29:33.174360Z",
   "generator": "pub",
   "generatorVersion": "3.2.6"
 }
