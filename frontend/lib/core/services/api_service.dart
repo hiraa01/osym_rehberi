@@ -18,9 +18,9 @@ class ApiService {
     
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 5), // Backend'e bağlanma için 5 saniye (hızlı fail)
-      receiveTimeout: const Duration(seconds: 10), // Cevap almak için 10 saniye
-      sendTimeout: const Duration(seconds: 10), // Veri göndermek için 10 saniye
+      connectTimeout: const Duration(seconds: 30), // Backend'e bağlanma için 30 saniye
+      receiveTimeout: const Duration(seconds: 60), // Cevap almak için 60 saniye
+      sendTimeout: const Duration(seconds: 60), // Veri göndermek için 60 saniye
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -237,6 +237,7 @@ class ApiService {
   Future<Response> getUserInfo(int userId) async {
     return await _dio.get('/auth/me/$userId');
   }
+
 
   Future<Response> updateUser({
     required int userId,

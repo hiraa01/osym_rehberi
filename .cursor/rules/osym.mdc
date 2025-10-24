@@ -112,3 +112,21 @@ API error: RecommendationService failed — Error: 500 Internal Server Error
 - Include version number in logs at startup
 - Separate logs by module using loggers by file/module name
 
+# DEPENDENCY LOCKING RULES
+
+- All MDC-related packages must use version **3.16.9** to ensure UI stability and consistent component behavior across devices.
+- Do not upgrade to newer MDC versions unless compatibility with Flutter Web is confirmed.
+- Enforced version:
+  - `@material/button` = 3.16.9
+  - `@material/textfield` = 3.16.9
+  - `@material/dialog` = 3.16.9
+  - `@material/top-app-bar` = 3.16.9
+
+```json
+"dependencies": {
+  "@material/button": "3.16.9",
+  "@material/textfield": "3.16.9",
+  "@material/dialog": "3.16.9",
+  "@material/top-app-bar": "3.16.9"
+}
+

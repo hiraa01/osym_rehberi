@@ -36,6 +36,11 @@ dependencies:
   freezed_annotation: ^2.4.4
   json_annotation: ^4.7.0
   google_generative_ai: ^0.2.3
+  
+  # Export Features
+  pdf: ^3.10.7
+  path_provider: ^2.1.2
+  share_plus: ^7.2.2
 
 dev_dependencies:
   flutter_test:

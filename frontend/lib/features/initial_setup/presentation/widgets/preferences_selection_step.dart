@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/services/api_service.dart';
 import '../../../../core/widgets/searchable_dropdown.dart';
@@ -28,6 +29,7 @@ class _PreferencesSelectionStepState
   String? _selectedFieldType; // 'SAY', 'EA', 'SÖZ', 'DİL'
 
   bool _isLoading = false;
+  final ApiService _apiService = ApiService();
 
   Future<void> _complete() async {
     if (_selectedCities.isEmpty) {
@@ -53,6 +55,28 @@ class _PreferencesSelectionStepState
     setState(() => _isLoading = true);
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id');
+      final userName = prefs.getString('user_name') ?? 'Öğrenci';
+      
+      if (userId != null) {
+        // Öğrenci profili oluştur
+        final studentResponse = await _apiService.createStudent({
+          'user_id': userId,
+          'name': userName,
+          'school': 'Lise',
+          'grade': 12,
+          'class_level': '12',
+          'exam_type': 'TYT+AYT',
+          'field_type': _selectedFieldType,
+          'preferred_cities': _selectedCities,
+        });
+        
+        // Student ID'yi kaydet
+        final studentId = studentResponse.data['id'] as int;
+        await prefs.setInt('student_id', studentId);
+      }
+
       // Kullanıcı setup tamamlandı olarak işaretle
       final authService = getAuthService(ApiService());
       await authService.updateUser(

@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../universities/data/providers/university_api_provider.dart';
 
-class UpdateGoalDialog extends StatefulWidget {
+class UpdateGoalDialog extends ConsumerStatefulWidget {
   const UpdateGoalDialog({super.key});
 
   @override
-  State<UpdateGoalDialog> createState() => _UpdateGoalDialogState();
+  ConsumerState<UpdateGoalDialog> createState() => _UpdateGoalDialogState();
 }
 
-class _UpdateGoalDialogState extends State<UpdateGoalDialog> {
+class _UpdateGoalDialogState extends ConsumerState<UpdateGoalDialog> {
   String? _selectedDepartment;
   String? _selectedCity;
   String? _selectedUniversity;
@@ -23,83 +25,156 @@ class _UpdateGoalDialogState extends State<UpdateGoalDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Bölüm',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.school),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-              ),
-              isExpanded: true,
-              items: const [
-                DropdownMenuItem(
-                  value: 'bilgisayar',
-                  child: Text('Bilgisayar Mühendisliği', overflow: TextOverflow.ellipsis),
-                ),
-                DropdownMenuItem(
-                  value: 'elektrik',
-                  child: Text('Elektrik-Elektronik Müh.', overflow: TextOverflow.ellipsis),
-                ),
-                DropdownMenuItem(
-                  value: 'hukuk',
-                  child: Text('Hukuk', overflow: TextOverflow.ellipsis),
-                ),
-                DropdownMenuItem(
-                  value: 'tip',
-                  child: Text('Tıp', overflow: TextOverflow.ellipsis),
-                ),
-              ],
-              value: _selectedDepartment,
-              onChanged: (value) {
-                setState(() => _selectedDepartment = value);
+            Consumer(
+              builder: (context, ref, child) {
+                final departmentsAsync = ref.watch(departmentListProvider);
+                return departmentsAsync.when(
+                  data: (departments) {
+                    return DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'Bölüm',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.school),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      ),
+                      isExpanded: true,
+                      items: departments.map((dept) {
+                        return DropdownMenuItem(
+                          value: dept.name,
+                          child: Text(dept.name, overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      value: _selectedDepartment,
+                      onChanged: (value) {
+                        setState(() => _selectedDepartment = value);
+                      },
+                    );
+                  },
+                  loading: () => DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'Bölüm',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.school),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    ),
+                    items: const [DropdownMenuItem(value: 'loading', child: Text('Yükleniyor...'))],
+                    value: 'loading',
+                    onChanged: null,
+                  ),
+                  error: (error, stack) => DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'Bölüm',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.school),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    ),
+                    items: const [DropdownMenuItem(value: 'error', child: Text('Hata'))],
+                    value: 'error',
+                    onChanged: null,
+                  ),
+                );
               },
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Şehir',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.location_city),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-              ),
-              isExpanded: true,
-              items: const [
-                DropdownMenuItem(value: 'istanbul', child: Text('İstanbul', overflow: TextOverflow.ellipsis)),
-                DropdownMenuItem(value: 'ankara', child: Text('Ankara', overflow: TextOverflow.ellipsis)),
-                DropdownMenuItem(value: 'izmir', child: Text('İzmir', overflow: TextOverflow.ellipsis)),
-                DropdownMenuItem(value: 'bursa', child: Text('Bursa', overflow: TextOverflow.ellipsis)),
-              ],
-              value: _selectedCity,
-              onChanged: (value) {
-                setState(() => _selectedCity = value);
+            Consumer(
+              builder: (context, ref, child) {
+                final citiesAsync = ref.watch(cityListProvider);
+                return citiesAsync.when(
+                  data: (cities) {
+                    return DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'Şehir',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.location_city),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      ),
+                      isExpanded: true,
+                      items: cities.map((city) {
+                        return DropdownMenuItem(
+                          value: city,
+                          child: Text(city, overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      value: _selectedCity,
+                      onChanged: (value) {
+                        setState(() => _selectedCity = value);
+                      },
+                    );
+                  },
+                  loading: () => DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'Şehir',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.location_city),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    ),
+                    items: const [DropdownMenuItem(value: 'loading', child: Text('Yükleniyor...'))],
+                    value: 'loading',
+                    onChanged: null,
+                  ),
+                  error: (error, stack) => DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'Şehir',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.location_city),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    ),
+                    items: const [DropdownMenuItem(value: 'error', child: Text('Hata'))],
+                    value: 'error',
+                    onChanged: null,
+                  ),
+                );
               },
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Üniversite (Opsiyonel)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.apartment),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-              ),
-              isExpanded: true,
-              items: const [
-                DropdownMenuItem(
-                  value: 'itu',
-                  child: Text('İstanbul Teknik Ünv.', overflow: TextOverflow.ellipsis),
-                ),
-                DropdownMenuItem(
-                  value: 'odtu',
-                  child: Text('ODTÜ', overflow: TextOverflow.ellipsis),
-                ),
-                DropdownMenuItem(
-                  value: 'bogazici',
-                  child: Text('Boğaziçi Ünv.', overflow: TextOverflow.ellipsis),
-                ),
-              ],
-              value: _selectedUniversity,
-              onChanged: (value) {
-                setState(() => _selectedUniversity = value);
+            Consumer(
+              builder: (context, ref, child) {
+                final universitiesAsync = ref.watch(universityListProvider);
+                return universitiesAsync.when(
+                  data: (universities) {
+                    return DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'Üniversite (Opsiyonel)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.apartment),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      ),
+                      isExpanded: true,
+                      items: universities.map((uni) {
+                        return DropdownMenuItem(
+                          value: uni.name,
+                          child: Text(uni.name, overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      value: _selectedUniversity,
+                      onChanged: (value) {
+                        setState(() => _selectedUniversity = value);
+                      },
+                    );
+                  },
+                  loading: () => DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'Üniversite (Opsiyonel)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.apartment),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    ),
+                    items: const [DropdownMenuItem(value: 'loading', child: Text('Yükleniyor...'))],
+                    value: 'loading',
+                    onChanged: null,
+                  ),
+                  error: (error, stack) => DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'Üniversite (Opsiyonel)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.apartment),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    ),
+                    items: const [DropdownMenuItem(value: 'error', child: Text('Hata'))],
+                    value: 'error',
+                    onChanged: null,
+                  ),
+                );
               },
             ),
           ],

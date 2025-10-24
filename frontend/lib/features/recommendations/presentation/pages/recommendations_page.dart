@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../core/services/export_service.dart';
+import '../../../universities/data/providers/university_api_provider.dart';
 
-class RecommendationsPage extends StatefulWidget {
+class RecommendationsPage extends ConsumerStatefulWidget {
   const RecommendationsPage({super.key});
 
   @override
-  State<RecommendationsPage> createState() => _RecommendationsPageState();
+  ConsumerState<RecommendationsPage> createState() => _RecommendationsPageState();
 }
 
-class _RecommendationsPageState extends State<RecommendationsPage> {
+class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
   final ApiService _apiService = ApiService();
   List<dynamic> _recommendations = [];
   bool _isLoading = true;
@@ -56,6 +59,71 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
           duration: const Duration(seconds: 1),
         ),
       );
+    }
+  }
+
+  Future<void> _handleExport(String format) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final studentName = prefs.getString('user_name') ?? 'Öğrenci';
+      
+      // Öğrenci tercihlerini al
+      final studentId = prefs.getInt('student_id');
+      if (studentId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Önce öğrenci profili oluşturun'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
+      final studentResponse = await _apiService.getStudent(studentId);
+      final preferredCities = List<String>.from(studentResponse.data['preferred_cities'] ?? []);
+      final fieldType = studentResponse.data['field_type'] ?? 'SAY';
+      
+      // Bölümleri alan türüne göre filtrele
+      final departmentsResponse = await _apiService.getDepartments();
+      final allDepartments = (departmentsResponse.data as List)
+          .map((dept) => dept['name'] as String)
+          .where((name) => name.isNotEmpty)
+          .toSet()
+          .toList();
+      
+      if (format == 'pdf') {
+        await ExportService.exportPreferencesToPDF(
+          cities: preferredCities,
+          departments: allDepartments,
+          fieldType: fieldType,
+          studentName: studentName,
+        );
+      } else if (format == 'excel') {
+        await ExportService.exportPreferencesToExcel(
+          cities: preferredCities,
+          departments: allDepartments,
+          fieldType: fieldType,
+          studentName: studentName,
+        );
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Tercih listesi ${format.toUpperCase()} olarak dışa aktarıldı'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Dışa aktarma hatası: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -122,6 +190,34 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
       appBar: AppBar(
         title: const Text('Tercih Önerilerim'),
         elevation: 0,
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: _handleExport,
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'pdf',
+                child: Row(
+                  children: [
+                    Icon(Icons.picture_as_pdf, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('PDF Olarak Dışa Aktar'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'excel',
+                child: Row(
+                  children: [
+                    Icon(Icons.table_chart, color: Colors.green),
+                    SizedBox(width: 8),
+                    Text('Excel Olarak Dışa Aktar'),
+                  ],
+                ),
+              ),
+            ],
+            icon: const Icon(Icons.share),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -160,49 +256,106 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
             const SizedBox(height: 24),
 
             // Filtreler
-            Row(
+            Column(
               children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      labelText: 'Şehir',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'all', child: Text('Tüm Şehirler')),
-                      DropdownMenuItem(value: 'istanbul', child: Text('İstanbul')),
-                      DropdownMenuItem(value: 'ankara', child: Text('Ankara')),
-                      DropdownMenuItem(value: 'izmir', child: Text('İzmir')),
-                    ],
-                    value: _selectedCity,
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _selectedCity = value);
-                      }
-                    },
-                  ),
+                Consumer(
+                  builder: (context, ref, child) {
+                    final citiesAsync = ref.watch(cityListProvider);
+                    return citiesAsync.when(
+                      data: (cities) {
+                        final allCities = ['Tüm Şehirler', ...cities];
+                        return DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(
+                            labelText: 'Şehir',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          items: allCities.map((city) {
+                            return DropdownMenuItem(
+                              value: city == 'Tüm Şehirler' ? 'all' : city,
+                              child: Text(city),
+                            );
+                          }).toList(),
+                          value: _selectedCity,
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _selectedCity = value);
+                            }
+                          },
+                        );
+                      },
+                      loading: () => DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(
+                          labelText: 'Şehir',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        items: const [DropdownMenuItem(value: 'all', child: Text('Yükleniyor...'))],
+                        value: 'all',
+                        onChanged: null,
+                      ),
+                      error: (error, stack) => DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(
+                          labelText: 'Şehir',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        items: const [DropdownMenuItem(value: 'all', child: Text('Hata'))],
+                        value: 'all',
+                        onChanged: null,
+                      ),
+                    );
+                  },
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      labelText: 'Üniversite Türü',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'all', child: Text('Tümü')),
-                      DropdownMenuItem(value: 'devlet', child: Text('Devlet')),
-                      DropdownMenuItem(value: 'vakif', child: Text('Vakıf')),
-                    ],
-                    value: _selectedType,
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _selectedType = value);
-                      }
-                    },
-                  ),
+                const SizedBox(height: 12),
+                Consumer(
+                  builder: (context, ref, child) {
+                    final universityTypesAsync = ref.watch(universityTypeListProvider);
+                    return universityTypesAsync.when(
+                      data: (types) {
+                        final allTypes = ['Tümü', ...types];
+                        return DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(
+                            labelText: 'Üniversite Türü',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          items: allTypes.map((type) {
+                            return DropdownMenuItem(
+                              value: type == 'Tümü' ? 'all' : type,
+                              child: Text(type),
+                            );
+                          }).toList(),
+                          value: _selectedType,
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _selectedType = value);
+                            }
+                          },
+                        );
+                      },
+                      loading: () => DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(
+                          labelText: 'Üniversite Türü',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        items: const [DropdownMenuItem(value: 'all', child: Text('Yükleniyor...'))],
+                        value: 'all',
+                        onChanged: null,
+                      ),
+                      error: (error, stack) => DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(
+                          labelText: 'Üniversite Türü',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        items: const [DropdownMenuItem(value: 'all', child: Text('Hata'))],
+                        value: 'all',
+                        onChanged: null,
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

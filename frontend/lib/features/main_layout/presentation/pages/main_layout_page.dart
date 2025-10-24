@@ -5,6 +5,7 @@ import '../../../exam_attempts/presentation/pages/exam_attempts_page.dart';
 import '../../../goals/presentation/pages/goals_page.dart';
 import '../../../recommendations/presentation/pages/recommendations_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
+import '../../../chatbot/presentation/widgets/chatbot_bubble.dart';
 import '../widgets/animated_bottom_bar.dart';
 
 class MainLayoutPage extends StatefulWidget {
@@ -18,19 +19,14 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = const [
-    DashboardPage(),
     ExamAttemptsPage(),
     GoalsPage(),
+    DashboardPage(), // Anasayfa ortada
     RecommendationsPage(),
     ProfilePage(),
   ];
 
   final List<BottomBarItem> _barItems = const [
-    BottomBarItem(
-      icon: Icons.home_outlined,
-      activeIcon: Icons.home,
-      label: 'Anasayfa',
-    ),
     BottomBarItem(
       icon: Icons.assignment_outlined,
       activeIcon: Icons.assignment,
@@ -40,6 +36,11 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
       icon: Icons.flag_outlined,
       activeIcon: Icons.flag,
       label: 'Hedefim',
+    ),
+    BottomBarItem(
+      icon: Icons.home_outlined,
+      activeIcon: Icons.home,
+      label: 'Anasayfa', // Anasayfa ortada
     ),
     BottomBarItem(
       icon: Icons.lightbulb_outline,
@@ -56,9 +57,15 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: _pages,
+          ),
+          // Chatbot bubble
+          const ChatbotBubble(),
+        ],
       ),
       bottomNavigationBar: AnimatedBottomBar(
         currentIndex: _currentIndex,

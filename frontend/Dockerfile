@@ -16,9 +16,12 @@ RUN apt-get update && apt-get install -y \
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
-# Install Flutter
+# Install Flutter 3.16.9 (specific version)
 RUN git clone https://github.com/flutter/flutter.git -b stable /flutter
 ENV PATH="/flutter/bin:${PATH}"
+
+# Switch to Flutter 3.16.9
+RUN cd /flutter && git checkout 3.16.9
 
 # Enable web support
 RUN flutter config --enable-web

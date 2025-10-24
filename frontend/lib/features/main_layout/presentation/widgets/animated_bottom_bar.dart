@@ -18,7 +18,7 @@ class AnimatedBottomBar extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     
     return Container(
-      height: 75,
+      height: 90, // Overflow için daha yüksek
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: const BorderRadius.vertical(
@@ -59,8 +59,8 @@ class AnimatedBottomBar extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOutCubic,
-          // Baloncuk efekti için transform
-          transform: Matrix4.translationValues(0, isSelected ? -8 : 0, 0),
+          // Baloncuk efekti için transform - overflow'u önlemek için azaltıldı
+          transform: Matrix4.translationValues(0, isSelected ? -4 : 0, 0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,

@@ -29,7 +29,9 @@ final cityListProvider = FutureProvider<List<String>>((ref) async {
   final apiService = ref.read(apiServiceProvider);
   final response = await apiService.getCities();
   
-  return List<String>.from(response.data);
+  final cities = List<String>.from(response.data);
+  cities.sort(); // ✅ Alfabetik sırala
+  return cities;
 });
 
 // Field type list provider
@@ -38,6 +40,19 @@ final fieldTypeListProvider = FutureProvider<List<String>>((ref) async {
   final response = await apiService.getFieldTypes();
   
   return List<String>.from(response.data);
+});
+
+// University type list provider
+final universityTypeListProvider = FutureProvider<List<String>>((ref) async {
+  final universities = await ref.watch(universityListProvider.future);
+  
+  // Üniversite türlerini unique olarak çıkar
+  final types = universities
+      .map((uni) => uni.universityType)
+      .toSet()
+      .toList();
+  
+  return types;
 });
 
 // Filtered university list provider - autoDispose eklendi

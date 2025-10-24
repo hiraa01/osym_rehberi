@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/student_form_provider.dart';
+import '../../../universities/data/providers/university_api_provider.dart';
 
 class StudentFormStep4 extends ConsumerWidget {
   const StudentFormStep4({super.key});
@@ -36,11 +37,7 @@ class StudentFormStep4 extends ConsumerWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _buildCityChips(context, student.preferredCities ?? [], formNotifier),
-          ),
+          _buildCityChips(context, student.preferredCities ?? [], formNotifier),
           const SizedBox(height: 24),
           
           // Preferred University Types
@@ -102,28 +99,58 @@ class StudentFormStep4 extends ConsumerWidget {
     );
   }
 
-  List<Widget> _buildCityChips(BuildContext context, List<String> selectedCities, formNotifier) {
-    final cities = [
-      'İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Konya', 'Gaziantep',
-      'Mersin', 'Diyarbakır', 'Kayseri', 'Eskişehir', 'Urfa', 'Malatya', 'Erzurum', 'Van'
-    ];
-    
-    return cities.map((city) {
-      final isSelected = selectedCities.contains(city);
-      return FilterChip(
-        label: Text(city),
-        selected: isSelected,
-        onSelected: (selected) {
-          final newCities = List<String>.from(selectedCities);
-          if (selected) {
-            newCities.add(city);
-          } else {
-            newCities.remove(city);
-          }
-          formNotifier.updateField('preferredCities', newCities);
-        },
-      );
-    }).toList();
+  Widget _buildCityChips(BuildContext context, List<String> selectedCities, formNotifier) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final citiesAsync = ref.watch(cityListProvider);
+        return citiesAsync.when(
+          data: (cities) {
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: cities.map((city) {
+                final isSelected = selectedCities.contains(city);
+                return FilterChip(
+                  label: Text(city),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    final newCities = List<String>.from(selectedCities);
+                    if (selected) {
+                      newCities.add(city);
+                    } else {
+                      newCities.remove(city);
+                    }
+                    formNotifier.updateField('preferredCities', newCities);
+                  },
+                );
+              }).toList(),
+            );
+          },
+          loading: () => const Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilterChip(
+                label: Text('Yükleniyor...'),
+                selected: false,
+                onSelected: null,
+              ),
+            ],
+          ),
+          error: (error, stack) => Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilterChip(
+                label: Text('Hata: $error'),
+                selected: false,
+                onSelected: null,
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   List<Widget> _buildUniversityTypeChips(BuildContext context, List<String> selectedTypes, formNotifier) {

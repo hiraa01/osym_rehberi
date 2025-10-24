@@ -216,6 +216,9 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
             _buildQuestionInput('Edebiyat', 'ayt_literature_net', 24),
             _buildQuestionInput('Tarih-1', 'ayt_history1_net', 10),
             _buildQuestionInput('Coğrafya-1', 'ayt_geography1_net', 6),
+            _buildQuestionInput('Tarih-2', 'ayt_history2_net', 11),
+            _buildQuestionInput('Coğrafya-2', 'ayt_geography2_net', 11),
+            _buildQuestionInput('Felsefe', 'ayt_philosophy_net', 12),
           ],
         );
       case 'EA':
@@ -322,6 +325,7 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
                       TextFormField(
                         initialValue: correct > 0 ? correct.toString() : '',
                         keyboardType: TextInputType.number,
+                        maxLength: maxQuestions.toString().length,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
@@ -335,7 +339,15 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
                             horizontal: 12,
                             vertical: 12,
                           ),
+                          counterText: '', // Sayaç metnini gizle
                         ),
+                        validator: (value) {
+                          final intValue = int.tryParse(value ?? '') ?? 0;
+                          if (intValue > maxQuestions) {
+                            return 'Maksimum $maxQuestions olabilir';
+                          }
+                          return null;
+                        },
                         onChanged: (value) {
                           final correctValue = int.tryParse(value) ?? 0;
                           if (correctValue <= maxQuestions) {
@@ -368,6 +380,7 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
                       TextFormField(
                         initialValue: wrong > 0 ? wrong.toString() : '',
                         keyboardType: TextInputType.number,
+                        maxLength: maxQuestions.toString().length,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
@@ -381,7 +394,15 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
                             horizontal: 12,
                             vertical: 12,
                           ),
+                          counterText: '', // Sayaç metnini gizle
                         ),
+                        validator: (value) {
+                          final intValue = int.tryParse(value ?? '') ?? 0;
+                          if (intValue > maxQuestions) {
+                            return 'Maksimum $maxQuestions olabilir';
+                          }
+                          return null;
+                        },
                         onChanged: (value) {
                           final wrongValue = int.tryParse(value) ?? 0;
                           if (wrongValue <= maxQuestions) {

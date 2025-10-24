@@ -29,17 +29,53 @@ class _ExamScoresInputStepState extends State<ExamScoresInputStep> {
     super.initState();
     _allScores = List.generate(
       widget.examCount,
-      (_) => {
-        'tyt_turkish_net': 0.0,
-        'tyt_math_net': 0.0,
-        'tyt_social_net': 0.0,
-        'tyt_science_net': 0.0,
-        'ayt_math_net': 0.0,
-        'ayt_physics_net': 0.0,
-        'ayt_chemistry_net': 0.0,
-        'ayt_biology_net': 0.0,
-      },
+      (_) => _getInitialScoresForFieldType(widget.departmentType),
     );
+  }
+
+  Map<String, double> _getInitialScoresForFieldType(String fieldType) {
+    final baseScores = {
+      'tyt_turkish_net': 0.0,
+      'tyt_math_net': 0.0,
+      'tyt_social_net': 0.0,
+      'tyt_science_net': 0.0,
+    };
+
+    switch (fieldType) {
+      case 'SAY':
+        return {
+          ...baseScores,
+          'ayt_math_net': 0.0,
+          'ayt_physics_net': 0.0,
+          'ayt_chemistry_net': 0.0,
+          'ayt_biology_net': 0.0,
+        };
+      case 'SOZ':
+        return {
+          ...baseScores,
+          'ayt_literature_net': 0.0,
+          'ayt_history1_net': 0.0,
+          'ayt_geography1_net': 0.0,
+          'ayt_history2_net': 0.0,
+          'ayt_geography2_net': 0.0,
+          'ayt_philosophy_net': 0.0,
+        };
+      case 'EA':
+        return {
+          ...baseScores,
+          'ayt_math_net': 0.0,
+          'ayt_literature_net': 0.0,
+          'ayt_history1_net': 0.0,
+          'ayt_geography1_net': 0.0,
+        };
+      case 'DIL':
+        return {
+          ...baseScores,
+          'ayt_foreign_language_net': 0.0,
+        };
+      default:
+        return baseScores;
+    }
   }
 
   @override
@@ -164,6 +200,9 @@ class _ExamScoresInputStepState extends State<ExamScoresInputStep> {
             _buildNetInput('Edebiyat', 'ayt_literature_net', 24, examIndex),
             _buildNetInput('Tarih-1', 'ayt_history1_net', 10, examIndex),
             _buildNetInput('Coğrafya-1', 'ayt_geography1_net', 6, examIndex),
+            _buildNetInput('Tarih-2', 'ayt_history2_net', 11, examIndex),
+            _buildNetInput('Coğrafya-2', 'ayt_geography2_net', 11, examIndex),
+            _buildNetInput('Felsefe', 'ayt_philosophy_net', 12, examIndex),
           ] else if (showEANetler) ...[
             const Text(
               'AYT Netleri (Eşit Ağırlık)',
@@ -253,6 +292,7 @@ class _ExamScoresInputStepState extends State<ExamScoresInputStep> {
             child: TextFormField(
               initialValue: hasValue ? currentValue.toString() : '',
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              maxLength: maxQuestions.toString().length + 3, // Maksimum soru sayısı + ondalık kısım
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
               ],
@@ -267,7 +307,15 @@ class _ExamScoresInputStepState extends State<ExamScoresInputStep> {
                   horizontal: 12,
                   vertical: 8,
                 ),
+                counterText: '', // Sayaç metnini gizle
               ),
+              validator: (value) {
+                final netValue = double.tryParse(value ?? '') ?? 0.0;
+                if (netValue > maxQuestions) {
+                  return 'Maksimum $maxQuestions olabilir';
+                }
+                return null;
+              },
               onChanged: (value) {
                 final netValue = double.tryParse(value) ?? 0.0;
                 if (netValue <= maxQuestions) {
