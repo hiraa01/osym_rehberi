@@ -41,40 +41,46 @@ class _ExamScoresInputStepState extends State<ExamScoresInputStep> {
       'tyt_science_net': 0.0,
     };
 
-    switch (fieldType) {
-      case 'SAY':
-        return {
-          ...baseScores,
-          'ayt_math_net': 0.0,
-          'ayt_physics_net': 0.0,
-          'ayt_chemistry_net': 0.0,
-          'ayt_biology_net': 0.0,
-        };
-      case 'SOZ':
-        return {
-          ...baseScores,
-          'ayt_literature_net': 0.0,
-          'ayt_history1_net': 0.0,
-          'ayt_geography1_net': 0.0,
-          'ayt_history2_net': 0.0,
-          'ayt_geography2_net': 0.0,
-          'ayt_philosophy_net': 0.0,
-        };
-      case 'EA':
-        return {
-          ...baseScores,
-          'ayt_math_net': 0.0,
-          'ayt_literature_net': 0.0,
-          'ayt_history1_net': 0.0,
-          'ayt_geography1_net': 0.0,
-        };
-      case 'DIL':
-        return {
-          ...baseScores,
-          'ayt_foreign_language_net': 0.0,
-        };
-      default:
-        return baseScores;
+    // Use a case-insensitive check for robustness
+    final fieldTypeUpper = fieldType.toUpperCase();
+    final normalizedType = fieldTypeUpper
+        .replaceAll('Ö', 'O')
+        .replaceAll('İ', 'I');
+
+    if (normalizedType.startsWith('SAY')) {
+      return {
+        ...baseScores,
+        'ayt_math_net': 0.0,
+        'ayt_physics_net': 0.0,
+        'ayt_chemistry_net': 0.0,
+        'ayt_biology_net': 0.0,
+      };
+    } else if (normalizedType.startsWith('SOZ')) {
+      return {
+        ...baseScores,
+        'ayt_literature_net': 0.0,
+        'ayt_history1_net': 0.0,
+        'ayt_geography1_net': 0.0,
+        'ayt_history2_net': 0.0,
+        'ayt_geography2_net': 0.0,
+        'ayt_philosophy_net': 0.0,
+        'ayt_religion_net': 0.0,
+      };
+    } else if (normalizedType.startsWith('EA')) {
+      return {
+        ...baseScores,
+        'ayt_math_net': 0.0,
+        'ayt_literature_net': 0.0,
+        'ayt_history1_net': 0.0,
+        'ayt_geography1_net': 0.0,
+      };
+    } else if (normalizedType.startsWith('DIL')) {
+      return {
+        ...baseScores,
+        'ayt_foreign_language_net': 0.0,
+      };
+    } else {
+      return baseScores;
     }
   }
 
@@ -149,11 +155,22 @@ class _ExamScoresInputStepState extends State<ExamScoresInputStep> {
   }
 
   Widget _buildExamScoreInput(int examIndex) {
-    // Bölüm tipine göre hangi netlerin gösterileceğini belirle
-    final showSayNetler = widget.departmentType == 'SAY';
-    final showSozNetler = widget.departmentType == 'SOZ';
-    final showEANetler = widget.departmentType == 'EA';
-    final showDilNetler = widget.departmentType == 'DIL';
+    // Make the check case-insensitive for robustness
+    final departmentTypeUpper = widget.departmentType.toUpperCase();
+    
+    // Normalize the type to handle Turkish characters properly
+    final normalizedType = departmentTypeUpper
+        .replaceAll('Ö', 'O')
+        .replaceAll('İ', 'I');
+    
+    final showSayNetler = normalizedType.startsWith('SAY');
+    final showSozNetler = normalizedType.startsWith('SOZ');
+    final showEANetler = normalizedType.startsWith('EA');
+    final showDilNetler = normalizedType.startsWith('DIL');
+    
+    // Debug: Type'ı yazdır
+    debugPrint('🔍 Department Type: "${widget.departmentType}" -> Upper: "$departmentTypeUpper" -> Normalized: "$normalizedType"');
+    debugPrint('🔍 showSozNetler: $showSozNetler');
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
@@ -174,7 +191,6 @@ class _ExamScoresInputStepState extends State<ExamScoresInputStep> {
           _buildNetInput('Fen Bilimleri', 'tyt_science_net', 20, examIndex),
           const SizedBox(height: 24),
           
-          // Bölüm tipine göre AYT netleri
           if (showSayNetler) ...[
             const Text(
               'AYT Netleri (Sayısal)',
@@ -203,6 +219,7 @@ class _ExamScoresInputStepState extends State<ExamScoresInputStep> {
             _buildNetInput('Tarih-2', 'ayt_history2_net', 11, examIndex),
             _buildNetInput('Coğrafya-2', 'ayt_geography2_net', 11, examIndex),
             _buildNetInput('Felsefe', 'ayt_philosophy_net', 12, examIndex),
+            _buildNetInput('Din Kültürü', 'ayt_religion_net', 6, examIndex),
           ] else if (showEANetler) ...[
             const Text(
               'AYT Netleri (Eşit Ağırlık)',
@@ -225,7 +242,8 @@ class _ExamScoresInputStepState extends State<ExamScoresInputStep> {
               ),
             ),
             const SizedBox(height: 16),
-            _buildNetInput('Yabancı Dil', 'ayt_language_net', 80, examIndex),
+            // Correct the key for the language field
+            _buildNetInput('Yabancı Dil', 'ayt_foreign_language_net', 80, examIndex),
           ],
           const SizedBox(height: 24),
           Row(
@@ -292,7 +310,7 @@ class _ExamScoresInputStepState extends State<ExamScoresInputStep> {
             child: TextFormField(
               initialValue: hasValue ? currentValue.toString() : '',
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              maxLength: maxQuestions.toString().length + 3, // Maksimum soru sayısı + ondalık kısım
+              maxLength: maxQuestions.toString().length + 3, 
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
               ],
@@ -307,7 +325,7 @@ class _ExamScoresInputStepState extends State<ExamScoresInputStep> {
                   horizontal: 12,
                   vertical: 8,
                 ),
-                counterText: '', // Sayaç metnini gizle
+                counterText: '',
               ),
               validator: (value) {
                 final netValue = double.tryParse(value ?? '') ?? 0.0;
@@ -331,4 +349,3 @@ class _ExamScoresInputStepState extends State<ExamScoresInputStep> {
     );
   }
 }
-

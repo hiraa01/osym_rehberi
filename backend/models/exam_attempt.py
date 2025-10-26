@@ -32,6 +32,7 @@ class ExamAttempt(Base):
     ayt_philosophy_net = Column(Float, default=0.0)
     ayt_history2_net = Column(Float, default=0.0)
     ayt_geography2_net = Column(Float, default=0.0)
+    ayt_religion_net = Column(Float, default=0.0)  # Din Kültürü
     ayt_foreign_language_net = Column(Float, default=0.0)
     
     # Hesaplanan puanlar

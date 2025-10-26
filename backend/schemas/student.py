@@ -28,6 +28,7 @@ class StudentBase(BaseModel):
     ayt_philosophy_net: float = 0.0
     ayt_history2_net: float = 0.0
     ayt_geography2_net: float = 0.0
+    ayt_religion_net: float = 0.0  # Din Kültürü
     ayt_foreign_language_net: float = 0.0
     
     # Preferences
@@ -81,6 +82,7 @@ class StudentUpdate(BaseModel):
     ayt_philosophy_net: Optional[float] = None
     ayt_history2_net: Optional[float] = None
     ayt_geography2_net: Optional[float] = None
+    ayt_religion_net: Optional[float] = None  # Din Kültürü
     ayt_foreign_language_net: Optional[float] = None
     
     # Preferences

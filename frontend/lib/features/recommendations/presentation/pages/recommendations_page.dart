@@ -63,6 +63,9 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
   }
 
   Future<void> _handleExport(String format) async {
+    if (!mounted) return;
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    
     try {
       final prefs = await SharedPreferences.getInstance();
       final studentName = prefs.getString('user_name') ?? 'Öğrenci';
@@ -70,7 +73,7 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
       // Öğrenci tercihlerini al
       final studentId = prefs.getInt('student_id');
       if (studentId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           const SnackBar(
             content: Text('Önce öğrenci profili oluşturun'),
             backgroundColor: Colors.red,
@@ -108,7 +111,7 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
       }
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('Tercih listesi ${format.toUpperCase()} olarak dışa aktarıldı'),
             backgroundColor: Colors.green,
@@ -117,7 +120,7 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('Dışa aktarma hatası: $e'),
             backgroundColor: Colors.red,

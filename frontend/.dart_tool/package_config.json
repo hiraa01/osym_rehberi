@@ -380,12 +380,6 @@
       "languageVersion": "3.2"
     },
     {
-      "name": "nested",
-      "rootUri": "file:///C:/Users/hiras/AppData/Local/Pub/Cache/hosted/pub.dev/nested-1.0.0",
-      "packageUri": "lib/",
-      "languageVersion": "2.12"
-    },
-    {
       "name": "package_config",
       "rootUri": "file:///C:/Users/hiras/AppData/Local/Pub/Cache/hosted/pub.dev/package_config-2.1.0",
       "packageUri": "lib/",
@@ -474,12 +468,6 @@
       "rootUri": "file:///C:/Users/hiras/AppData/Local/Pub/Cache/hosted/pub.dev/posix-6.0.3",
       "packageUri": "lib/",
       "languageVersion": "3.0"
-    },
-    {
-      "name": "provider",
-      "rootUri": "file:///C:/Users/hiras/AppData/Local/Pub/Cache/hosted/pub.dev/provider-6.1.5+1",
-      "packageUri": "lib/",
-      "languageVersion": "2.12"
     },
     {
       "name": "pub_semver",
@@ -782,7 +770,7 @@
       "languageVersion": "3.0"
     }
   ],
-  "generated": "2025-10-24T14:18:07.333281Z",
+  "generated": "2025-10-26T15:57:13.957133Z",
   "generator": "pub",
   "generatorVersion": "3.2.6"
 }

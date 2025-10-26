@@ -11,12 +11,11 @@ dependencies:
     sdk: flutter
   
   # State Management
-  flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
-  provider: ^6.1.1
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
   
   # Navigation
-  auto_route: ^7.9.2
+  auto_route: ^7.8.4
   
   # HTTP Client
   dio: ^5.4.0
@@ -33,8 +32,8 @@ dependencies:
   flutter_svg: ^2.0.10+1
   
   # Data Classes
-  freezed_annotation: ^2.4.4
-  json_annotation: ^4.7.0
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.9.0
   google_generative_ai: ^0.2.3
   
   # Export Features

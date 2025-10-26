@@ -83,14 +83,20 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
                   onNext: _nextStep,
                 ),
                 // Step 3: Net Girişi
-                ExamScoresInputStep(
-                  examCount: _examCount,
-                  departmentType: _departmentType ?? 'SAY', // Default sayısal
-                  onScoresCompleted: (scores) {
-                    // Scores saved, move to next step
-                    _nextStep();
+                Builder(
+                  builder: (context) {
+                    final deptType = _departmentType ?? 'SAY';
+                    debugPrint('📝 Initial Setup: departmentType passed to ExamScoresInputStep: "$deptType"');
+                    return ExamScoresInputStep(
+                      examCount: _examCount,
+                      departmentType: deptType,
+                      onScoresCompleted: (scores) {
+                        // Scores saved, move to next step
+                        _nextStep();
+                      },
+                      onBack: _previousStep,
+                    );
                   },
-                  onBack: _previousStep,
                 ),
                 // Step 4: Tercihler
                 PreferencesSelectionStep(

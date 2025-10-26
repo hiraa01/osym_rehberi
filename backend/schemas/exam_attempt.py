@@ -26,6 +26,7 @@ class ExamAttemptBase(BaseModel):
     ayt_philosophy_net: float = 0.0
     ayt_history2_net: float = 0.0
     ayt_geography2_net: float = 0.0
+    ayt_religion_net: float = 0.0  # Din Kültürü
     ayt_foreign_language_net: float = 0.0
     
     # OBP (Okul Başarı Puanı) - Opsiyonel

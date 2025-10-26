@@ -33,7 +33,7 @@ SCORE_COEFFICIENTS = {
         "ayt_history1": 3.0,
         "ayt_geography1": 3.0,
     },
-    "SOZ": {  # Sözel
+    "SÖZ": {  # Sözel
         "tyt_turkish": 4.0,
         "tyt_math": 1.5,
         "tyt_social": 1.5,
@@ -46,7 +46,7 @@ SCORE_COEFFICIENTS = {
         "ayt_philosophy": 3.0,
         "ayt_religion": 3.0,
     },
-    "DIL": {  # Dil
+    "DİL": {  # Dil
         "tyt_turkish": 4.0,
         "tyt_math": 1.0,
         "tyt_social": 1.0,

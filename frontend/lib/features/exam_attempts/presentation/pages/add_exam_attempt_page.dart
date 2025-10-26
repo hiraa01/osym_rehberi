@@ -15,7 +15,7 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
   final _formKey = GlobalKey<FormState>();
   final _examNameController = TextEditingController();
   
-  String _selectedDepartmentType = 'SAY';
+  String _selectedDepartmentType = 'SAY'; // SAY, EA, SÖZ, DİL
   final Map<String, Map<String, int>> _answers = {}; // correct/wrong answers
   bool _isSaving = false;
   bool _isLoading = true;
@@ -120,8 +120,8 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
                 segments: const [
                   ButtonSegment(value: 'SAY', label: Text('SAY')),
                   ButtonSegment(value: 'EA', label: Text('EA')),
-                  ButtonSegment(value: 'SOZ', label: Text('SÖZ')),
-                  ButtonSegment(value: 'DIL', label: Text('DİL')),
+                  ButtonSegment(value: 'SÖZ', label: Text('SÖZ')),
+                  ButtonSegment(value: 'DİL', label: Text('DİL')),
                 ],
                 selected: {_selectedDepartmentType},
                 onSelectionChanged: (Set<String> newSelection) {
@@ -201,7 +201,7 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
             _buildQuestionInput('Biyoloji', 'ayt_biology_net', 13),
           ],
         );
-      case 'SOZ':
+      case 'SÖZ':
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -219,6 +219,7 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
             _buildQuestionInput('Tarih-2', 'ayt_history2_net', 11),
             _buildQuestionInput('Coğrafya-2', 'ayt_geography2_net', 11),
             _buildQuestionInput('Felsefe', 'ayt_philosophy_net', 12),
+            _buildQuestionInput('Din Kültürü', 'ayt_religion_net', 6),
           ],
         );
       case 'EA':
@@ -239,7 +240,7 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
             _buildQuestionInput('Coğrafya-1', 'ayt_geography1_net', 6),
           ],
         );
-      case 'DIL':
+      case 'DİL':
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -251,7 +252,7 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
               ),
             ),
             const SizedBox(height: 16),
-            _buildQuestionInput('Yabancı Dil', 'ayt_language_net', 80),
+            _buildQuestionInput('Yabancı Dil', 'ayt_foreign_language_net', 80),
           ],
         );
       default:
@@ -476,7 +477,7 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
             'student_id': studentId,
             'attempt_number': attemptNumber,
             'exam_name': _examNameController.text.trim(),  // ✅ Deneme adı eklendi
-            'exam_type': 'TYT-AYT',
+            'exam_type': 'TYT+AYT',
             'exam_date': DateTime.now().toIso8601String(),
             ...nets,
           });

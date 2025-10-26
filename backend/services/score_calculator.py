@@ -110,7 +110,7 @@ class ScoreCalculator:
         AYT puanını hesaplar (TYT katsayıları dahil)
         
         Args:
-            field_type: Alan türü ('SAY', 'EA', 'SOZ', 'DIL')
+            field_type: Alan türü ('SAY', 'EA', 'SÖZ', 'DİL')
             tyt_turkish_net, tyt_math_net, tyt_science_net, tyt_social_net: TYT netleri
             **ayt_nets: AYT netleri (math_net, physics_net, chemistry_net, vb.)
         
@@ -146,7 +146,7 @@ class ScoreCalculator:
                 ayt_nets.get('geography1_net', 0) * cls.AYT_EA_COEFFICIENTS['geography1']
             )
         
-        elif field_type == 'SOZ':  # Sözel
+        elif field_type in ['SOZ', 'SÖZ']:  # Sözel
             ayt_part = (
                 ayt_nets.get('literature_net', 0) * cls.AYT_SOZ_COEFFICIENTS['literature'] +
                 ayt_nets.get('history1_net', 0) * cls.AYT_SOZ_COEFFICIENTS['history1'] +
@@ -157,7 +157,7 @@ class ScoreCalculator:
                 ayt_nets.get('religion_net', 0) * cls.AYT_SOZ_COEFFICIENTS.get('religion', 0)
             )
         
-        elif field_type == 'DIL':  # Yabancı Dil
+        elif field_type in ['DIL', 'DİL']:  # Yabancı Dil
             ayt_part = (
                 ayt_nets.get('language_net', 0) * cls.AYT_DIL_COEFFICIENTS['language']
             )
