@@ -4,23 +4,23 @@ import '../models/university_model.dart';
 import '../models/department_model.dart';
 
 // ✅ autoDispose: Her kullanıcı için fresh data, cache yok!
-// University list provider
-final universityListProvider = FutureProvider<List<UniversityModel>>((ref) async {
+// University list provider - Map dönüşü için
+final universityListProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final apiService = ref.read(apiServiceProvider);
   final response = await apiService.getUniversities();
   
   return (response.data as List)
-      .map((university) => UniversityModel.fromJson(university))
+      .map((university) => university as Map<String, dynamic>)
       .toList();
 });
 
-// Department list provider
-final departmentListProvider = FutureProvider<List<DepartmentModel>>((ref) async {
+// Department list provider - Map dönüşü için
+final departmentListProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final apiService = ref.read(apiServiceProvider);
   final response = await apiService.getDepartments();
   
   return (response.data as List)
-      .map((department) => DepartmentModel.fromJson(department))
+      .map((department) => department as Map<String, dynamic>)
       .toList();
 });
 

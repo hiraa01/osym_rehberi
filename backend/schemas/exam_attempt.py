@@ -58,6 +58,7 @@ class ExamAttemptUpdate(BaseModel):
     ayt_philosophy_net: Optional[float] = None
     ayt_history2_net: Optional[float] = None
     ayt_geography2_net: Optional[float] = None
+    ayt_religion_net: Optional[float] = None  # Din Kültürü
     ayt_foreign_language_net: Optional[float] = None
 
 
