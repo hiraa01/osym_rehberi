@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'core/theme/theme_provider.dart';
+import 'core/theme/tinder_theme.dart';
 import 'features/auth/presentation/pages/auth_check_page.dart';
 
 void main() {
@@ -28,8 +28,8 @@ class OsymRehberiApp extends StatelessWidget {
     return MaterialApp(
       title: 'ÖSYM Rehberi',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
+      theme: TinderTheme.getLightTheme(),
+      darkTheme: TinderTheme.getDarkTheme(),
       home: const AuthCheckPage(),
     );
   }

@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../profile/presentation/widgets/update_goal_dialog.dart';
 import '../../../universities/data/providers/university_api_provider.dart';
-import '../../../../core/services/api_service.dart';
 import 'university_swipe_page.dart';
 
 class GoalsPage extends ConsumerStatefulWidget {
@@ -15,8 +12,6 @@ class GoalsPage extends ConsumerStatefulWidget {
 }
 
 class _GoalsPageState extends ConsumerState<GoalsPage> {
-  String _targetDepartment = 'Henüz belirlenmedi';
-  String _targetCity = '';
   int _selectedTab = 0; // 0: Bölümler, 1: Üniversiteler
   String _departmentSearchQuery = '';
   String _universitySearchQuery = '';
@@ -24,15 +19,6 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
   @override
   void initState() {
     super.initState();
-    _loadGoal();
-  }
-
-  Future<void> _loadGoal() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _targetDepartment = prefs.getString('target_department') ?? 'Henüz belirlenmedi';
-      _targetCity = prefs.getString('target_city') ?? '';
-    });
   }
 
   @override
@@ -43,11 +29,11 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
         elevation: 0,
       ),
       body: Column(
-        children: [
+          children: [
           // Tab Bar
-          Container(
+                        Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
+                          decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(color: Colors.grey[300]!, width: 1),
               ),
@@ -59,19 +45,19 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                     'Bölümler',
                     0,
                     Icons.school_outlined,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
                   child: _buildTabButton(
                     'Üniversiteler',
                     1,
                     Icons.account_balance_outlined,
-                  ),
-                ),
-              ],
-            ),
-          ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
           // Tab Content
           Expanded(
             child: _selectedTab == 0
@@ -139,9 +125,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                 color: isSelected ? Colors.purple : Colors.grey[600],
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
-            ),
-          ],
-        ),
+                    ),
+                  ],
+                ),
       ),
     );
   }
@@ -187,9 +173,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                   final dept = filteredDepartments[index];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
                     child: ListTile(
                       leading: CircleAvatar(
                         backgroundColor: Colors.purple.withOpacity(0.1),
@@ -205,9 +191,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                     ),
                   );
                 },
-              ),
-            ),
-          ],
+                                  ),
+                                ),
+                              ],
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -290,10 +276,10 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
       builder: (context) => AlertDialog(
         title: Text(dept['program_name'] ?? 'Bilinmeyen Bölüm'),
         content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
-            children: [
+                      children: [
               _buildDetailRow('Fakülte', dept['faculty'] ?? 'Belirtilmemiş'),
               _buildDetailRow('Alan Türü', dept['field_type'] ?? 'Belirtilmemiş'),
               _buildDetailRow('Eğitim Türü', dept['education_type'] ?? 'Belirtilmemiş'),
@@ -307,9 +293,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Kapat'),
-          ),
-        ],
-      ),
+                        ),
+                      ],
+                    ),
     );
   }
   
@@ -340,13 +326,13 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
       ),
     );
   }
-  
+
   Widget _buildDetailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      children: [
           SizedBox(
             width: 100,
             child: Text(
@@ -356,9 +342,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
           ),
           Expanded(
             child: Text(value),
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
     );
   }
 }

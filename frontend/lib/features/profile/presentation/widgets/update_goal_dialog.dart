@@ -39,9 +39,10 @@ class _UpdateGoalDialogState extends ConsumerState<UpdateGoalDialog> {
                       ),
                       isExpanded: true,
                       items: departments.map((dept) {
+                        final name = dept['program_name'] as String? ?? '';
                         return DropdownMenuItem(
-                          value: dept.name,
-                          child: Text(dept.name, overflow: TextOverflow.ellipsis),
+                          value: name,
+                          child: Text(name, overflow: TextOverflow.ellipsis),
                         );
                       }).toList(),
                       value: _selectedDepartment,
@@ -141,9 +142,10 @@ class _UpdateGoalDialogState extends ConsumerState<UpdateGoalDialog> {
                       ),
                       isExpanded: true,
                       items: universities.map((uni) {
+                        final name = uni['name'] as String? ?? '';
                         return DropdownMenuItem(
-                          value: uni.name,
-                          child: Text(uni.name, overflow: TextOverflow.ellipsis),
+                          value: name,
+                          child: Text(name, overflow: TextOverflow.ellipsis),
                         );
                       }).toList(),
                       value: _selectedUniversity,

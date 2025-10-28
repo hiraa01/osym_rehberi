@@ -1,7 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/api_service.dart';
-import '../models/university_model.dart';
-import '../models/department_model.dart';
 
 // ✅ autoDispose: Her kullanıcı için fresh data, cache yok!
 // University list provider - Map dönüşü için
@@ -48,7 +46,8 @@ final universityTypeListProvider = FutureProvider<List<String>>((ref) async {
   
   // Üniversite türlerini unique olarak çıkar
   final types = universities
-      .map((uni) => uni.universityType)
+      .map((uni) => uni['university_type'] as String? ?? '')
+      .where((type) => type.isNotEmpty)
       .toSet()
       .toList();
   
@@ -56,25 +55,26 @@ final universityTypeListProvider = FutureProvider<List<String>>((ref) async {
 });
 
 // Filtered university list provider - autoDispose eklendi
-final filteredUniversityListProvider = FutureProvider.family<List<UniversityModel>, UniversityFilterParams>((ref, params) async {
+final filteredUniversityListProvider = FutureProvider.family<List<Map<String, dynamic>>, UniversityFilterParams>((ref, params) async {
   final universities = await ref.watch(universityListProvider.future);
   
   return universities.where((university) {
     // City filter
-    if (params.city != null && params.city!.isNotEmpty && university.city != params.city) {
+    if (params.city != null && params.city!.isNotEmpty && university['city'] != params.city) {
       return false;
     }
     
     // Type filter
-    if (params.type != null && params.type!.isNotEmpty && university.universityType != params.type) {
+    if (params.type != null && params.type!.isNotEmpty && university['university_type'] != params.type) {
       return false;
     }
     
     // Search filter
     if (params.searchQuery != null && params.searchQuery!.isNotEmpty) {
       final query = params.searchQuery!.toLowerCase();
-      if (!university.name.toLowerCase().contains(query) &&
-          !university.city.toLowerCase().contains(query)) {
+      final name = (university['name'] as String? ?? '').toLowerCase();
+      final city = (university['city'] as String? ?? '').toLowerCase();
+      if (!name.contains(query) && !city.contains(query)) {
         return false;
       }
     }
@@ -84,26 +84,27 @@ final filteredUniversityListProvider = FutureProvider.family<List<UniversityMode
 });
 
 // Filtered department list provider - autoDispose eklendi
-final filteredDepartmentListProvider = FutureProvider.family<List<DepartmentModel>, DepartmentFilterParams>((ref, params) async {
+final filteredDepartmentListProvider = FutureProvider.family<List<Map<String, dynamic>>, DepartmentFilterParams>((ref, params) async {
   final departments = await ref.watch(departmentListProvider.future);
   
   return departments.where((department) {
     // Field filter
-    if (params.fieldType != null && params.fieldType!.isNotEmpty && department.fieldType != params.fieldType) {
+    if (params.fieldType != null && params.fieldType!.isNotEmpty && department['field_type'] != params.fieldType) {
       return false;
     }
     
     // City filter
-    if (params.city != null && params.city!.isNotEmpty && department.city != params.city) {
+    if (params.city != null && params.city!.isNotEmpty && department['city'] != params.city) {
       return false;
     }
     
     // Search filter
     if (params.searchQuery != null && params.searchQuery!.isNotEmpty) {
       final query = params.searchQuery!.toLowerCase();
-      if (!department.name.toLowerCase().contains(query) &&
-          !department.universityName!.toLowerCase().contains(query) &&
-          !department.city!.toLowerCase().contains(query)) {
+      final name = (department['program_name'] as String? ?? '').toLowerCase();
+      final universityName = (department['university_name'] as String? ?? '').toLowerCase();
+      final city = (department['city'] as String? ?? '').toLowerCase();
+      if (!name.contains(query) && !universityName.contains(query) && !city.contains(query)) {
         return false;
       }
     }

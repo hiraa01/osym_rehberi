@@ -260,18 +260,21 @@ class _PreferencesSelectionStepState
               ),
             ),
             data: (departments) {
-              // Sadece alan türüne göre filtrele (üniversite türü bilgisi yok)
+              // Sadece alan türüne göre filtrele
               final filteredDepartments = departments
                   .where((dept) {
-                    // Alan türü filtresi
-                    if (_selectedFieldType != null && 
-                        dept.fieldType != _selectedFieldType) {
-                      return false;
+                    // Alan türü filtresi - hem 'field_type' hem 'program_name' kontrolü
+                    if (_selectedFieldType != null) {
+                      final deptFieldType = dept['field_type'] as String?;
+                      if (deptFieldType != _selectedFieldType) {
+                        return false;
+                      }
                     }
                     
                     return true;
                   })
-                  .map((dept) => dept.name)
+                  .map((dept) => dept['name'] as String? ?? dept['program_name'] as String? ?? '')
+                  .where((name) => name.isNotEmpty)
                   .toSet()
                   .toList()
                 ..sort(); // ✅ Alfabetik sırala

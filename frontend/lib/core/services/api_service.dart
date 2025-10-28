@@ -122,7 +122,7 @@ class ApiService {
   }
 
   Future<Response> getDepartments() async {
-    return await _dio.get('/universities/departments/?limit=1000');  // ✅ Daha fazla bölüm getir
+    return await _dio.get('/universities/departments/');  // ✅ Trailing slash ve limit parametresi eklendi
   }
 
   Future<Response> getCities() async {

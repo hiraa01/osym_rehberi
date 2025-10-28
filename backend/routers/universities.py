@@ -184,7 +184,7 @@ async def create_department(department: DepartmentCreate, db: Session = Depends(
 @router.get("/departments/", response_model=List[DepartmentWithUniversityResponse])
 async def get_departments(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(10000, ge=1, le=10000),  # ✅ Limit artırıldı - tüm bölümleri getir
     field_type: Optional[str] = Query(None),
     university_id: Optional[int] = Query(None),
     city: Optional[str] = Query(None),
