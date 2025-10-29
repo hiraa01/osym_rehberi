@@ -10,11 +10,15 @@ import '../../../universities/data/providers/university_api_provider.dart';
 class PreferencesSelectionStep extends ConsumerStatefulWidget {
   final Function(Map<String, dynamic>) onPreferencesCompleted;
   final VoidCallback onBack;
+  final String departmentType;
+  final List<Map<String, double>> examScores; // Tüm deneme netleri
 
   const PreferencesSelectionStep({
     super.key,
     required this.onPreferencesCompleted,
     required this.onBack,
+    required this.departmentType,
+    this.examScores = const [],
   });
 
   @override
@@ -30,6 +34,13 @@ class _PreferencesSelectionStepState
 
   bool _isLoading = false;
   final ApiService _apiService = ApiService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Alan türünü parent'tan al
+    _selectedFieldType = widget.departmentType;
+  }
 
   Future<void> _complete() async {
     if (_selectedCities.isEmpty) {
@@ -60,16 +71,43 @@ class _PreferencesSelectionStepState
       final userName = prefs.getString('user_name') ?? 'Öğrenci';
       
       if (userId != null) {
-        // Öğrenci profili oluştur
+        // Son denemenin netlerini kullan (veya ilk deneme netlerini)
+        final latestScores = widget.examScores.isNotEmpty 
+            ? widget.examScores.last 
+            : <String, double>{};
+        
+        // Öğrenci profili oluştur - Backend şemasına uygun format
         final studentResponse = await _apiService.createStudent({
-          'user_id': userId,
           'name': userName,
-          'school': 'Lise',
-          'grade': 12,
+          'email': null,
+          'phone': null,
           'class_level': '12',
           'exam_type': 'TYT+AYT',
-          'field_type': _selectedFieldType,
+          'field_type': _selectedFieldType ?? 'SAY',
+          // TYT Netleri
+          'tyt_turkish_net': latestScores['tyt_turkish_net'] ?? 0.0,
+          'tyt_math_net': latestScores['tyt_math_net'] ?? 0.0,
+          'tyt_social_net': latestScores['tyt_social_net'] ?? 0.0,
+          'tyt_science_net': latestScores['tyt_science_net'] ?? 0.0,
+          // AYT Netleri
+          'ayt_math_net': latestScores['ayt_math_net'] ?? 0.0,
+          'ayt_physics_net': latestScores['ayt_physics_net'] ?? 0.0,
+          'ayt_chemistry_net': latestScores['ayt_chemistry_net'] ?? 0.0,
+          'ayt_biology_net': latestScores['ayt_biology_net'] ?? 0.0,
+          'ayt_literature_net': latestScores['ayt_literature_net'] ?? 0.0,
+          'ayt_history1_net': latestScores['ayt_history1_net'] ?? 0.0,
+          'ayt_geography1_net': latestScores['ayt_geography1_net'] ?? 0.0,
+          'ayt_philosophy_net': latestScores['ayt_philosophy_net'] ?? 0.0,
+          'ayt_history2_net': latestScores['ayt_history2_net'] ?? 0.0,
+          'ayt_geography2_net': latestScores['ayt_geography2_net'] ?? 0.0,
+          'ayt_religion_net': latestScores['ayt_religion_net'] ?? 0.0,
+          'ayt_foreign_language_net': latestScores['ayt_foreign_language_net'] ?? 0.0,
+          // Tercihler
           'preferred_cities': _selectedCities,
+          'preferred_university_types': null,
+          'budget_preference': null,
+          'scholarship_preference': false,
+          'interest_areas': null,
         });
         
         // Student ID'yi kaydet

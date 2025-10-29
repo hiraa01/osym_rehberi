@@ -130,7 +130,8 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
     }
   }
 
-  Future<void> _loadRecommendations() async {
+  Future<void> _loadRecommendations({bool forceRefresh = false}) async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     
     try {
@@ -138,17 +139,41 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
       final studentId = prefs.getInt('student_id');
       
       if (studentId != null) {
+        // ✅ Yeniden hesaplama için önce eski önerileri temizle
+        if (forceRefresh) {
+          try {
+            await _apiService.clearStudentRecommendations(studentId);
+            debugPrint('✅ Eski öneriler temizlendi, yeni öneriler hesaplanıyor...');
+          } catch (e) {
+            debugPrint('⚠️ Eski öneriler temizlenirken hata (devam ediliyor): $e');
+          }
+        }
+        
         final response = await _apiService.generateRecommendations(studentId, limit: 50);
-        setState(() {
-          // Backend direkt liste döndürüyor (List[RecommendationResponse])
-          _recommendations = response.data is List ? response.data : [];
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
         if (mounted) {
+          setState(() {
+            // Backend direkt liste döndürüyor (List[RecommendationResponse])
+            final newRecommendations = response.data is List ? response.data : [];
+            _recommendations = List.from(newRecommendations); // ✅ Yeni liste oluştur
+            _isLoading = false;
+          });
+          
+          // Debug: Hangi şehirlerde öneriler var?
+          final citiesInRecommendations = <String>{};
+          for (final rec in _recommendations) {
+            final dept = rec['department'] as Map<String, dynamic>?;
+            final university = dept?['university'] as Map<String, dynamic>?;
+            final city = university?['city']?.toString() ?? 'Bilinmiyor';
+            citiesInRecommendations.add(city);
+          }
+          debugPrint('✅ ${_recommendations.length} öneri yüklendi');
+          debugPrint('📍 Önerilerde bulunan şehirler: ${citiesInRecommendations.toList()..sort()}');
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Önce bir öğrenci profili oluşturun'),
@@ -159,29 +184,73 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
       }
     } catch (e) {
       debugPrint('Recommendations error: $e');
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Öneriler yüklenirken hata: ${e.toString()}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
     }
   }
 
+  /// Şehir ismini normalize et (Türkçe karakterleri düzelt, küçük harfe çevir, trim et)
+  String _normalizeCityName(String city) {
+    if (city.isEmpty) return '';
+    
+    // Türkçe karakterleri İngilizce karşılıklarına çevir
+    String normalized = city
+        .toLowerCase()
+        .trim()
+        .replaceAll('ı', 'i')
+        .replaceAll('ğ', 'g')
+        .replaceAll('ü', 'u')
+        .replaceAll('ş', 's')
+        .replaceAll('ö', 'o')
+        .replaceAll('ç', 'c')
+        .replaceAll('İ', 'i')
+        .replaceAll('Ğ', 'g')
+        .replaceAll('Ü', 'u')
+        .replaceAll('Ş', 's')
+        .replaceAll('Ö', 'o')
+        .replaceAll('Ç', 'c');
+    
+    return normalized;
+  }
+
   List<dynamic> get _filteredRecommendations {
+    if (_selectedCity == 'all' && _selectedType == 'all') {
+      return _recommendations; // Filtre yoksa tümünü döndür
+    }
+    
+    final normalizedSelectedCity = _selectedCity != 'all' 
+        ? _normalizeCityName(_selectedCity) 
+        : '';
+    
     return _recommendations.where((rec) {
       // Backend response: {department: {university: {...}}}
-      final university = rec['department']?['university'];
-      final city = university?['city']?.toString().toLowerCase() ?? '';
-      final universityType = university?['university_type']?.toString().toLowerCase() ?? '';
+      final dept = rec['department'] as Map<String, dynamic>?;
+      final university = dept?['university'] as Map<String, dynamic>?;
+      final city = university?['city']?.toString() ?? '';
+      final universityType = university?['university_type']?.toString() ?? '';
       
-      bool matchesCity = _selectedCity == 'all' || city.contains(_selectedCity.toLowerCase());
-      bool matchesType = _selectedType == 'all' || universityType.contains(_selectedType.toLowerCase());
+      // ✅ Şehir eşleştirmesi: Normalize edilmiş eşleşme
+      bool matchesCity = _selectedCity == 'all';
+      if (!matchesCity && city.isNotEmpty && normalizedSelectedCity.isNotEmpty) {
+        final normalizedCity = _normalizeCityName(city);
+        matchesCity = normalizedCity == normalizedSelectedCity || 
+                     normalizedCity.contains(normalizedSelectedCity) ||
+                     normalizedSelectedCity.contains(normalizedCity);
+      }
+      
+      // ✅ Üniversite türü eşleştirmesi
+      bool matchesType = _selectedType == 'all' || 
+          universityType.toLowerCase().contains(_selectedType.toLowerCase());
       
       return matchesCity && matchesType;
     }).toList();
@@ -222,8 +291,24 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+      body: _isLoading && _recommendations.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Öneriler hesaplanıyor...\nBu işlem birkaç dakika sürebilir',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -388,7 +473,9 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                     itemCount: _filteredRecommendations.length,
                                     itemBuilder: (context, index) {
                                       final rec = _filteredRecommendations[index];
-                                      final matchScore = (rec['match_score'] ?? 0.0) * 100;
+                                      final dept = rec['department'] as Map<String, dynamic>?;
+                                      final uni = dept?['university'] as Map<String, dynamic>?;
+                                      final finalScore = (rec['final_score'] ?? rec['compatibility_score'] ?? 0.0).toDouble();
                                       final recId = rec['id'] ?? index;
                                       final isBookmarked = _bookmarkedIds.contains(recId);
                                       
@@ -418,7 +505,7 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                                                         borderRadius: BorderRadius.circular(6),
                                                       ),
                                                       child: Text(
-                                                        '${matchScore.toStringAsFixed(0)}% Uyum',
+                                                        '${finalScore.toStringAsFixed(0)}% Uyum',
                                                         style: TextStyle(
                                                           color: Colors.green.shade700,
                                                           fontSize: 12,
@@ -442,7 +529,7 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  rec['department_name'] ?? 'Bölüm',
+                                  dept?['name'] ?? 'Bilinmeyen Bölüm',
                                   style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -450,7 +537,7 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  rec['university_name'] ?? 'Üniversite',
+                                  uni?['name'] ?? 'Bilinmeyen Üniversite',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Colors.grey[700],
@@ -461,19 +548,19 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                                   children: [
                                     _buildInfoChip(
                                       Icons.location_on,
-                                      rec['city'] ?? '-',
+                                      uni?['city'] ?? '-',
                                       Colors.blue,
                                     ),
                                     const SizedBox(width: 8),
                                     _buildInfoChip(
                                       Icons.school,
-                                      rec['university_type'] ?? '-',
+                                      uni?['university_type'] ?? '-',
                                       Colors.orange,
                                     ),
                                     const SizedBox(width: 8),
                                     _buildInfoChip(
                                       Icons.trending_up,
-                                      rec['base_score']?.toStringAsFixed(1) ?? '-',
+                                      dept?['min_score']?.toStringAsFixed(1) ?? '-',
                                       Colors.purple,
                                     ),
                                   ],
@@ -488,7 +575,9 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
 
             const SizedBox(height: 24),
             OutlinedButton.icon(
-              onPressed: _isLoading ? null : _loadRecommendations,
+              onPressed: _isLoading ? null : () async {
+                await _loadRecommendations(forceRefresh: true);
+              },
               icon: _isLoading
                   ? const SizedBox(
                       width: 20,
@@ -496,7 +585,7 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.refresh),
-              label: const Text('Yeniden Hesapla'),
+              label: Text(_isLoading ? 'Yeniden Hesaplanıyor...' : 'Yeniden Hesapla'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(

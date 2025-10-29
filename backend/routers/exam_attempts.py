@@ -34,13 +34,16 @@ async def create_exam_attempt(
         attempt_data['field_type'] = student.field_type  # ✅ field_type eklendi!
         scores = ScoreCalculator.calculate_all_scores(attempt_data)
         
-        # Deneme kaydet
+        # Deneme kaydet - obp_score'u dict'ten çıkarıp ayrı ver
+        attempt_dict = attempt.dict()
+        obp_score = attempt_dict.pop('obp_score', 0.0)  # ✅ obp_score'u çıkar
+        
         db_attempt = ExamAttempt(
-            **attempt.dict(),
+            **attempt_dict,
             tyt_score=scores['tyt_total_score'],
             ayt_score=scores['ayt_total_score'],
             total_score=scores['total_score'],
-            obp_score=attempt_data.get('obp_score', 0.0)  # ✅ OBP eklendi
+            obp_score=obp_score  # ✅ OBP ayrı veriliyor
         )
         
         db.add(db_attempt)

@@ -20,6 +20,7 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
 
   String? _departmentType;
   int _examCount = 5;
+  List<Map<String, double>>? _allExamScores; // Tüm denemelerin netleri
 
   void _nextStep() {
     if (_currentStep < _totalSteps - 1) {
@@ -91,7 +92,8 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
                       examCount: _examCount,
                       departmentType: deptType,
                       onScoresCompleted: (scores) {
-                        // Scores saved, move to next step
+                        // Tüm deneme netlerini kaydet
+                        setState(() => _allExamScores = scores);
                         _nextStep();
                       },
                       onBack: _previousStep,
@@ -100,6 +102,8 @@ class _InitialSetupPageState extends State<InitialSetupPage> {
                 ),
                 // Step 4: Tercihler
                 PreferencesSelectionStep(
+                  departmentType: _departmentType ?? 'SAY',
+                  examScores: _allExamScores ?? [],
                   onPreferencesCompleted: (preferences) {
                     // Setup completed, go to main app
                     Navigator.of(context).pushReplacement(

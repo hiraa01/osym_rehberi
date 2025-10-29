@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+import json
 
 
 class StudentBase(BaseModel):
@@ -103,6 +104,18 @@ class StudentResponse(StudentBase):
     percentile: float
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+    @validator('preferred_cities', 'preferred_university_types', 'interest_areas', pre=True)
+    def parse_json_fields(cls, v):
+        """Database'den gelen JSON string'leri parse et"""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return v
 
     class Config:
         from_attributes = True

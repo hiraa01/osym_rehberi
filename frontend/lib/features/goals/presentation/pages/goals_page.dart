@@ -140,8 +140,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
         // Filtreleme
         final filteredDepartments = departments.where((dept) {
           final query = _departmentSearchQuery.toLowerCase();
-          return dept['program_name'].toString().toLowerCase().contains(query) ||
-                 dept['faculty'].toString().toLowerCase().contains(query);
+          final deptName = (dept['name'] ?? dept['program_name'] ?? '').toString().toLowerCase();
+          final uniName = (dept['university']?['name'] ?? '').toString().toLowerCase();
+          return deptName.contains(query) || uniName.contains(query);
         }).toList();
         
         return Column(
@@ -181,9 +182,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                         backgroundColor: Colors.purple.withOpacity(0.1),
                         child: const Icon(Icons.school, color: Colors.purple),
                       ),
-                      title: Text(dept['program_name'] ?? 'Bilinmeyen Bölüm'),
+                      title: Text(dept['name'] ?? dept['program_name'] ?? 'Bilinmeyen Bölüm'),
                       subtitle: Text(
-                        '${dept['faculty']} • ${dept['field_type']}',
+                        '${dept['university']?['name'] ?? 'Bilinmeyen Üniversite'} • ${dept['field_type'] ?? 'N/A'}',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -271,21 +272,23 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
   }
   
   void _showDepartmentDetails(BuildContext context, Map<String, dynamic> dept) {
+    final uni = dept['university'] as Map<String, dynamic>?;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(dept['program_name'] ?? 'Bilinmeyen Bölüm'),
+        title: Text(dept['name'] ?? dept['program_name'] ?? 'Bilinmeyen Bölüm'),
         content: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
                       children: [
-              _buildDetailRow('Fakülte', dept['faculty'] ?? 'Belirtilmemiş'),
+              _buildDetailRow('Üniversite', uni?['name'] ?? 'Belirtilmemiş'),
+              _buildDetailRow('Şehir', uni?['city'] ?? 'Belirtilmemiş'),
               _buildDetailRow('Alan Türü', dept['field_type'] ?? 'Belirtilmemiş'),
-              _buildDetailRow('Eğitim Türü', dept['education_type'] ?? 'Belirtilmemiş'),
               _buildDetailRow('Dil', dept['language'] ?? 'Belirtilmemiş'),
-              _buildDetailRow('Kontenjan', '${dept['total_quota'] ?? 0}'),
-              _buildDetailRow('Min Puan (2024)', '${dept['min_score_2024'] ?? 'Belirtilmemiş'}'),
+              _buildDetailRow('Süre', '${dept['duration'] ?? 4} yıl'),
+              _buildDetailRow('Kontenjan', '${dept['quota'] ?? 0}'),
+              _buildDetailRow('Min Puan', dept['min_score']?.toString() ?? 'Belirtilmemiş'),
             ],
           ),
         ),

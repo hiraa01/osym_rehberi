@@ -38,7 +38,7 @@ class StudentFormNotifier extends Notifier<StudentFormState> {
   @override
   StudentFormState build() {
     return StudentFormState(
-      student: StudentModel(
+      student: const StudentModel(
         name: '',
         classLevel: '11',
         examType: 'YKS',

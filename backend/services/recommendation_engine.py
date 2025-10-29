@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from sqlalchemy.orm import Session
 from models.student import Student
 from models.university import Department, University, Recommendation
@@ -13,6 +13,15 @@ class RecommendationEngine:
     
     def __init__(self, db: Session):
         self.db = db
+    
+    @staticmethod
+    def _get_university_logo_url(university: University) -> Optional[str]:
+        """Üniversite logosu URL'i oluştur"""
+        if university.website:
+            # Website varsa, domain'den favicon çek (Google Favicon API)
+            domain = university.website.replace('http://', '').replace('https://', '').replace('www.', '').split('/')[0]
+            return f"https://www.google.com/s2/favicons?domain={domain}&sz=256"
+        return None
     
     def generate_recommendations(self, student_id: int, limit: int = 50) -> List[RecommendationResponse]:
         """Öğrenci için tercih önerileri oluştur"""
@@ -89,19 +98,91 @@ class RecommendationEngine:
             recommendations.sort(key=lambda x: x.final_score, reverse=True)
             recommendations = recommendations[:limit]
             
+            # ✅ N+1 problemini çöz: Tüm department ve university'leri tek seferde çek
+            department_ids = {rec.department_id for rec in recommendations}
+            departments_dict = {
+                dept.id: dept 
+                for dept in self.db.query(Department)
+                    .filter(Department.id.in_(department_ids))
+                    .all()
+            }
+            
+            university_ids = {dept.university_id for dept in departments_dict.values()}
+            universities_dict = {
+                uni.id: uni 
+                for uni in self.db.query(University)
+                    .filter(University.id.in_(university_ids))
+                    .all()
+            }
+            
             # Response formatına çevir
             result = []
             for rec in recommendations:
-                department = self.db.query(Department).filter(Department.id == rec.department_id).first()
-                university = self.db.query(University).filter(University.id == department.university_id).first()
+                department = departments_dict.get(rec.department_id)
+                if not department:
+                    continue
+                    
+                university = universities_dict.get(department.university_id)
+                if not university:
+                    continue
+                
+                # Logo URL ekle
+                logo_url = self._get_university_logo_url(university)
+                
+                # University response oluştur
+                from schemas.university import UniversityResponse
+                university_response = UniversityResponse(
+                    id=university.id,
+                    name=university.name,
+                    city=university.city,
+                    university_type=university.university_type,
+                    website=university.website,
+                    established_year=university.established_year,
+                    latitude=university.latitude,
+                    longitude=university.longitude,
+                    created_at=university.created_at,
+                    updated_at=university.updated_at,
+                    logo_url=logo_url
+                )
                 
                 department_response = DepartmentWithUniversityResponse(
-                    **department.__dict__,
-                    university=university
+                    id=department.id,
+                    university_id=department.university_id,
+                    name=department.name,
+                    field_type=department.field_type,
+                    language=department.language,
+                    faculty=department.faculty,
+                    duration=department.duration,
+                    degree_type=department.degree_type,
+                    min_score=department.min_score,
+                    min_rank=department.min_rank,
+                    quota=department.quota,
+                    scholarship_quota=department.scholarship_quota,
+                    tuition_fee=department.tuition_fee,
+                    has_scholarship=department.has_scholarship,
+                    last_year_min_score=department.last_year_min_score,
+                    last_year_min_rank=department.last_year_min_rank,
+                    last_year_quota=department.last_year_quota,
+                    description=department.description,
+                    requirements=department.requirements,
+                    created_at=department.created_at,
+                    updated_at=department.updated_at,
+                    university=university_response
                 )
                 
                 result.append(RecommendationResponse(
-                    **rec.__dict__,
+                    id=rec.id,
+                    student_id=rec.student_id,
+                    department_id=rec.department_id,
+                    compatibility_score=rec.compatibility_score,
+                    success_probability=rec.success_probability,
+                    preference_score=rec.preference_score,
+                    final_score=rec.final_score,
+                    recommendation_reason=rec.recommendation_reason,
+                    is_safe_choice=rec.is_safe_choice,
+                    is_dream_choice=rec.is_dream_choice,
+                    is_realistic_choice=rec.is_realistic_choice,
+                    created_at=rec.created_at,
                     department=department_response
                 ))
             

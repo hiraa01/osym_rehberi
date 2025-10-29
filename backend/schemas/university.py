@@ -38,6 +38,7 @@ class UniversityResponse(UniversityBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    logo_url: Optional[str] = None
 
     class Config:
         from_attributes = True

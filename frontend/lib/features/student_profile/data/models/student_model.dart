@@ -24,6 +24,7 @@ class StudentModel {
   final double aytPhilosophyNet;
   final double aytHistory2Net;
   final double aytGeography2Net;
+  final double aytReligionNet; // Din Kültürü
   final double aytForeignLanguageNet;
   
   // Calculated Scores
@@ -66,6 +67,7 @@ class StudentModel {
     this.aytPhilosophyNet = 0.0,
     this.aytHistory2Net = 0.0,
     this.aytGeography2Net = 0.0,
+    this.aytReligionNet = 0.0,
     this.aytForeignLanguageNet = 0.0,
     this.tytTotalScore,
     this.aytTotalScore,
@@ -104,6 +106,7 @@ class StudentModel {
       aytPhilosophyNet: (json['ayt_philosophy_net'] ?? 0.0).toDouble(),
       aytHistory2Net: (json['ayt_history2_net'] ?? 0.0).toDouble(),
       aytGeography2Net: (json['ayt_geography2_net'] ?? 0.0).toDouble(),
+      aytReligionNet: (json['ayt_religion_net'] ?? 0.0).toDouble(),
       aytForeignLanguageNet: (json['ayt_foreign_language_net'] ?? 0.0).toDouble(),
       tytTotalScore: json['tyt_total_score']?.toDouble(),
       aytTotalScore: json['ayt_total_score']?.toDouble(),
@@ -152,6 +155,7 @@ class StudentModel {
       'ayt_philosophy_net': aytPhilosophyNet,
       'ayt_history2_net': aytHistory2Net,
       'ayt_geography2_net': aytGeography2Net,
+      'ayt_religion_net': aytReligionNet,
       'ayt_foreign_language_net': aytForeignLanguageNet,
       'preferred_cities': preferredCities,
       'preferred_university_types': preferredUniversityTypes,
@@ -183,6 +187,7 @@ class StudentModel {
     double? aytPhilosophyNet,
     double? aytHistory2Net,
     double? aytGeography2Net,
+    double? aytReligionNet,
     double? aytForeignLanguageNet,
     double? tytTotalScore,
     double? aytTotalScore,
@@ -219,6 +224,7 @@ class StudentModel {
       aytPhilosophyNet: aytPhilosophyNet ?? this.aytPhilosophyNet,
       aytHistory2Net: aytHistory2Net ?? this.aytHistory2Net,
       aytGeography2Net: aytGeography2Net ?? this.aytGeography2Net,
+      aytReligionNet: aytReligionNet ?? this.aytReligionNet,
       aytForeignLanguageNet: aytForeignLanguageNet ?? this.aytForeignLanguageNet,
       tytTotalScore: tytTotalScore ?? this.tytTotalScore,
       aytTotalScore: aytTotalScore ?? this.aytTotalScore,

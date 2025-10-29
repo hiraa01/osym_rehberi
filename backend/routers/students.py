@@ -50,6 +50,7 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_db)):
             ayt_philosophy_net=student.ayt_philosophy_net,
             ayt_history2_net=student.ayt_history2_net,
             ayt_geography2_net=student.ayt_geography2_net,
+            ayt_religion_net=student.ayt_religion_net,
             ayt_foreign_language_net=student.ayt_foreign_language_net,
             preferred_cities=preferred_cities,
             preferred_university_types=preferred_university_types,
@@ -122,7 +123,7 @@ async def update_student(
         'tyt_turkish_net', 'tyt_math_net', 'tyt_social_net', 'tyt_science_net',
         'ayt_math_net', 'ayt_physics_net', 'ayt_chemistry_net', 'ayt_biology_net',
         'ayt_literature_net', 'ayt_history1_net', 'ayt_geography1_net', 'ayt_philosophy_net',
-        'ayt_history2_net', 'ayt_geography2_net', 'ayt_foreign_language_net'
+        'ayt_history2_net', 'ayt_geography2_net', 'ayt_religion_net', 'ayt_foreign_language_net'
     ]):
         # Mevcut verilerle güncellenmiş verileri birleştir
         student_data = student.__dict__.copy()

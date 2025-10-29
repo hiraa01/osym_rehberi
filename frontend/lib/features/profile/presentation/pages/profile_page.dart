@@ -132,6 +132,8 @@ class ProfilePage extends StatelessWidget {
                       builder: (_) => Scaffold(
                         appBar: AppBar(title: const Text('Tercihlerimi Güncelle')),
                         body: PreferencesSelectionStep(
+                          departmentType: 'SAY', // Varsayılan, güncelleme modunda kullanıcı değiştirebilir
+                          examScores: const [], // Güncelleme modunda netler gerekmiyor
                           onPreferencesCompleted: (prefs) {
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(

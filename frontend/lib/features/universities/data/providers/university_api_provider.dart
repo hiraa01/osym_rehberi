@@ -27,9 +27,8 @@ final cityListProvider = FutureProvider<List<String>>((ref) async {
   final apiService = ref.read(apiServiceProvider);
   final response = await apiService.getCities();
   
-  final cities = List<String>.from(response.data);
-  cities.sort(); // ✅ Alfabetik sırala
-  return cities;
+  // Backend zaten Türkçe karakterlere uygun sıralı döndürüyor, tekrar sıralamaya gerek yok
+  return List<String>.from(response.data);
 });
 
 // Field type list provider

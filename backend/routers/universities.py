@@ -100,6 +100,15 @@ async def create_university(university: UniversityCreate, db: Session = Depends(
     return db_university
 
 
+def get_university_logo_url(university: University) -> Optional[str]:
+    """Üniversite logosu URL'i oluştur"""
+    if university.website:
+        # Website varsa, domain'den favicon çek (Google Favicon API)
+        domain = university.website.replace('http://', '').replace('https://', '').replace('www.', '').split('/')[0]
+        return f"https://www.google.com/s2/favicons?domain={domain}&sz=256"
+    return None
+
+
 @router.get("/", response_model=List[UniversityResponse])
 async def get_universities(
     skip: int = Query(0, ge=0),
@@ -120,7 +129,27 @@ async def get_universities(
     query = query.order_by(University.name)
     
     universities = query.offset(skip).limit(limit).all()
-    return universities
+    
+    # Logo URL'lerini ekle ve response oluştur
+    result = []
+    for uni in universities:
+        # Pydantic response oluştur
+        uni_response = UniversityResponse(
+            id=uni.id,
+            name=uni.name,
+            city=uni.city,
+            university_type=uni.university_type,
+            website=uni.website,
+            established_year=uni.established_year,
+            latitude=uni.latitude,
+            longitude=uni.longitude,
+            created_at=uni.created_at,
+            updated_at=uni.updated_at,
+            logo_url=get_university_logo_url(uni)
+        )
+        result.append(uni_response)
+    
+    return result
 
 
 # Genel pattern'ler (SON SIRA - yoksa her şeyi yakalar!)
@@ -130,7 +159,21 @@ async def get_university(university_id: int, db: Session = Depends(get_db)):
     university = db.query(University).filter(University.id == university_id).first()
     if not university:
         raise HTTPException(status_code=404, detail="Üniversite bulunamadı")
-    return university
+    
+    # Logo URL'ini ekle
+    return UniversityResponse(
+        id=university.id,
+        name=university.name,
+        city=university.city,
+        university_type=university.university_type,
+        website=university.website,
+        established_year=university.established_year,
+        latitude=university.latitude,
+        longitude=university.longitude,
+        created_at=university.created_at,
+        updated_at=university.updated_at,
+        logo_url=get_university_logo_url(university)
+    )
 
 
 @router.put("/{university_id}", response_model=UniversityResponse)
@@ -221,13 +264,58 @@ async def get_departments(
     
     departments = query.offset(skip).limit(limit).all()
     
+    # ✅ N+1 problemini çöz: Tüm üniversiteleri tek seferde çek
+    university_ids = {dept.university_id for dept in departments}
+    universities_dict = {
+        uni.id: uni 
+        for uni in db.query(University).filter(University.id.in_(university_ids)).all()
+    }
+    
     # University bilgilerini ekle
     result = []
     for dept in departments:
-        university = db.query(University).filter(University.id == dept.university_id).first()
+        university = universities_dict.get(dept.university_id)
+        if not university:
+            continue  # Üniversite bulunamazsa skip et
+        
+        # University response'unu logo URL ile oluştur
+        university_response = UniversityResponse(
+            id=university.id,
+            name=university.name,
+            city=university.city,
+            university_type=university.university_type,
+            website=university.website,
+            established_year=university.established_year,
+            latitude=university.latitude,
+            longitude=university.longitude,
+            created_at=university.created_at,
+            updated_at=university.updated_at,
+            logo_url=get_university_logo_url(university)
+        )
+        
         dept_response = DepartmentWithUniversityResponse(
-            **dept.__dict__,
-            university=university
+            id=dept.id,
+            university_id=dept.university_id,
+            name=dept.name,
+            field_type=dept.field_type,
+            language=dept.language,
+            faculty=dept.faculty,
+            duration=dept.duration,
+            degree_type=dept.degree_type,
+            min_score=dept.min_score,
+            min_rank=dept.min_rank,
+            quota=dept.quota,
+            scholarship_quota=dept.scholarship_quota,
+            tuition_fee=dept.tuition_fee,
+            has_scholarship=dept.has_scholarship,
+            last_year_min_score=dept.last_year_min_score,
+            last_year_min_rank=dept.last_year_min_rank,
+            last_year_quota=dept.last_year_quota,
+            description=dept.description,
+            requirements=dept.requirements,
+            created_at=dept.created_at,
+            updated_at=dept.updated_at,
+            university=university_response
         )
         result.append(dept_response)
     
@@ -243,9 +331,44 @@ async def get_department(department_id: int, db: Session = Depends(get_db)):
     
     university = db.query(University).filter(University.id == department.university_id).first()
     
+    # University response'unu logo URL ile oluştur
+    university_response = UniversityResponse(
+        id=university.id,
+        name=university.name,
+        city=university.city,
+        university_type=university.university_type,
+        website=university.website,
+        established_year=university.established_year,
+        latitude=university.latitude,
+        longitude=university.longitude,
+        created_at=university.created_at,
+        updated_at=university.updated_at,
+        logo_url=get_university_logo_url(university)
+    )
+    
     return DepartmentWithUniversityResponse(
-        **department.__dict__,
-        university=university
+        id=department.id,
+        university_id=department.university_id,
+        name=department.name,
+        field_type=department.field_type,
+        language=department.language,
+        faculty=department.faculty,
+        duration=department.duration,
+        degree_type=department.degree_type,
+        min_score=department.min_score,
+        min_rank=department.min_rank,
+        quota=department.quota,
+        scholarship_quota=department.scholarship_quota,
+        tuition_fee=department.tuition_fee,
+        has_scholarship=department.has_scholarship,
+        last_year_min_score=department.last_year_min_score,
+        last_year_min_rank=department.last_year_min_rank,
+        last_year_quota=department.last_year_quota,
+        description=department.description,
+        requirements=department.requirements,
+        created_at=department.created_at,
+        updated_at=department.updated_at,
+        university=university_response
     )
 
 

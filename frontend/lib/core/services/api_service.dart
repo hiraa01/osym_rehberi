@@ -19,7 +19,7 @@ class ApiService {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 30), // Backend'e bağlanma için 30 saniye
-      receiveTimeout: const Duration(seconds: 60), // Cevap almak için 60 saniye
+      receiveTimeout: const Duration(seconds: 90), // Cevap almak için 90 saniye (genel)
       sendTimeout: const Duration(seconds: 60), // Veri göndermek için 60 saniye
       headers: {
         'Content-Type': 'application/json',
@@ -96,10 +96,6 @@ class ApiService {
     });
   }
 
-  Future<Response> getStudent(int id) async {
-    return await _dio.get('/students/$id');
-  }
-
   Future<Response> createStudent(Map<String, dynamic> data) async {
     return await _dio.post('/students/', data: data); // Trailing slash added
   }
@@ -118,11 +114,25 @@ class ApiService {
 
   // University endpoints
   Future<Response> getUniversities() async {
-    return await _dio.get('/universities');
+    // Üniversiteler çok sayıda olabilir, daha uzun timeout
+    return await _dio.get(
+      '/universities/',
+      options: Options(
+        receiveTimeout: const Duration(seconds: 180), // 3 dakika
+        sendTimeout: const Duration(seconds: 30),
+      ),
+    );
   }
 
   Future<Response> getDepartments() async {
-    return await _dio.get('/universities/departments/');  // ✅ Trailing slash ve limit parametresi eklendi
+    // Bölümler çok sayıda olabilir, daha uzun timeout
+    return await _dio.get(
+      '/universities/departments/',
+      options: Options(
+        receiveTimeout: const Duration(seconds: 180), // 3 dakika
+        sendTimeout: const Duration(seconds: 30),
+      ),
+    );
   }
 
   Future<Response> getCities() async {
@@ -171,13 +181,25 @@ class ApiService {
 
   // Recommendation endpoints
   Future<Response> generateRecommendations(int studentId, {int limit = 50}) async {
-    return await _dio.post('/recommendations/generate/$studentId', queryParameters: {
-      'limit': limit,
-    });
+    // Recommendations hesaplama çok uzun sürebilir (veritabanı sorguları, hesaplamalar)
+    return await _dio.post(
+      '/recommendations/generate/$studentId',
+      queryParameters: {
+        'limit': limit,
+      },
+      options: Options(
+        receiveTimeout: const Duration(seconds: 300), // 5 dakika - backend çok yavaş
+        sendTimeout: const Duration(seconds: 30),
+      ),
+    );
   }
 
   Future<Response> getStudentRecommendations(int studentId) async {
     return await _dio.get('/recommendations/student/$studentId');
+  }
+
+  Future<Response> clearStudentRecommendations(int studentId) async {
+    return await _dio.delete('/recommendations/student/$studentId');
   }
 
   Future<Response> getRecommendationStats(int studentId) async {
@@ -236,6 +258,17 @@ class ApiService {
 
   Future<Response> getUserInfo(int userId) async {
     return await _dio.get('/auth/me/$userId');
+  }
+
+  Future<Response> getStudent(int id) async {
+    // Student API için daha uzun timeout (JSON parsing, hesaplamalar olabilir)
+    return await _dio.get(
+      '/students/$id',
+      options: Options(
+        receiveTimeout: const Duration(seconds: 180), // 3 dakika
+        sendTimeout: const Duration(seconds: 30),
+      ),
+    );
   }
 
 

@@ -23,6 +23,10 @@ async def generate_recommendations(
     if not student:
         raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
     
+    # ✅ Önce eski önerileri temizle (yeniden hesaplama için)
+    db.query(Recommendation).filter(Recommendation.student_id == student_id).delete()
+    db.commit()
+    
     # Öneri motorunu çalıştır
     recommendation_engine = RecommendationEngine(db)
     recommendations = recommendation_engine.generate_recommendations(student_id, limit)
