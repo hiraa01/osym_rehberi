@@ -1,0 +1,22 @@
+{
+    "ignore": [
+        "**/__pycache__/**",
+        "**/.venv/**",
+        "**/.mypy_cache/**"
+    ],
+    "typeCheckingMode": "basic",
+    "reportMissingImports": "none",
+    "reportMissingTypeStubs": "none",
+    "useLibraryCodeForTypes": true,
+    "executionEnvironments": [
+        {
+            "root": "backend",
+            "extraPaths": [
+                "backend",
+                "backend/routers",
+                "backend/services",
+                "backend/schemas"
+            ]
+        }
+    ]
+}

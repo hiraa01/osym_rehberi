@@ -34,6 +34,9 @@ async def train_ml_models(background_tasks: BackgroundTasks, db: Session = Depen
 async def get_ml_recommendations(
     student_id: int, 
     limit: int = 50,
+    w_c: float = 0.4,
+    w_s: float = 0.4,
+    w_p: float = 0.2,
     db: Session = Depends(get_db)
 ):
     """ML destekli öneriler oluştur"""
@@ -42,35 +45,57 @@ async def get_ml_recommendations(
         
         ml_engine = MLRecommendationEngine(db)
         
+        # Ağırlıkları normalize et
+        total_w = max(1e-9, (w_c + w_s + w_p))
+        weights = (w_c / total_w, w_s / total_w, w_p / total_w)
+        
         # ML önerileri oluştur
-        recommendations = ml_engine.generate_recommendations(student_id, limit)
+        recommendations = ml_engine.generate_recommendations(student_id, limit, weights)
         
         if not recommendations:
             raise HTTPException(status_code=404, detail="Öneri bulunamadı")
         
-        # Response formatına çevir
+        # Response formatına çevir (ML dict çıktısı VEYA kural tabanlı Pydantic çıktısı desteklenir)
         result = []
         for rec in recommendations:
-            department = rec['department']
-            university = db.query(University).filter(University.id == department.university_id).first()
-            
-            result.append(MLRecommendationResponse(
-                id=rec.get('id'),
-                student_id=rec['student_id'],
-                department_id=rec['department_id'],
-                compatibility_score=rec['compatibility_score'],
-                success_probability=rec['success_probability'],
-                preference_score=rec['preference_score'],
-                final_score=rec['final_score'],
-                recommendation_reason=rec['recommendation_reason'],
-                is_safe_choice=rec['is_safe_choice'],
-                is_dream_choice=rec['is_dream_choice'],
-                is_realistic_choice=rec['is_realistic_choice'],
-                department=DepartmentWithUniversityResponse(
-                    **department.__dict__,
-                    university=university
-                )
-            ))
+            # ML motoru dict döner
+            if isinstance(rec, dict):
+                department = rec['department']
+                university = db.query(University).filter(University.id == department.university_id).first()
+                result.append(MLRecommendationResponse(
+                    id=rec.get('id'),
+                    student_id=rec['student_id'],
+                    department_id=rec['department_id'],
+                    compatibility_score=rec['compatibility_score'],
+                    success_probability=rec['success_probability'],
+                    preference_score=rec['preference_score'],
+                    final_score=rec['final_score'],
+                    recommendation_reason=rec['recommendation_reason'],
+                    is_safe_choice=rec['is_safe_choice'],
+                    is_dream_choice=rec['is_dream_choice'],
+                    is_realistic_choice=rec['is_realistic_choice'],
+                    department=DepartmentWithUniversityResponse(
+                        **department.__dict__,
+                        university=university
+                    )
+                ))
+            else:
+                # Kural tabanlı motor RecommendationResponse (Pydantic) döner
+                # rec.department zaten DepartmentWithUniversityResponse tipinde
+                result.append(MLRecommendationResponse(
+                    id=getattr(rec, 'id', None),
+                    student_id=rec.student_id,
+                    department_id=rec.department_id,
+                    compatibility_score=rec.compatibility_score,
+                    success_probability=rec.success_probability,
+                    preference_score=rec.preference_score,
+                    final_score=rec.final_score,
+                    recommendation_reason=rec.recommendation_reason,
+                    is_safe_choice=rec.is_safe_choice,
+                    is_dream_choice=rec.is_dream_choice,
+                    is_realistic_choice=rec.is_realistic_choice,
+                    department=rec.department
+                ))
         
         return result
         

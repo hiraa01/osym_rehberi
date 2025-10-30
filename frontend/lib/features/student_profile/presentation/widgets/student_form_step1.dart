@@ -10,6 +10,9 @@ class StudentFormStep1 extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final formState = ref.watch(studentFormProvider);
     final formNotifier = ref.read(studentFormProvider.notifier);
+    // Ensure hydration once when the widget builds
+    // ignore: unused_result
+    formNotifier.hydrateFromSession();
     final student = formState.student;
 
     return SingleChildScrollView(

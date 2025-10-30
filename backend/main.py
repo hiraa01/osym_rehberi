@@ -1,18 +1,59 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+import asyncio
+import os
+import contextlib
 
-from database import create_tables
-from routers import students, universities, recommendations, ml_recommendations, auth, exam_attempts
+from database import create_tables, get_db
+from routers import students, universities, recommendations, ml_recommendations, auth, exam_attempts, coach_chat
+from core.logging_config import api_logger
+
+
+async def _periodic_ml_training_task():
+    """Periodik olarak ML eğitimini tetikler (varsayılan: günde 1 kez)."""
+    # Ortam değişkeni ile ayarlanabilir
+    interval_seconds_str = os.getenv("ML_TRAIN_INTERVAL_SECONDS", "86400")
+    try:
+        interval_seconds = max(3600, int(interval_seconds_str))  # En az 1 saat
+    except Exception:
+        interval_seconds = 86400
+
+    # Eğitim fonksiyonunu içe aktar
+    from routers.ml_recommendations import train_models_background
+
+    while True:
+        try:
+            await asyncio.sleep(interval_seconds)
+            api_logger.info("Periodic ML training tick started")
+            # DB session oluştur ve eğitimi çağır
+            db = next(get_db())
+            try:
+                await train_models_background(db)
+            finally:
+                db.close()
+            api_logger.info("Periodic ML training tick completed")
+        except asyncio.CancelledError:
+            api_logger.info("Periodic ML training task cancelled")
+            break
+        except Exception as e:
+            api_logger.error("Periodic ML training failed", error=str(e))
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     create_tables()
+    # Periodik ML eğitim görevini başlat
+    app.state.ml_training_task = asyncio.create_task(_periodic_ml_training_task())
     yield
     # Shutdown
-    pass
+    # Periodik görev iptali
+    task = getattr(app.state, "ml_training_task", None)
+    if task:
+        task.cancel()
+        with contextlib.suppress(Exception):
+            await task
 
 
 app = FastAPI(
@@ -72,6 +113,7 @@ app.include_router(universities.router, prefix="/api/universities", tags=["unive
 app.include_router(recommendations.router, prefix="/api/recommendations", tags=["recommendations"])
 app.include_router(ml_recommendations.router, prefix="/api/ml", tags=["ml-recommendations"])
 app.include_router(exam_attempts.router, prefix="/api/exam-attempts", tags=["exam-attempts"])
+app.include_router(coach_chat.router, prefix="/api/chat", tags=["coach-chat"])
 
 
 @app.get("/")

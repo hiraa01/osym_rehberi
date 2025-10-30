@@ -19,6 +19,7 @@ dependencies:
   
   # HTTP Client
   dio: ^5.4.0
+  speech_to_text: ^6.6.0
   
   # UI Components
   cupertino_icons: ^1.0.6

@@ -7,6 +7,8 @@ from models.student import Student
 from models.university import Recommendation
 from schemas.university import RecommendationResponse, RecommendationListResponse
 from services.recommendation_engine import RecommendationEngine
+from services.score_calculator import ScoreCalculator
+from core.logging_config import api_logger
 
 router = APIRouter()
 
@@ -15,6 +17,9 @@ router = APIRouter()
 async def generate_recommendations(
     student_id: int,
     limit: int = Query(50, ge=1, le=200),
+    w_c: float = Query(0.4, ge=0.0, le=1.0, description="Weight for compatibility"),
+    w_s: float = Query(0.4, ge=0.0, le=1.0, description="Weight for success probability"),
+    w_p: float = Query(0.2, ge=0.0, le=1.0, description="Weight for preference"),
     db: Session = Depends(get_db)
 ):
     """Öğrenci için tercih önerileri oluştur"""
@@ -29,7 +34,10 @@ async def generate_recommendations(
     
     # Öneri motorunu çalıştır
     recommendation_engine = RecommendationEngine(db)
-    recommendations = recommendation_engine.generate_recommendations(student_id, limit)
+    # normalize weights (total>0 ise)
+    total_w = max(1e-9, (w_c + w_s + w_p))
+    weights = (w_c / total_w, w_s / total_w, w_p / total_w)
+    recommendations = recommendation_engine.generate_recommendations(student_id, limit, weights)
     
     return recommendations
 
@@ -115,6 +123,54 @@ async def get_recommendation(recommendation_id: int, db: Session = Depends(get_d
         **recommendation.__dict__,
         department=department_response
     )
+
+
+@router.get("/goal-proximity/{student_id}/{department_id}")
+async def get_goal_proximity(
+    student_id: int,
+    department_id: int,
+    db: Session = Depends(get_db)
+):
+    """Öğrencinin seçilen bölüme hedef yakınlığını döndürür.
+    TYT/AYT hedefleri yoksa toplam puan vs bölüm min_score üzerinden yaklaşık yakınlık verir.
+    """
+    from models.university import Department
+
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
+
+    department = db.query(Department).filter(Department.id == department_id).first()
+    if not department:
+        raise HTTPException(status_code=404, detail="Bölüm bulunamadı")
+
+    target_tyt = 0.0
+    target_ayt = 0.0
+    if getattr(department, 'min_score', None):
+        target_ayt = float(department.min_score or 0.0)
+
+    try:
+        proximity = ScoreCalculator.calculate_goal_proximity(
+            student_tyt_score=float(student.tyt_total_score or 0.0),
+            student_ayt_score=float(student.ayt_total_score or 0.0),
+            target_tyt_score=target_tyt,
+            target_ayt_score=target_ayt,
+        )
+    except Exception:
+        overall = 0.0
+        if getattr(department, 'min_score', None) and department.min_score > 0:
+            overall = min(100.0, (float(student.total_score or 0.0) / float(department.min_score)) * 100.0)
+        proximity = {
+            'tyt_proximity': 0.0,
+            'ayt_proximity': round(overall, 2),
+            'overall_proximity': round(overall, 2),
+            'tyt_gap': 0.0,
+            'ayt_gap': round(float(department.min_score or 0.0) - float(student.total_score or 0.0), 2),
+            'is_ready': float(student.total_score or 0.0) >= float(department.min_score or 0.0),
+        }
+
+    api_logger.info("Goal proximity calculated", user_id=student_id, department_id=department_id)
+    return proximity
 
 
 @router.delete("/student/{student_id}")

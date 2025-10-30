@@ -10,6 +10,7 @@ services:
       - DATABASE_URL=sqlite:///./osym_rehber.db
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO
+      - GOOGLE_API_KEY=${AIzaSyAWeAMxuFbtC_vbMeUaKFNKu0SvO9X7njg}
     volumes:
       - ../backend:/app
       - backend_data:/app/data

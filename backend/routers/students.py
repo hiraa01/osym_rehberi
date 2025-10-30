@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import json
@@ -8,6 +8,8 @@ from models.student import Student
 from schemas.student import StudentCreate, StudentUpdate, StudentResponse, StudentListResponse
 from services.score_calculator import ScoreCalculator
 from core.logging_config import api_logger
+from services.recommendation_engine import RecommendationEngine
+from routers.ml_recommendations import train_models_background
 from core.exceptions import StudentNotFoundError, InvalidScoreError
 
 router = APIRouter()
@@ -108,6 +110,7 @@ async def get_student(student_id: int, db: Session = Depends(get_db)):
 async def update_student(
     student_id: int, 
     student_update: StudentUpdate, 
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     """Öğrenci bilgilerini güncelle"""
@@ -145,6 +148,20 @@ async def update_student(
     
     db.commit()
     db.refresh(student)
+
+    # Tercihler değiştiğinde önerileri ve ML eğitimini arka planda tetikle
+    try:
+        def _regenerate_recommendations_task(student_id_inner: int):
+            engine = RecommendationEngine(db)
+            try:
+                engine.generate_recommendations(student_id_inner, limit=50)
+            except Exception as e:
+                api_logger.error("Recommendation regen failed", user_id=student_id_inner, error=str(e))
+
+        background_tasks.add_task(_regenerate_recommendations_task, student.id)
+        background_tasks.add_task(train_models_background, db)
+    except Exception as bt_err:
+        api_logger.warning("Background tasks scheduling failed", error=str(bt_err))
     
     return student
 

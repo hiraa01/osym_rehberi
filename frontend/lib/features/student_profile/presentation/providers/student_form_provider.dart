@@ -1,4 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
+import '../../../../core/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/models/student_model.dart';
 import '../../data/providers/student_api_provider.dart';
 
@@ -35,9 +38,12 @@ class StudentFormState {
 
 // Form Notifier (StateNotifier kullanmadan basit bir sınıf)
 class StudentFormNotifier extends Notifier<StudentFormState> {
+  Timer? _debounce;
+  bool _hydrated = false;
+
   @override
   StudentFormState build() {
-    return StudentFormState(
+    return const StudentFormState(
       student: const StudentModel(
         name: '',
         classLevel: '11',
@@ -45,6 +51,23 @@ class StudentFormNotifier extends Notifier<StudentFormState> {
         fieldType: 'SAY',
       ),
     );
+  }
+
+  Future<void> hydrateFromSession() async {
+    if (_hydrated) return;
+    _hydrated = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final id = prefs.getInt('student_id');
+      if (id != null) {
+        final api = ref.read(apiServiceProvider);
+        final resp = await api.getStudent(id);
+        final data = resp.data as Map<String, dynamic>;
+        // Assuming StudentModel.fromJson exists
+        final fetched = StudentModel.fromJson(data);
+        state = state.copyWith(student: fetched);
+      }
+    } catch (_) {}
   }
 
   void updateStudent(StudentModel student) {
@@ -164,6 +187,7 @@ class StudentFormNotifier extends Notifier<StudentFormState> {
     }
 
     state = state.copyWith(student: updatedStudent);
+    _scheduleAutosave();
   }
 
   void setCurrentStep(int step) {
@@ -191,6 +215,10 @@ class StudentFormNotifier extends Notifier<StudentFormState> {
         student: createdStudent,
         isLoading: false,
       );
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        prefs.setInt('student_id', createdStudent.id!);
+      } catch (_) {}
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -198,6 +226,21 @@ class StudentFormNotifier extends Notifier<StudentFormState> {
       );
       rethrow;
     }
+  }
+
+  void _scheduleAutosave() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 800), _autosaveNow);
+  }
+
+  Future<void> _autosaveNow() async {
+    try {
+      final current = state.student;
+      final id = current.id;
+      if (id == null) return;
+      final api = ref.read(apiServiceProvider);
+      await api.updateStudent(id, current.toJson());
+    } catch (_) {}
   }
 }
 

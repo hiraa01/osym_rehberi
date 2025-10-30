@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/student_form_provider.dart';
 import '../../../universities/data/providers/university_api_provider.dart';
+import '../../../recommendations/presentation/providers/recommendation_settings_provider.dart';
 
 class StudentFormStep4 extends ConsumerWidget {
   const StudentFormStep4({super.key});
@@ -29,6 +30,40 @@ class StudentFormStep4 extends ConsumerWidget {
               color: Colors.grey[600],
             ),
           ),
+          const SizedBox(height: 24),
+
+          // Recommendation Focus Mode
+          Text(
+            'Öneri Odaklanma Modu',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Consumer(builder: (context, ref, _) {
+            final settings = ref.watch(recommendationSettingsProvider);
+            final notifier = ref.read(recommendationSettingsProvider.notifier);
+            return SegmentedButton<RecommendationFocusMode>(
+              segments: const [
+                ButtonSegment(
+                  value: RecommendationFocusMode.balanced,
+                  label: Text('Dengeli'),
+                ),
+                ButtonSegment(
+                  value: RecommendationFocusMode.successFocused,
+                  label: Text('Başarı'),
+                ),
+                ButtonSegment(
+                  value: RecommendationFocusMode.preferenceFocused,
+                  label: Text('Tercih'),
+                ),
+              ],
+              selected: {settings.mode},
+              onSelectionChanged: (selection) {
+                if (selection.isNotEmpty) {
+                  notifier.setMode(selection.first);
+                }
+              },
+            );
+          }),
           const SizedBox(height: 24),
           
           // Preferred Cities

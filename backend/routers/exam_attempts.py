@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -12,6 +12,9 @@ from schemas.exam_attempt import (
     ExamAttemptListResponse
 )
 from services.score_calculator import ScoreCalculator
+from services.recommendation_engine import RecommendationEngine
+from routers.ml_recommendations import train_models_background
+from core.logging_config import api_logger
 from core.logging_config import api_logger
 
 router = APIRouter()
@@ -19,7 +22,8 @@ router = APIRouter()
 
 @router.post("/", response_model=ExamAttemptResponse)
 async def create_exam_attempt(
-    attempt: ExamAttemptCreate, 
+    attempt: ExamAttemptCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     """Yeni deneme sonucu ekle ve puanları otomatik hesapla"""
@@ -73,6 +77,24 @@ async def create_exam_attempt(
         
         db.commit()
         db.refresh(db_attempt)
+
+        # Arka planda önerileri ve ML eğitimini tetikle
+        try:
+            student_id = attempt.student_id
+
+            def _regenerate_recommendations_task(student_id_inner: int):
+                engine = RecommendationEngine(db)
+                # Eski önerileri temizlemek recommendations endpoint'inde yapılıyordu;
+                # burada direkt yeniden hesaplıyoruz (engine kendi ekler)
+                try:
+                    engine.generate_recommendations(student_id_inner, limit=50)
+                except Exception as e:
+                    api_logger.error("Recommendation regen failed", user_id=student_id_inner, error=str(e))
+
+            background_tasks.add_task(_regenerate_recommendations_task, student_id)
+            background_tasks.add_task(train_models_background, db)
+        except Exception as bt_err:
+            api_logger.warning("Background tasks scheduling failed", error=str(bt_err))
         
         api_logger.info(
             "Exam attempt created and student scores updated", 
@@ -130,6 +152,7 @@ async def get_exam_attempt(attempt_id: int, db: Session = Depends(get_db)):
 async def update_exam_attempt(
     attempt_id: int,
     attempt_update: ExamAttemptUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     """Deneme bilgilerini güncelle"""
@@ -160,6 +183,22 @@ async def update_exam_attempt(
     
     db.commit()
     db.refresh(attempt)
+
+    # Arka planda önerileri ve ML eğitimini tetikle
+    try:
+        student_id = attempt.student_id
+
+        def _regenerate_recommendations_task(student_id_inner: int):
+            engine = RecommendationEngine(db)
+            try:
+                engine.generate_recommendations(student_id_inner, limit=50)
+            except Exception as e:
+                api_logger.error("Recommendation regen failed", user_id=student_id_inner, error=str(e))
+
+        background_tasks.add_task(_regenerate_recommendations_task, student_id)
+        background_tasks.add_task(train_models_background, db)
+    except Exception as bt_err:
+        api_logger.warning("Background tasks scheduling failed", error=str(bt_err))
     
     return attempt
 

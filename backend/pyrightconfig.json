@@ -1,0 +1,26 @@
+{
+    "include": [
+        "."
+    ],
+    "exclude": [
+        "**/__pycache__/**",
+        "**/.venv/**",
+        "**/.mypy_cache/**"
+    ],
+    "typeCheckingMode": "basic",
+    "reportMissingImports": "none",
+    "reportMissingTypeStubs": "none",
+    "useLibraryCodeForTypes": true,
+    "venvPath": ".",
+    "executionEnvironments": [
+        {
+            "root": ".",
+            "extraPaths": [
+                "./",
+                "./routers",
+                "./services",
+                "./schemas"
+            ]
+        }
+    ]
+}

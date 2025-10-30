@@ -23,7 +23,12 @@ class RecommendationEngine:
             return f"https://www.google.com/s2/favicons?domain={domain}&sz=256"
         return None
     
-    def generate_recommendations(self, student_id: int, limit: int = 50) -> List[RecommendationResponse]:
+    def generate_recommendations(
+        self,
+        student_id: int,
+        limit: int = 50,
+        weights: Optional[Tuple[float, float, float]] = None
+    ) -> List[RecommendationResponse]:
         """Öğrenci için tercih önerileri oluştur"""
         try:
             recommendation_logger.info(
@@ -45,6 +50,13 @@ class RecommendationEngine:
                 Department.field_type == student.field_type
             ).all()
             
+            # Ağırlıklar (compatibility, success, preference)
+            if not weights:
+                weights = (0.4, 0.4, 0.2)
+            w_c, w_s, w_p = weights
+            total_w = max(1e-9, (w_c + w_s + w_p))
+            w_c, w_s, w_p = w_c / total_w, w_s / total_w, w_p / total_w
+
             recommendations = []
             
             for department in departments:
@@ -59,9 +71,9 @@ class RecommendationEngine:
                 
                 # Final skorunu hesapla (ağırlıklı ortalama)
                 final_score = (
-                    compatibility_score * 0.4 +
-                    success_probability * 0.4 +
-                    preference_score * 0.2
+                    compatibility_score * w_c +
+                    success_probability * w_s +
+                    preference_score * w_p
                 )
                 
                 # Öneri türünü belirle

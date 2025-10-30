@@ -96,6 +96,10 @@ class ApiService {
     });
   }
 
+  Future<Response> getStudent(int id) async {
+    return await _dio.get('/students/$id');
+  }
+
   Future<Response> createStudent(Map<String, dynamic> data) async {
     return await _dio.post('/students/', data: data); // Trailing slash added
   }
@@ -180,12 +184,21 @@ class ApiService {
   }
 
   // Recommendation endpoints
-  Future<Response> generateRecommendations(int studentId, {int limit = 50}) async {
+  Future<Response> generateRecommendations(
+    int studentId, {
+    int limit = 50,
+    double? wC,
+    double? wS,
+    double? wP,
+  }) async {
     // Recommendations hesaplama çok uzun sürebilir (veritabanı sorguları, hesaplamalar)
     return await _dio.post(
       '/recommendations/generate/$studentId',
       queryParameters: {
         'limit': limit,
+        if (wC != null) 'w_c': wC,
+        if (wS != null) 'w_s': wS,
+        if (wP != null) 'w_p': wP,
       },
       options: Options(
         receiveTimeout: const Duration(seconds: 300), // 5 dakika - backend çok yavaş
@@ -204,6 +217,34 @@ class ApiService {
 
   Future<Response> getRecommendationStats(int studentId) async {
     return await _dio.get('/recommendations/stats/$studentId');
+  }
+
+  // Coach Chat
+  Future<Response> coachChat({
+    required int studentId,
+    required String message,
+    bool useMl = true,
+    int limit = 20,
+    double wC = 0.4,
+    double wS = 0.4,
+    double wP = 0.2,
+  }) async {
+    return await _dio.post(
+      '/chat/coach',
+      data: {
+        'student_id': studentId,
+        'message': message,
+        'use_ml': useMl,
+        'limit': limit,
+        'w_c': wC,
+        'w_s': wS,
+        'w_p': wP,
+      },
+      options: Options(
+        receiveTimeout: const Duration(seconds: 60),
+        sendTimeout: const Duration(seconds: 30),
+      ),
+    );
   }
 
   // Health check (not under /api prefix)
@@ -260,16 +301,6 @@ class ApiService {
     return await _dio.get('/auth/me/$userId');
   }
 
-  Future<Response> getStudent(int id) async {
-    // Student API için daha uzun timeout (JSON parsing, hesaplamalar olabilir)
-    return await _dio.get(
-      '/students/$id',
-      options: Options(
-        receiveTimeout: const Duration(seconds: 180), // 3 dakika
-        sendTimeout: const Duration(seconds: 30),
-      ),
-    );
-  }
 
 
   Future<Response> updateUser({

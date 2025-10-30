@@ -13,7 +13,7 @@ import joblib
 import os
 from sqlalchemy.orm import Session
 from models.student import Student
-from models.university import Department, Recommendation
+from models.university import Department, Recommendation, University
 from core.logging_config import recommendation_logger
 
 class MLRecommendationEngine:
@@ -55,7 +55,12 @@ class MLRecommendationEngine:
             recommendation_logger.error("ML training failed", error=str(e))
             raise
     
-    def generate_recommendations(self, student_id: int, limit: int = 50) -> List[Dict[str, Any]]:
+    def generate_recommendations(
+        self,
+        student_id: int,
+        limit: int = 50,
+        weights: Tuple[float, float, float] | None = None
+    ) -> List[Dict[str, Any]]:
         """ML destekli öneriler oluştur"""
         if not self.is_trained:
             recommendation_logger.warning("Models not trained, falling back to rule-based")
@@ -74,6 +79,13 @@ class MLRecommendationEngine:
                 Department.field_type == student.field_type
             ).all()
             
+            # Ağırlıklar (compatibility, success, preference)
+            if not weights:
+                weights = (0.4, 0.4, 0.2)
+            w_c, w_s, w_p = weights
+            total_w = max(1e-9, (w_c + w_s + w_p))
+            w_c, w_s, w_p = w_c / total_w, w_s / total_w, w_p / total_w
+
             recommendations = []
             
             for department in departments:
@@ -90,7 +102,7 @@ class MLRecommendationEngine:
                 preference = self._predict_preference(combined_features)
                 
                 # Final skor
-                final_score = (compatibility * 0.4 + success_prob * 0.4 + preference * 0.2)
+                final_score = (compatibility * w_c + success_prob * w_s + preference * w_p)
                 
                 # Öneri türünü belirle
                 is_safe = success_prob >= 0.8
@@ -160,15 +172,20 @@ class MLRecommendationEngine:
         return np.array(features)
     
     def _prepare_department_features(self, department: Department) -> np.ndarray:
-        """Bölüm özelliklerini hazırla"""
+        """Bölüm özelliklerini hazırla (Üniversite bilgilerini ilişki üzerinden getirir)."""
+        # University bilgilerini yükle
+        university: Optional[University] = self.db.query(University).filter(University.id == department.university_id).first()
+        university_type = (university.university_type if university and getattr(university, 'university_type', None) else 'Devlet')
+        university_city = (university.city if university and getattr(university, 'city', None) else '')
+
         features = [
-            department.min_score or 0,
-            department.min_rank or 0,
-            department.quota or 0,
-            department.tuition_fee or 0,
-            1 if department.has_scholarship else 0,
-            self._encode_university_type(department.university_type),
-            self._encode_city(department.city),
+            float(department.min_score or 0.0),
+            float(department.min_rank or 0.0),
+            float(department.quota or 0.0),
+            float(department.tuition_fee or 0.0),
+            1 if bool(department.has_scholarship) else 0,
+            self._encode_university_type(university_type),
+            self._encode_city(university_city),
         ]
         return np.array(features)
     
