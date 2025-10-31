@@ -5,7 +5,7 @@ import '../../../exam_attempts/presentation/pages/exam_attempts_page.dart';
 import '../../../goals/presentation/pages/goals_page.dart';
 import '../../../recommendations/presentation/pages/recommendations_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
-import '../../../chatbot/presentation/widgets/chatbot_bubble.dart';
+import '../../../coach_chat/presentation/coach_chat_fab.dart';
 import '../widgets/animated_bottom_bar.dart';
 
 class MainLayoutPage extends StatefulWidget {
@@ -63,10 +63,9 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
             index: _currentIndex,
             children: _pages,
           ),
-          // Chatbot bubble
-          const ChatbotBubble(),
         ],
       ),
+      floatingActionButton: const CoachChatFab(),
       bottomNavigationBar: AnimatedBottomBar(
         currentIndex: _currentIndex,
         onTap: (index) {

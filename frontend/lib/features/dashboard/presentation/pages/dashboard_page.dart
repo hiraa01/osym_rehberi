@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -30,7 +31,71 @@ class _DashboardPageState extends State<DashboardPage> {
     _loadDashboardData();
   }
 
+  // Cache'den denemeleri yükle ve dashboard'u hesapla
+  void _calculateDashboardFromAttempts(List attempts) {
+    _totalAttempts = attempts.length;
+    
+    if (_totalAttempts > 0) {
+      // Son 4 denemeyi al (varsa)
+      final last4Attempts = attempts.length > 4 
+          ? attempts.sublist(attempts.length - 4)
+          : attempts;
+      
+      double totalTyt = 0;
+      double totalAyt = 0;
+      
+      for (var attempt in last4Attempts) {
+        // TYT Net hesaplama
+        final tytNet = (attempt['tyt_turkish_net'] ?? 0.0) +
+                      (attempt['tyt_math_net'] ?? 0.0) +
+                      (attempt['tyt_social_net'] ?? 0.0) +
+                      (attempt['tyt_science_net'] ?? 0.0);
+        
+        // AYT Net hesaplama (SAY için)
+        final aytNet = (attempt['ayt_math_net'] ?? 0.0) +
+                      (attempt['ayt_physics_net'] ?? 0.0) +
+                      (attempt['ayt_chemistry_net'] ?? 0.0) +
+                      (attempt['ayt_biology_net'] ?? 0.0);
+        
+        totalTyt += tytNet;
+        totalAyt += aytNet;
+      }
+      
+      _tytAverage = totalTyt / last4Attempts.length;
+      _aytAverage = totalAyt / last4Attempts.length;
+      _totalNetAverage = _tytAverage + _aytAverage;
+      
+      // Hedefe yakınlık hesapla (%) - Net bazında
+      _progressPercent = (_totalNetAverage / _targetTotalNet * 100).clamp(0.0, 100.0);
+    } else {
+      _tytAverage = 0.0;
+      _aytAverage = 0.0;
+      _totalNetAverage = 0.0;
+      _progressPercent = 0.0;
+    }
+  }
+
+  // Önce cache'den yükle (hızlı görüntüleme)
+  Future<void> _loadFromCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString('exam_attempts_cache');
+      if (cachedJson != null) {
+        final cached = jsonDecode(cachedJson) as List;
+        _calculateDashboardFromAttempts(cached);
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading cached attempts for dashboard: $e');
+    }
+  }
+
   Future<void> _loadDashboardData() async {
+    // Önce cache'den yükle (hızlı görüntüleme)
+    await _loadFromCache();
+    
     setState(() => _isLoading = true);
     
     try {
@@ -38,47 +103,16 @@ class _DashboardPageState extends State<DashboardPage> {
       final studentId = prefs.getInt('student_id');
       
       if (studentId != null) {
-        // Deneme sayısı ve ortalama puan
+        // Backend'den güncel verileri yükle
         final attemptsResponse = await _apiService.getStudentAttempts(studentId);
         final attempts = (attemptsResponse.data['attempts'] ?? []) as List;
-        _totalAttempts = attempts.length;
         
-        if (_totalAttempts > 0) {
-          // Son 4 denemeyi al (varsa)
-          final last4Attempts = attempts.length > 4 
-              ? attempts.sublist(attempts.length - 4)
-              : attempts;
-          
-          double totalTyt = 0;
-          double totalAyt = 0;
-          
-          for (var attempt in last4Attempts) {
-            // TYT Net hesaplama
-            final tytNet = (attempt['tyt_turkish_net'] ?? 0.0) +
-                          (attempt['tyt_math_net'] ?? 0.0) +
-                          (attempt['tyt_social_net'] ?? 0.0) +
-                          (attempt['tyt_science_net'] ?? 0.0);
-            
-            // AYT Net hesaplama (SAY için)
-            final aytNet = (attempt['ayt_math_net'] ?? 0.0) +
-                          (attempt['ayt_physics_net'] ?? 0.0) +
-                          (attempt['ayt_chemistry_net'] ?? 0.0) +
-                          (attempt['ayt_biology_net'] ?? 0.0);
-            
-            totalTyt += tytNet;
-            totalAyt += aytNet;
-          }
-          
-          _tytAverage = totalTyt / last4Attempts.length;
-          _aytAverage = totalAyt / last4Attempts.length;
-          _totalNetAverage = _tytAverage + _aytAverage;
-          
-          // Hedefe yakınlık hesapla (%) - Net bazında
-          _progressPercent = (_totalNetAverage / _targetTotalNet * 100).clamp(0.0, 100.0);
-        }
+        // Dashboard'u hesapla
+        _calculateDashboardFromAttempts(attempts);
       }
     } catch (e) {
       debugPrint('Dashboard error: $e');
+      // Backend hatası olsa bile cache'deki veriler gösterildi
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

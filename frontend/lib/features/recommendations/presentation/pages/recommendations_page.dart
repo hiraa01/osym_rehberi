@@ -471,7 +471,8 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: _filteredRecommendations.length,
-                                    itemBuilder: (context, index) {
+                    cacheExtent: 500, // ✅ Render edilmemiş widget'lar için cache
+                    itemBuilder: (context, index) {
                                       final rec = _filteredRecommendations[index];
                                       final dept = rec['department'] as Map<String, dynamic>?;
                                       final uni = dept?['university'] as Map<String, dynamic>?;

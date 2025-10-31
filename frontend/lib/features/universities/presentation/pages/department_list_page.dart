@@ -134,6 +134,7 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage> {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: departments.length,
+      cacheExtent: 500, // ✅ Render edilmemiş widget'lar için cache
       itemBuilder: (context, index) {
         final department = departments[index];
         return DepartmentCard(

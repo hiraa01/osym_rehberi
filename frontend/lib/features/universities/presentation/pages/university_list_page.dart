@@ -144,6 +144,7 @@ class _UniversityListPageState extends ConsumerState<UniversityListPage> {
           return ListView.builder(
             padding: ResponsiveUtils.getResponsivePadding(context),
             itemCount: universities.length,
+            cacheExtent: 500, // ✅ Render edilmemiş widget'lar için cache
             itemBuilder: (context, index) {
               final university = universities[index];
               return UniversityCard(

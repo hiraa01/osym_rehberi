@@ -23,8 +23,11 @@ class ApiService {
       sendTimeout: const Duration(seconds: 60), // Veri göndermek için 60 saniye
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        'Accept': 'application/json, application/gzip', // ✅ Gzip desteği
       },
+      // ✅ Connection pooling ve keep-alive için
+      persistentConnection: true,
+      validateStatus: (status) => status != null && status < 500,
     ));
 
     // Add interceptors for logging in debug mode
@@ -229,6 +232,7 @@ class ApiService {
     double wS = 0.4,
     double wP = 0.2,
   }) async {
+    // LLM yanıtları çok uzun sürebilir (öneri hesaplama + Gemini API çağrısı)
     return await _dio.post(
       '/chat/coach',
       data: {
@@ -241,7 +245,7 @@ class ApiService {
         'w_p': wP,
       },
       options: Options(
-        receiveTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 300), // 5 dakika - LLM ve öneri hesaplama için
         sendTimeout: const Duration(seconds: 30),
       ),
     );

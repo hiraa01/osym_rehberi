@@ -84,9 +84,22 @@ async def get_cities(db: Session = Depends(get_db)):
 
 @router.get("/field-types/", response_model=List[str])
 async def get_field_types(db: Session = Depends(get_db)):
-    """Tüm alan türlerini getir"""
+    """Tüm alan türlerini getir (cached)"""
+    from core.cache import get_cache, set_cache
+    from datetime import timedelta
+    
+    # ✅ Cache'den kontrol et (field types sık değişmez)
+    cache_key = "universities:field-types"
+    cached = get_cache(cache_key, ttl=timedelta(hours=1))
+    if cached is not None:
+        return cached
+    
     field_types = db.query(Department.field_type).distinct().all()
-    return [field_type[0] for field_type in field_types]
+    result = [field_type[0] for field_type in field_types]
+    
+    # Cache'e kaydet
+    set_cache(cache_key, result, ttl=timedelta(hours=1))
+    return result
 
 
 # University endpoints

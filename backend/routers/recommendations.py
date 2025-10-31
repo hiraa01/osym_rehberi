@@ -72,15 +72,32 @@ async def get_student_recommendations(
     total = query.count()
     recommendations = query.offset(skip).limit(limit).all()
     
+    # ✅ N+1 problemini çöz: Tüm department ve university'leri tek seferde çek
+    from models.university import Department, University
+    from schemas.university import DepartmentWithUniversityResponse
+    
+    department_ids = {rec.department_id for rec in recommendations}
+    departments_dict = {
+        dept.id: dept
+        for dept in db.query(Department).filter(Department.id.in_(department_ids)).all()
+    }
+    
+    university_ids = {dept.university_id for dept in departments_dict.values()}
+    universities_dict = {
+        uni.id: uni
+        for uni in db.query(University).filter(University.id.in_(university_ids)).all()
+    }
+    
     # Response formatına çevir
     result = []
     for rec in recommendations:
-        # Department ve University bilgilerini getir
-        from models.university import Department, University
-        from schemas.university import DepartmentWithUniversityResponse
+        department = departments_dict.get(rec.department_id)
+        if not department:
+            continue
         
-        department = db.query(Department).filter(Department.id == rec.department_id).first()
-        university = db.query(University).filter(University.id == department.university_id).first()
+        university = universities_dict.get(department.university_id)
+        if not university:
+            continue
         
         department_response = DepartmentWithUniversityResponse(
             **department.__dict__,

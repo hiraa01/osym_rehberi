@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -473,7 +474,7 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
           final attemptNumber = attempts.length + 1;
           
           // Deneme kaydet
-          await _apiService.createExamAttempt({
+          final response = await _apiService.createExamAttempt({
             'student_id': studentId,
             'attempt_number': attemptNumber,
             'exam_name': _examNameController.text.trim(),  // ✅ Deneme adı eklendi
@@ -481,6 +482,21 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
             'exam_date': DateTime.now().toIso8601String(),
             ...nets,
           });
+          
+          // ✅ Yeni denemeyi cache'e ekle
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            final cachedJson = prefs.getString('exam_attempts_cache');
+            if (cachedJson != null) {
+              final cached = jsonDecode(cachedJson) as List;
+              // Backend'den yeni denemeyi al ve cache'e ekle
+              final newAttempt = response.data as Map<String, dynamic>;
+              cached.add(newAttempt);
+              await prefs.setString('exam_attempts_cache', jsonEncode(cached));
+            }
+          } catch (_) {
+            // Cache güncelleme hatası - önemli değil
+          }
           
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(

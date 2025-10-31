@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme/new_theme.dart';
 import 'features/auth/presentation/pages/auth_check_page.dart';
-import 'features/coach_chat/presentation/coach_chat_fab.dart';
 
 void main() {
   // Error handling ekleyelim
@@ -31,10 +30,7 @@ class OsymRehberiApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: NewTheme.getLightTheme(),
       darkTheme: NewTheme.getDarkTheme(),
-      home: const Scaffold(
-        body: AuthCheckPage(),
-        floatingActionButton: CoachChatFab(),
-      ),
+      home: const AuthCheckPage(),
     );
   }
 }

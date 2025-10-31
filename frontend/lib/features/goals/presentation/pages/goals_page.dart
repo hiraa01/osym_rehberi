@@ -170,6 +170,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: filteredDepartments.length,
+                cacheExtent: 500, // ✅ Render edilmemiş widget'lar için cache
                 itemBuilder: (context, index) {
                   final dept = filteredDepartments[index];
                   return Card(
@@ -239,6 +240,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: filteredUniversities.length,
+                cacheExtent: 500, // ✅ Render edilmemiş widget'lar için cache
                 itemBuilder: (context, index) {
                   final uni = filteredUniversities[index];
                   return Card(

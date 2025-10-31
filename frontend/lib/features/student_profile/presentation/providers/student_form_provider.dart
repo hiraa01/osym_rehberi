@@ -44,7 +44,7 @@ class StudentFormNotifier extends Notifier<StudentFormState> {
   @override
   StudentFormState build() {
     return const StudentFormState(
-      student: const StudentModel(
+      student: StudentModel(
         name: '',
         classLevel: '11',
         examType: 'YKS',
@@ -236,11 +236,43 @@ class StudentFormNotifier extends Notifier<StudentFormState> {
   Future<void> _autosaveNow() async {
     try {
       final current = state.student;
-      final id = current.id;
-      if (id == null) return;
       final api = ref.read(apiServiceProvider);
-      await api.updateStudent(id, current.toJson());
-    } catch (_) {}
+      final prefs = await SharedPreferences.getInstance();
+      
+      // ✅ Eğer student ID yoksa, önce oluştur
+      if (current.id == null) {
+        // user_id'yi kontrol et
+        final userId = prefs.getInt('user_id');
+        if (userId == null) {
+          // User ID yoksa autosave yapma (henüz login olmamış)
+          return;
+        }
+        
+        // Student oluştur
+        try {
+          final studentData = current.toJson();
+          studentData['user_id'] = userId; // user_id ekle
+          
+          final response = await api.createStudent(studentData);
+          final createdId = response.data['id'] as int?;
+          
+          if (createdId != null) {
+            // ID'yi kaydet
+            await prefs.setInt('student_id', createdId);
+            // State'i güncelle
+            state = state.copyWith(student: current.copyWith(id: createdId));
+          }
+        } catch (e) {
+          // Student oluşturma hatası - sessizce geç
+          return;
+        }
+      } else {
+        // ✅ Student ID varsa direkt güncelle
+        await api.updateStudent(current.id!, current.toJson());
+      }
+    } catch (_) {
+      // Hata durumunda sessizce geç (autosave optional)
+    }
   }
 }
 

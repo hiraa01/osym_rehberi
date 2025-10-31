@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/services/api_service.dart';
@@ -22,7 +23,39 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
     _loadAttempts();
   }
 
+  // Yerel cache'den denemeleri yükle
+  Future<void> _loadCachedAttempts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString('exam_attempts_cache');
+      if (cachedJson != null) {
+        final cached = jsonDecode(cachedJson) as List;
+        if (mounted) {
+          setState(() {
+            _attempts = cached;
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading cached attempts: $e');
+    }
+  }
+
+  // Denemeleri yerel cache'e kaydet
+  Future<void> _saveAttemptsToCache(List<dynamic> attempts) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('exam_attempts_cache', jsonEncode(attempts));
+    } catch (e) {
+      debugPrint('Error saving attempts to cache: $e');
+    }
+  }
+
   Future<void> _loadAttempts() async {
+    // Önce yerel cache'den yükle (hızlı görüntüleme için)
+    await _loadCachedAttempts();
+    
     setState(() => _isLoading = true);
     
     try {
@@ -30,17 +63,30 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
       _studentId = prefs.getInt('student_id');
       
       if (_studentId != null) {
+        // Backend'den güncel verileri yükle
         final response = await _apiService.getStudentAttempts(_studentId!);
-        setState(() {
-          _attempts = response.data['attempts'] ?? [];
-          _isLoading = false;
-        });
+        final attempts = response.data['attempts'] ?? [];
+        
+        // Yerel cache'e kaydet
+        await _saveAttemptsToCache(attempts);
+        
+        if (mounted) {
+          setState(() {
+            _attempts = attempts;
+            _isLoading = false;
+          });
+        }
       } else {
-        setState(() => _isLoading = false);
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
       }
     } catch (e) {
-      debugPrint('Error loading attempts: $e');
-      setState(() => _isLoading = false);
+      debugPrint('Error loading attempts from backend: $e');
+      // Backend hatası olsa bile cache'deki veriler gösterildi
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -135,6 +181,7 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _attempts.length,
+      cacheExtent: 500, // ✅ Render edilmemiş widget'lar için cache
       itemBuilder: (context, index) {
         final attempt = _attempts[index];
         return Card(

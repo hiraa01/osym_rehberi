@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from contextlib import asynccontextmanager
 import asyncio
 import os
@@ -105,6 +106,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ✅ Response compression middleware (büyük JSON response'lar için)
+app.add_middleware(GZipMiddleware, minimum_size=1000)  # 1KB'dan büyük response'ları sıkıştır
 
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
