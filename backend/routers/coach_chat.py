@@ -54,14 +54,52 @@ async def coach_chat(payload: ChatRequest, db: Session = Depends(get_db)):
 
         weights = _normalize_weights(payload.w_c, payload.w_s, payload.w_p)
 
-        # Önerileri hazırla (ML tercihiyle)
+        # ✅ Önce mevcut önerileri kontrol et (cache'den)
+        from models.university import Recommendation
+        existing_recs = db.query(Recommendation).filter(
+            Recommendation.student_id == payload.student_id
+        ).order_by(Recommendation.final_score.desc()).limit(payload.limit).all()
+        
         recs: List[Dict[str, Any]] = []
-        if payload.use_ml:
-            ml_engine = MLRecommendationEngine(db)
-            recs = ml_engine.generate_recommendations(student_id=payload.student_id, limit=payload.limit, weights=weights)
+        
+        # Eğer öneriler varsa, cache'den kullan; yoksa yeni oluştur
+        if existing_recs and len(existing_recs) >= payload.limit:
+            api_logger.info("Using cached recommendations for coach chat", user_id=payload.student_id)
+            # Cache'den gelen önerileri dict formatına çevir
+            for rec in existing_recs:
+                rec_dict = {
+                    'final_score': rec.final_score,
+                    'compatibility_score': rec.compatibility_score,
+                    'success_probability': rec.success_probability,
+                    'preference_score': rec.preference_score,
+                    'is_safe_choice': rec.is_safe_choice,
+                    'is_dream_choice': rec.is_dream_choice,
+                    'is_realistic_choice': rec.is_realistic_choice,
+                    'department': rec.department if hasattr(rec, 'department') else None,
+                }
+                recs.append(rec_dict)
         else:
-            rule_engine = RecommendationEngine(db)
-            recs = rule_engine.generate_recommendations(student_id=payload.student_id, limit=payload.limit, weights=weights)
+            # Önerileri hazırla (ML tercihiyle)
+            if payload.use_ml:
+                ml_engine = MLRecommendationEngine(db)
+                recs = ml_engine.generate_recommendations(student_id=payload.student_id, limit=payload.limit, weights=weights)
+            else:
+                rule_engine = RecommendationEngine(db)
+                rule_recs = rule_engine.generate_recommendations(student_id=payload.student_id, limit=payload.limit, weights=weights)
+                # ✅ RecommendationResponse'ları Dict'e çevir
+                recs = []
+                for rec in rule_recs:
+                    rec_dict = {
+                        'final_score': rec.final_score,
+                        'compatibility_score': rec.compatibility_score,
+                        'success_probability': rec.success_probability,
+                        'preference_score': rec.preference_score,
+                        'is_safe_choice': rec.is_safe_choice,
+                        'is_dream_choice': rec.is_dream_choice,
+                        'is_realistic_choice': rec.is_realistic_choice,
+                        'department': rec.department,
+                    }
+                    recs.append(rec_dict)
 
         # Özetlenmiş öneri metni hazırla ve kategorize et
         def summarize_recs(rlist: List[Any]) -> str:

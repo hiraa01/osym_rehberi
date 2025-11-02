@@ -7,7 +7,7 @@ services:
     ports:
       - "8002:8000"
     environment:
-      - DATABASE_URL=sqlite:///./osym_rehber.db
+      - DATABASE_URL=sqlite:////app/data/osym_rehber.db
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO
       - GOOGLE_API_KEY=${AIzaSyAWeAMxuFbtC_vbMeUaKFNKu0SvO9X7njg}

@@ -232,7 +232,7 @@ class ApiService {
     double wS = 0.4,
     double wP = 0.2,
   }) async {
-    // LLM yanıtları çok uzun sürebilir (öneri hesaplama + Gemini API çağrısı)
+    // ✅ LLM yanıtları çok uzun sürebilir - timeout artırıldı ve error handling iyileştirildi
     return await _dio.post(
       '/chat/coach',
       data: {
@@ -245,8 +245,9 @@ class ApiService {
         'w_p': wP,
       },
       options: Options(
-        receiveTimeout: const Duration(seconds: 300), // 5 dakika - LLM ve öneri hesaplama için
-        sendTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 600), // ✅ 10 dakika - Gemini API yavaş olabilir
+        sendTimeout: const Duration(seconds: 60),
+        validateStatus: (status) => status != null && status < 500, // ✅ 4xx hatalarını da handle et
       ),
     );
   }
@@ -287,7 +288,7 @@ class ApiService {
     String? email,
     String? phone,
   }) async {
-    // Login için de uzun timeout
+    // ✅ Login için daha uzun timeout (backend yavaş olabilir)
     return await _dio.post(
       '/auth/login',
       data: {
@@ -295,7 +296,7 @@ class ApiService {
         'phone': phone,
       },
       options: Options(
-        receiveTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 60), // 30s -> 60s
         sendTimeout: const Duration(seconds: 30),
       ),
     );
@@ -303,6 +304,11 @@ class ApiService {
 
   Future<Response> getUserInfo(int userId) async {
     return await _dio.get('/auth/me/$userId');
+  }
+
+  // ✅ Kullanıcının öğrenci profilini getir (user_id'den student_id bulmak için)
+  Future<Response> getUserStudentProfile(int userId) async {
+    return await _dio.get('/auth/student/$userId');
   }
 
 

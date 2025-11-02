@@ -23,18 +23,25 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
     _loadAttempts();
   }
 
-  // Yerel cache'den denemeleri yükle
+  // Yerel cache'den denemeleri yükle (student_id'ye özel)
   Future<void> _loadCachedAttempts() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final cachedJson = prefs.getString('exam_attempts_cache');
-      if (cachedJson != null) {
-        final cached = jsonDecode(cachedJson) as List;
-        if (mounted) {
-          setState(() {
-            _attempts = cached;
-            _isLoading = false;
-          });
+      final studentId = prefs.getInt('student_id');
+      
+      if (studentId != null) {
+        // ✅ Student ID'ye özel cache key
+        final cacheKey = 'exam_attempts_cache_$studentId';
+        final cachedJson = prefs.getString(cacheKey);
+        
+        if (cachedJson != null) {
+          final cached = jsonDecode(cachedJson) as List;
+          if (mounted) {
+            setState(() {
+              _attempts = cached;
+              _isLoading = false;
+            });
+          }
         }
       }
     } catch (e) {
@@ -42,11 +49,17 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
     }
   }
 
-  // Denemeleri yerel cache'e kaydet
+  // Denemeleri yerel cache'e kaydet (student_id'ye özel)
   Future<void> _saveAttemptsToCache(List<dynamic> attempts) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('exam_attempts_cache', jsonEncode(attempts));
+      final studentId = prefs.getInt('student_id');
+      
+      if (studentId != null) {
+        // ✅ Student ID'ye özel cache key
+        final cacheKey = 'exam_attempts_cache_$studentId';
+        await prefs.setString(cacheKey, jsonEncode(attempts));
+      }
     } catch (e) {
       debugPrint('Error saving attempts to cache: $e');
     }

@@ -20,13 +20,57 @@ async def generate_recommendations(
     w_c: float = Query(0.4, ge=0.0, le=1.0, description="Weight for compatibility"),
     w_s: float = Query(0.4, ge=0.0, le=1.0, description="Weight for success probability"),
     w_p: float = Query(0.2, ge=0.0, le=1.0, description="Weight for preference"),
+    force_regenerate: bool = Query(False, description="Force regeneration even if recommendations exist"),
     db: Session = Depends(get_db)
 ):
     """Öğrenci için tercih önerileri oluştur"""
+    api_logger.info("Starting recommendation generation", user_id=student_id, limit=limit)
+    
     # Öğrenci var mı kontrol et
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
         raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
+    
+    # ✅ Cache kontrolü: Eğer öneriler varsa ve force_regenerate=False ise, mevcut önerileri döndür
+    if not force_regenerate:
+        existing_recs = db.query(Recommendation).filter(
+            Recommendation.student_id == student_id
+        ).order_by(Recommendation.final_score.desc()).limit(limit).all()
+        
+        if existing_recs and len(existing_recs) >= limit:
+            api_logger.info("Returning cached recommendations", user_id=student_id, count=len(existing_recs))
+            # Mevcut önerileri formatla ve döndür
+            from models.university import Department, University
+            from schemas.university import DepartmentWithUniversityResponse
+            
+            department_ids = {rec.department_id for rec in existing_recs}
+            departments_dict = {
+                dept.id: dept
+                for dept in db.query(Department).filter(Department.id.in_(department_ids)).all()
+            }
+            university_ids = {dept.university_id for dept in departments_dict.values()}
+            universities_dict = {
+                uni.id: uni
+                for uni in db.query(University).filter(University.id.in_(university_ids)).all()
+            }
+            
+            result = []
+            for rec in existing_recs:
+                department = departments_dict.get(rec.department_id)
+                if not department:
+                    continue
+                university = universities_dict.get(department.university_id)
+                if not university:
+                    continue
+                department_response = DepartmentWithUniversityResponse(
+                    **department.__dict__,
+                    university=university
+                )
+                result.append(RecommendationResponse(
+                    **rec.__dict__,
+                    department=department_response
+                ))
+            return result
     
     # ✅ Önce eski önerileri temizle (yeniden hesaplama için)
     db.query(Recommendation).filter(Recommendation.student_id == student_id).delete()
@@ -38,6 +82,8 @@ async def generate_recommendations(
     total_w = max(1e-9, (w_c + w_s + w_p))
     weights = (w_c / total_w, w_s / total_w, w_p / total_w)
     recommendations = recommendation_engine.generate_recommendations(student_id, limit, weights)
+    
+    api_logger.info("Recommendations generated successfully", user_id=student_id, count=len(recommendations))
     
     return recommendations
 

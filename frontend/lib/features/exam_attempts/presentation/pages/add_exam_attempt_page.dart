@@ -483,16 +483,22 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
             ...nets,
           });
           
-          // ✅ Yeni denemeyi cache'e ekle
+          // ✅ Yeni denemeyi cache'e ekle (student_id'ye özel)
           try {
             final prefs = await SharedPreferences.getInstance();
-            final cachedJson = prefs.getString('exam_attempts_cache');
+            final cacheKey = 'exam_attempts_cache_$studentId';
+            final cachedJson = prefs.getString(cacheKey);
+            
             if (cachedJson != null) {
               final cached = jsonDecode(cachedJson) as List;
               // Backend'den yeni denemeyi al ve cache'e ekle
               final newAttempt = response.data as Map<String, dynamic>;
               cached.add(newAttempt);
-              await prefs.setString('exam_attempts_cache', jsonEncode(cached));
+              await prefs.setString(cacheKey, jsonEncode(cached));
+            } else {
+              // Cache yoksa, yeni denemeyi tek başına kaydet
+              final newAttempt = response.data as Map<String, dynamic>;
+              await prefs.setString(cacheKey, jsonEncode([newAttempt]));
             }
           } catch (_) {
             // Cache güncelleme hatası - önemli değil

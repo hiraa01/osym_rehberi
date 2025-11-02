@@ -75,16 +75,23 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  // Önce cache'den yükle (hızlı görüntüleme)
+  // Önce cache'den yükle (hızlı görüntüleme, student_id'ye özel)
   Future<void> _loadFromCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final cachedJson = prefs.getString('exam_attempts_cache');
-      if (cachedJson != null) {
-        final cached = jsonDecode(cachedJson) as List;
-        _calculateDashboardFromAttempts(cached);
-        if (mounted) {
-          setState(() => _isLoading = false);
+      final studentId = prefs.getInt('student_id');
+      
+      if (studentId != null) {
+        // ✅ Student ID'ye özel cache key
+        final cacheKey = 'exam_attempts_cache_$studentId';
+        final cachedJson = prefs.getString(cacheKey);
+        
+        if (cachedJson != null) {
+          final cached = jsonDecode(cachedJson) as List;
+          _calculateDashboardFromAttempts(cached);
+          if (mounted) {
+            setState(() => _isLoading = false);
+          }
         }
       }
     } catch (e) {

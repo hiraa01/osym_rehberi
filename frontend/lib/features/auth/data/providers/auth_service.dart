@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/services/api_service.dart';
@@ -56,6 +57,9 @@ class AuthService {
       // Güncel bilgileri kaydet
       _currentUser = updatedUser;
       await _saveUserToLocal(updatedUser);
+      
+      // ✅ SYNC SONRASI: Student ID'yi de kontrol et ve güncelle
+      await _loadAndSaveStudentId(userId);
     } catch (e) {
       // Sync hatası - offline mode devam
       throw Exception('Backend sync failed: $e');
@@ -91,6 +95,9 @@ class AuthService {
       _currentUser = authResponse.user;
       _authToken = authResponse.token;
 
+      // ✅ REGISTER SONRASI: Student ID'yi bul ve kaydet (varsa)
+      await _loadAndSaveStudentId(authResponse.user.id);
+
       return authResponse.user;
     } catch (e) {
       rethrow;
@@ -115,9 +122,48 @@ class AuthService {
       _currentUser = authResponse.user;
       _authToken = authResponse.token;
 
+      // ✅ LOGIN SONRASI: Student ID'yi bul ve kaydet
+      await _loadAndSaveStudentId(authResponse.user.id);
+
       return authResponse.user;
     } catch (e) {
       rethrow;
+    }
+  }
+
+  // ✅ User ID'den Student ID'yi bul ve kaydet
+  Future<void> _loadAndSaveStudentId(int userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Önce cache'den kontrol et
+      final cachedStudentId = prefs.getInt('student_id');
+      if (cachedStudentId != null) {
+        // Cache'de varsa, backend'den doğrula
+        try {
+          final studentResponse = await _apiService.getStudent(cachedStudentId);
+          // Student bulundu, geçerli
+          return;
+        } catch (_) {
+          // Cache'deki student_id geçersiz, sil ve yeniden bul
+          await prefs.remove('student_id');
+        }
+      }
+      
+      // Backend'den student profilini getir
+      final response = await _apiService.getUserStudentProfile(userId);
+      final studentData = response.data['student'];
+      
+      if (studentData != null && studentData['id'] != null) {
+        // Student ID'yi kaydet
+        await prefs.setInt('student_id', studentData['id'] as int);
+        debugPrint('✅ Student ID loaded and saved: ${studentData['id']}');
+      } else {
+        debugPrint('⚠️ No student profile found for user $userId');
+      }
+    } catch (e) {
+      // Student bulunamadı - normal (henüz profil oluşturulmamış olabilir)
+      debugPrint('ℹ️ Could not load student ID for user $userId: $e');
     }
   }
 
