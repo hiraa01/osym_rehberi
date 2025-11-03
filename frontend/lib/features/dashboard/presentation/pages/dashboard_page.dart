@@ -7,6 +7,7 @@ import '../../../auth/data/providers/auth_service.dart';
 import '../../../exam_attempts/presentation/pages/add_exam_attempt_page.dart';
 import '../../../recommendations/presentation/pages/recommendations_page.dart';
 import '../../../goals/presentation/pages/goals_page.dart';
+import '../../../preferences/presentation/pages/my_preferences_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -24,6 +25,7 @@ class _DashboardPageState extends State<DashboardPage> {
   double _aytAverage = 0.0; // Son 4 AYT ortalaması
   final double _targetTotalNet = 100.0; // Hedef toplam net (TYT+AYT)
   double _progressPercent = 0.0; // Hedefe yakınlık yüzdesi
+  List<dynamic> _recommendations = []; // Tercih önerileri
 
   @override
   void initState() {
@@ -116,6 +118,18 @@ class _DashboardPageState extends State<DashboardPage> {
         
         // Dashboard'u hesapla
         _calculateDashboardFromAttempts(attempts);
+        
+        // Tercih önerilerini yükle
+        try {
+          final recommendationsResponse = await _apiService.generateRecommendations(
+            studentId,
+            limit: 5, // İlk 5 öneri
+          );
+          _recommendations = recommendationsResponse.data as List;
+        } catch (e) {
+          debugPrint('Error loading recommendations: $e');
+          _recommendations = [];
+        }
       }
     } catch (e) {
       debugPrint('Dashboard error: $e');
@@ -268,6 +282,241 @@ class _DashboardPageState extends State<DashboardPage> {
                     ),
               const SizedBox(height: 24),
 
+              // ✅ Tercihlerim Bölümü (Son Performansın altında)
+              Card(
+                elevation: 1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const MyPreferencesPage(),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.favorite_outline,
+                            color: Colors.red,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Tercihlerim',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Beğendiğiniz ve geçtiğiniz üniversiteleri görüntüleyin',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          size: 16,
+                          color: Colors.grey[400],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // ✅ Tercih Önerileri Bölümü (Son Performansın altında)
+              if (!_isLoading && _recommendations.isNotEmpty) ...[
+                const Text(
+                  'Tercih Önerilerim',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Size özel tercih önerileri',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 200,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _recommendations.length > 5 ? 5 : _recommendations.length,
+                    itemBuilder: (context, index) {
+                      final rec = _recommendations[index];
+                      final dept = rec['department'] ?? {};
+                      final uni = dept['university'] ?? {};
+                      return Container(
+                        width: 280,
+                        margin: const EdgeInsets.only(right: 12),
+                        child: Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const RecommendationsPage(),
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          dept['name'] ?? 'Bilinmeyen Bölüm',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          '${(rec['final_score'] ?? 0.0).toStringAsFixed(0)}',
+                                          style: const TextStyle(
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    uni['name'] ?? 'Bilinmeyen Üniversite',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[700],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${uni['city'] ?? 'Belirtilmemiş'} • ${dept['field_type'] ?? 'N/A'}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Row(
+                                    children: [
+                                      if (rec['is_safe_choice'] == true)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: const Text(
+                                            'Güvenli',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.blue,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      if (rec['is_safe_choice'] == true &&
+                                          rec['is_dream_choice'] == true)
+                                        const SizedBox(width: 4),
+                                      if (rec['is_dream_choice'] == true)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.purple.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: const Text(
+                                            'Hayal',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.purple,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const RecommendationsPage(),
+                      ),
+                    );
+                  },
+                  child: const Text('Tüm Önerileri Gör'),
+                ),
+                const SizedBox(height: 24),
+              ],
+
               // Hızlı Aksiyonlar
               const Text(
                 'Hızlı İşlemler',
@@ -320,6 +569,21 @@ class _DashboardPageState extends State<DashboardPage> {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => const GoalsPage(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildQuickActionCard(
+                context,
+                'Tercihlerim',
+                'Beğendiğiniz ve geçtiğiniz üniversiteleri görüntüleyin',
+                Icons.favorite_outline,
+                Colors.red,
+                () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MyPreferencesPage(),
                     ),
                   );
                 },

@@ -40,6 +40,8 @@ Thumbs.db
 # Docker
 *.log
 docker/volumes/
+docker/.env
+.env
 
 # Cursor Rules (hidden from git)
 .cursor

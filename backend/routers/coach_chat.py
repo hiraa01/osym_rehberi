@@ -179,7 +179,45 @@ async def coach_chat(payload: ChatRequest, db: Session = Depends(get_db)):
         if not api_key:
             raise HTTPException(status_code=500, detail="LLM API anahtarı tanımlı değil (GOOGLE_API_KEY)")
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        
+        # ✅ Önce mevcut modelleri listeleyelim
+        try:
+            available_models = list(genai.list_models())
+            generate_models = [
+                m.name for m in available_models 
+                if 'generateContent' in m.supported_generation_methods
+            ]
+            api_logger.info(f"Available Gemini models: {generate_models[:5]}", user_id=payload.student_id)
+            
+            # Mevcut modellerden en uygun olanları seç
+            model_names = []
+            for preferred in ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro", "gemini-1.0-pro"]:
+                # Model ismi tam eşleşme veya içerme kontrolü
+                matching = [m for m in generate_models if preferred in m.lower() or preferred.replace("-", "_") in m.lower()]
+                if matching:
+                    model_names.extend(matching[:1])  # İlk eşleşeni al
+            
+            # Eğer hiçbir model bulunamadıysa, generate_models'ten ilk 3'ünü al
+            if not model_names and generate_models:
+                model_names = generate_models[:3]
+            
+        except Exception as list_error:
+            api_logger.warning(f"Could not list models: {str(list_error)[:50]}", user_id=payload.student_id)
+            # Fallback: Standart model isimlerini dene
+            model_names = [
+                "gemini-1.5-flash",
+                "gemini-1.5-pro", 
+                "gemini-pro",
+                "gemini-1.0-pro",
+                "models/gemini-1.5-flash",
+                "models/gemini-1.5-pro",
+            ]
+        
+        if not model_names:
+            raise HTTPException(
+                status_code=500,
+                detail="Kullanılabilir Gemini modeli bulunamadı. API anahtarınızı kontrol edin."
+            )
 
         # Persona ve sistem yönlendirmesi
         system_prompt = (
@@ -211,8 +249,43 @@ async def coach_chat(payload: ChatRequest, db: Session = Depends(get_db)):
             f"İstenilenler: 1) Kısa ama net yanıt, 2) Haftalık/aylık plan, 3) Psikolojik destek önerileri, 4) Somut aksiyonlar."
         )
 
-        completion = model.generate_content(prompt)
-        reply = completion.text or ""  # type: ignore
+        # ✅ Model deneme ve timeout handling
+        import asyncio
+        reply = None
+        last_error = None
+        
+        for model_name in model_names:
+            try:
+                api_logger.info(f"Trying Gemini model: {model_name}", user_id=payload.student_id)
+                model = genai.GenerativeModel(model_name)
+                
+                # generate_content çağrısını dene
+                completion = await asyncio.wait_for(
+                    asyncio.to_thread(model.generate_content, prompt),
+                    timeout=120.0  # 2 dakika timeout
+                )
+                reply = completion.text or ""  # type: ignore
+                api_logger.info(f"Successfully used model: {model_name}", user_id=payload.student_id)
+                break  # Başarılı oldu, döngüden çık
+                
+            except asyncio.TimeoutError:
+                api_logger.warning(f"Model {model_name} timeout", user_id=payload.student_id)
+                last_error = "LLM yanıtı çok uzun sürdü"
+                continue  # Bir sonraki modeli dene
+                
+            except Exception as model_error:
+                error_str = str(model_error)
+                api_logger.warning(f"Model {model_name} failed: {error_str[:100]}", user_id=payload.student_id)
+                last_error = error_str
+                continue  # Bir sonraki modeli dene
+        
+        if reply is None:
+            # Hiçbir model çalışmadı
+            api_logger.error("All Gemini models failed", user_id=payload.student_id, last_error=last_error)
+            raise HTTPException(
+                status_code=500,
+                detail=f"AI servisinde hata: Tüm modeller denenmiş ama başarısız oldu. Lütfen API anahtarınızı kontrol edin."
+            )
 
         return ChatResponse(reply=reply.strip(), used_weights=weights, used_ml=payload.use_ml)
 

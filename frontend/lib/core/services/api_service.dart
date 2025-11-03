@@ -244,11 +244,11 @@ class ApiService {
         'w_s': wS,
         'w_p': wP,
       },
-      options: Options(
-        receiveTimeout: const Duration(seconds: 600), // ✅ 10 dakika - Gemini API yavaş olabilir
-        sendTimeout: const Duration(seconds: 60),
-        validateStatus: (status) => status != null && status < 500, // ✅ 4xx hatalarını da handle et
-      ),
+          options: Options(
+            receiveTimeout: const Duration(seconds: 150), // ✅ 2.5 dakika - makul timeout
+            sendTimeout: const Duration(seconds: 60),
+            validateStatus: (status) => status != null && status < 500, // ✅ 4xx hatalarını da handle et
+          ),
     );
   }
 
