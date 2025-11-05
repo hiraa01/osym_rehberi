@@ -1,13 +1,12 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/university_model.dart';
 import '../../../../core/utils/responsive_utils.dart';
+import '../../data/providers/university_api_provider.dart';
 import '../widgets/university_card.dart';
 import '../widgets/university_filter_bottom_sheet.dart';
 
-@RoutePage()
 class UniversityListPage extends ConsumerStatefulWidget {
   const UniversityListPage({super.key});
 
@@ -18,6 +17,7 @@ class UniversityListPage extends ConsumerStatefulWidget {
 class _UniversityListPageState extends ConsumerState<UniversityListPage> {
   String _selectedCity = 'Tümü';
   String _selectedType = 'Tümü';
+  String _searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +57,9 @@ class _UniversityListPageState extends ConsumerState<UniversityListPage> {
                     ),
                   ),
                   onChanged: (value) {
-                    // TODO: Implement search functionality
+                    setState(() {
+                      _searchQuery = value;
+                    });
                   },
                 ),
               ),
@@ -103,22 +105,131 @@ class _UniversityListPageState extends ConsumerState<UniversityListPage> {
   }
 
   Widget _buildUniversityList(BuildContext context) {
-    // TODO: Replace with actual data from API
-    final universities = _getMockUniversities();
+    // Gerçek API verilerini kullan
+    final universitiesAsync = ref.watch(filteredUniversityListProvider(
+      UniversityFilterParams(
+        city: _selectedCity == 'Tümü' ? null : _selectedCity,
+        type: _selectedType == 'Tümü' ? null : _selectedType,
+        searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
+      ),
+    ));
     
-    if (universities.isEmpty) {
-      return Center(
+    return universitiesAsync.when(
+      data: (universities) {
+        if (universities.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.school_outlined,
+                  size: ResponsiveUtils.getResponsiveIconSize(context, 64),
+                  color: Colors.grey,
+                ),
+                SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+                Text(
+                  'Üniversite bulunamadı',
+                  style: TextStyle(
+                    fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+                Text(
+                  'Filtreleri değiştirerek tekrar deneyin',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ResponsiveBuilder(
+          builder: (context, deviceType) {
+            if (deviceType == DeviceType.mobile) {
+              // Mobile: List view
+              return ListView.builder(
+                padding: ResponsiveUtils.getResponsivePadding(context),
+                itemCount: universities.length,
+                cacheExtent: 500,
+                itemBuilder: (context, index) {
+                  final universityData = universities[index];
+                  final university = UniversityModel.fromJson(universityData);
+                  return UniversityCard(
+                    university: university,
+                    onTap: () {
+                      // TODO: Navigate to university detail
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('${university.name} detayı henüz hazır değil'),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            } else {
+              // Tablet/Desktop: Grid view
+              return GridView.builder(
+                padding: ResponsiveUtils.getResponsivePadding(context),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: ResponsiveUtils.getGridColumns(context),
+                  crossAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+                  mainAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
+                  childAspectRatio: 1.2,
+                ),
+                itemCount: universities.length,
+                itemBuilder: (context, index) {
+                  final universityData = universities[index];
+                  final university = UniversityModel.fromJson(universityData);
+                  return UniversityCard(
+                    university: university,
+                    onTap: () {
+                      // TODO: Navigate to university detail
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('${university.name} detayı henüz hazır değil'),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            }
+          },
+        );
+      },
+      loading: () => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+            Text(
+              'Üniversiteler yükleniyor...',
+              style: TextStyle(
+                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+      error: (error, stack) => Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.school_outlined,
+              Icons.error_outline,
               size: ResponsiveUtils.getResponsiveIconSize(context, 64),
-              color: Colors.grey,
+              color: Colors.red,
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
             Text(
-              'Üniversite bulunamadı',
+              'Üniversiteler yüklenirken hata oluştu',
               style: TextStyle(
                 fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
                 fontWeight: FontWeight.w500,
@@ -126,68 +237,16 @@ class _UniversityListPageState extends ConsumerState<UniversityListPage> {
             ),
             SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
             Text(
-              'Filtreleri değiştirerek tekrar deneyin',
+              error.toString(),
               style: TextStyle(
                 color: Colors.grey,
                 fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
-      );
-    }
-
-    return ResponsiveBuilder(
-      builder: (context, deviceType) {
-        if (deviceType == DeviceType.mobile) {
-          // Mobile: List view
-          return ListView.builder(
-            padding: ResponsiveUtils.getResponsivePadding(context),
-            itemCount: universities.length,
-            cacheExtent: 500, // ✅ Render edilmemiş widget'lar için cache
-            itemBuilder: (context, index) {
-              final university = universities[index];
-              return UniversityCard(
-                university: university,
-                onTap: () {
-                  // TODO: Navigate to university detail
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${university.name} detayı henüz hazır değil'),
-                    ),
-                  );
-                },
-              );
-            },
-          );
-        } else {
-          // Tablet/Desktop: Grid view
-          return GridView.builder(
-            padding: ResponsiveUtils.getResponsivePadding(context),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: ResponsiveUtils.getGridColumns(context),
-              crossAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
-              mainAxisSpacing: ResponsiveUtils.getResponsiveSpacing(context, 16),
-              childAspectRatio: 1.2,
-            ),
-            itemCount: universities.length,
-            itemBuilder: (context, index) {
-              final university = universities[index];
-              return UniversityCard(
-                university: university,
-                onTap: () {
-                  // TODO: Navigate to university detail
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${university.name} detayı henüz hazır değil'),
-                    ),
-                  );
-                },
-              );
-            },
-          );
-        }
-      },
+      ),
     );
   }
 
@@ -211,54 +270,4 @@ class _UniversityListPageState extends ConsumerState<UniversityListPage> {
     );
   }
 
-  List<UniversityModel> _getMockUniversities() {
-    final mockData = [
-      {
-        'id': 1,
-        'name': 'İstanbul Teknik Üniversitesi',
-        'city': 'İstanbul',
-        'university_type': 'Devlet',
-        'website': 'https://www.itu.edu.tr',
-        'logo_url': '',
-        'description': 'Türkiye\'nin en köklü teknik üniversitesi',
-      },
-      {
-        'id': 2,
-        'name': 'Boğaziçi Üniversitesi',
-        'city': 'İstanbul',
-        'university_type': 'Devlet',
-        'website': 'https://www.boun.edu.tr',
-        'logo_url': '',
-        'description': 'Türkiye\'nin en prestijli üniversitelerinden biri',
-      },
-      {
-        'id': 3,
-        'name': 'Orta Doğu Teknik Üniversitesi',
-        'city': 'Ankara',
-        'university_type': 'Devlet',
-        'website': 'https://www.metu.edu.tr',
-        'logo_url': '',
-        'description': 'Türkiye\'nin önde gelen teknik üniversitesi',
-      },
-      {
-        'id': 4,
-        'name': 'Koç Üniversitesi',
-        'city': 'İstanbul',
-        'university_type': 'Vakıf',
-        'website': 'https://www.ku.edu.tr',
-        'logo_url': '',
-        'description': 'Türkiye\'nin önde gelen vakıf üniversitesi',
-      },
-      {
-        'id': 5,
-        'name': 'Sabancı Üniversitesi',
-        'city': 'İstanbul',
-        'university_type': 'Vakıf',
-        'website': 'https://www.sabanciuniv.edu',
-        'logo_url': '',
-        'description': 'İnovatif eğitim anlayışı ile öne çıkan üniversite',
-      },
-    ];
-    return mockData.map((json) => UniversityModel.fromJson(json)).toList();
-  }
 }

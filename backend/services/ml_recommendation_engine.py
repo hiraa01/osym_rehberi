@@ -5,12 +5,13 @@ Bu modül, geçmiş verilerle eğitilmiş modeller kullanarak daha akıllı öne
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from typing import List, Dict, Any, Tuple, Optional
 import joblib
 import os
+import json
 from sqlalchemy.orm import Session
 from models.student import Student
 from models.university import Department, Recommendation, University
@@ -89,11 +90,8 @@ class MLRecommendationEngine:
             recommendations = []
             
             for department in departments:
-                # Bölüm özelliklerini hazırla
-                dept_features = self._prepare_department_features(department)
-                
-                # Özellikleri birleştir
-                combined_features = np.concatenate([student_features, dept_features])
+                # Gelişmiş özellik hazırlama (interaksiyon özellikleri dahil)
+                combined_features = self._prepare_combined_features(student, department)
                 combined_features = combined_features.reshape(1, -1)
                 
                 # Skorları tahmin et
@@ -136,29 +134,66 @@ class MLRecommendationEngine:
             return self._fallback_recommendations(student_id, limit)
     
     def _prepare_features(self, df: pd.DataFrame) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
-        """Eğitim verilerini hazırla"""
-        # Öğrenci özellikleri
+        """Eğitim verilerini hazırla - gelişmiş feature engineering"""
+        # Öğrenci özellikleri (temel)
         student_features = [
             'total_score', 'rank', 'percentile', 'tyt_total_score', 'ayt_total_score',
             'field_type_encoded', 'exam_type_encoded', 'class_level_encoded'
         ]
         
-        # Bölüm özellikleri
+        # Bölüm özellikleri (temel)
         dept_features = [
             'min_score', 'min_rank', 'quota', 'tuition_fee', 'has_scholarship',
             'university_type_encoded', 'city_encoded'
         ]
         
+        # İnteraksiyon özellikleri (derived features)
+        df['score_diff'] = df['total_score'] - df['min_score']
+        df['rank_diff'] = df['min_rank'] - df['rank']  # Pozitif = daha iyi
+        df['score_ratio'] = df['total_score'] / (df['min_score'] + 1e-6)
+        df['rank_ratio'] = df['rank'] / (df['min_rank'] + 1e-6)
+        df['percentile_diff'] = df['percentile'] - (100 - (df['min_rank'] / 1000))
+        
+        # Öğrenci güçlü alanları (net skorları)
+        if 'tyt_math_net' in df.columns:
+            df['math_strength'] = df['tyt_math_net'] + df.get('ayt_math_net', 0)
+        else:
+            df['math_strength'] = df['tyt_total_score'] * 0.3
+        
+        # Bölüm popülerliği (kontenjan/sıralama oranı)
+        df['department_competitiveness'] = df['min_rank'] / (df['quota'] + 1)
+        
+        # Tercih özellikleri (eğer varsa)
+        if 'preferred_cities_match' not in df.columns:
+            df['preferred_cities_match'] = 0
+        if 'preferred_types_match' not in df.columns:
+            df['preferred_types_match'] = 0
+        if 'scholarship_match' not in df.columns:
+            df['scholarship_match'] = 0
+        
+        # İnteraksiyon özellikleri listesi
+        interaction_features = [
+            'score_diff', 'rank_diff', 'score_ratio', 'rank_ratio', 
+            'percentile_diff', 'math_strength', 'department_competitiveness',
+            'preferred_cities_match', 'preferred_types_match', 'scholarship_match'
+        ]
+        
+        # Tüm özellikleri birleştir
+        all_features = student_features + dept_features + interaction_features
+        # Sadece mevcut kolonları kullan
+        available_features = [f for f in all_features if f in df.columns]
+        
         # Hedef değişkenler
         targets = ['compatibility', 'success_probability', 'preference']
         
-        X = df[student_features + dept_features].values
+        X = df[available_features].values
         y = {target: df[target].values for target in targets}
         
         return X, y
     
     def _prepare_student_features(self, student: Student) -> np.ndarray:
-        """Öğrenci özelliklerini hazırla"""
+        """Öğrenci özelliklerini hazırla - gelişmiş"""
+        # Temel özellikler
         features = [
             student.total_score or 0,
             student.rank or 0,
@@ -189,8 +224,60 @@ class MLRecommendationEngine:
         ]
         return np.array(features)
     
+    def _prepare_combined_features(self, student: Student, department: Department) -> np.ndarray:
+        """Öğrenci ve bölüm özelliklerini birleştir ve interaksiyon özellikleri ekle"""
+        student_features = self._prepare_student_features(student)
+        dept_features = self._prepare_department_features(department)
+        
+        # İnteraksiyon özellikleri
+        score_diff = (student.total_score or 0) - (department.min_score or 0)
+        rank_diff = (department.min_rank or 0) - (student.rank or 0)
+        score_ratio = (student.total_score or 0) / ((department.min_score or 0) + 1e-6)
+        rank_ratio = (student.rank or 0) / ((department.min_rank or 0) + 1e-6)
+        percentile_diff = (student.percentile or 0) - (100 - ((department.min_rank or 0) / 1000))
+        
+        # Öğrenci güçlü alanları
+        math_strength = (student.tyt_math_net or 0) + (getattr(student, 'ayt_math_net', None) or 0)
+        
+        # Bölüm rekabeti
+        competitiveness = (department.min_rank or 0) / ((department.quota or 1) + 1)
+        
+        # Tercih eşleşmeleri
+        preferred_cities_match = 0
+        if student.preferred_cities:
+            try:
+                preferred_cities = json.loads(student.preferred_cities)
+                university = self.db.query(University).filter(University.id == department.university_id).first()
+                if university and university.city in preferred_cities:
+                    preferred_cities_match = 1
+            except:
+                pass
+        
+        preferred_types_match = 0
+        if student.preferred_university_types:
+            try:
+                preferred_types = json.loads(student.preferred_university_types)
+                university = self.db.query(University).filter(University.id == department.university_id).first()
+                if university and university.university_type in preferred_types:
+                    preferred_types_match = 1
+            except:
+                pass
+        
+        scholarship_match = 1 if (student.scholarship_preference and department.has_scholarship) else 0
+        
+        # İnteraksiyon özellikleri
+        interaction_features = np.array([
+            score_diff, rank_diff, score_ratio, rank_ratio, percentile_diff,
+            math_strength, competitiveness, preferred_cities_match, 
+            preferred_types_match, scholarship_match
+        ])
+        
+        # Tüm özellikleri birleştir
+        combined = np.concatenate([student_features, dept_features, interaction_features])
+        return combined
+    
     def _train_compatibility_model(self, X: np.ndarray, y: np.ndarray):
-        """Uyumluluk modelini eğit"""
+        """Uyumluluk modelini eğit - Gradient Boosting ile iyileştirilmiş"""
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         
         # Özellikleri ölçeklendir
@@ -198,8 +285,15 @@ class MLRecommendationEngine:
         X_train_scaled = scaler.fit_transform(X_train)
         X_test_scaled = scaler.transform(X_test)
         
-        # Modeli eğit
-        model = RandomForestRegressor(n_estimators=100, random_state=42)
+        # Gradient Boosting Regressor (daha güçlü model)
+        model = GradientBoostingRegressor(
+            n_estimators=200,
+            max_depth=6,
+            learning_rate=0.05,
+            subsample=0.8,
+            random_state=42,
+            loss='squared_error'
+        )
         model.fit(X_train_scaled, y_train)
         
         # Modeli kaydet
@@ -207,42 +301,61 @@ class MLRecommendationEngine:
         self.scalers['compatibility'] = scaler
         
         # Performansı logla
-        score = model.score(X_test_scaled, y_test)
-        recommendation_logger.info("Compatibility model trained", score=score)
+        train_score = model.score(X_train_scaled, y_train)
+        test_score = model.score(X_test_scaled, y_test)
+        recommendation_logger.info("Compatibility model trained", train_score=train_score, test_score=test_score)
     
     def _train_success_model(self, X: np.ndarray, y: np.ndarray):
-        """Başarı olasılığı modelini eğit"""
+        """Başarı olasılığı modelini eğit - Gradient Boosting ile iyileştirilmiş"""
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
         X_test_scaled = scaler.transform(X_test)
         
-        model = RandomForestRegressor(n_estimators=100, random_state=42)
+        # Gradient Boosting (başarı olasılığı için daha önemli)
+        model = GradientBoostingRegressor(
+            n_estimators=250,
+            max_depth=7,
+            learning_rate=0.04,
+            subsample=0.85,
+            random_state=42,
+            loss='squared_error'
+        )
         model.fit(X_train_scaled, y_train)
         
         self.models['success'] = model
         self.scalers['success'] = scaler
         
-        score = model.score(X_test_scaled, y_test)
-        recommendation_logger.info("Success model trained", score=score)
+        train_score = model.score(X_train_scaled, y_train)
+        test_score = model.score(X_test_scaled, y_test)
+        recommendation_logger.info("Success model trained", train_score=train_score, test_score=test_score)
     
     def _train_preference_model(self, X: np.ndarray, y: np.ndarray):
-        """Tercih modelini eğit"""
+        """Tercih modelini eğit - Gradient Boosting ile iyileştirilmiş"""
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
         X_test_scaled = scaler.transform(X_test)
         
-        model = RandomForestRegressor(n_estimators=100, random_state=42)
+        # Gradient Boosting (tercih skorları için)
+        model = GradientBoostingRegressor(
+            n_estimators=200,
+            max_depth=5,
+            learning_rate=0.05,
+            subsample=0.8,
+            random_state=42,
+            loss='squared_error'
+        )
         model.fit(X_train_scaled, y_train)
         
         self.models['preference'] = model
         self.scalers['preference'] = scaler
         
-        score = model.score(X_test_scaled, y_test)
-        recommendation_logger.info("Preference model trained", score=score)
+        train_score = model.score(X_train_scaled, y_train)
+        test_score = model.score(X_test_scaled, y_test)
+        recommendation_logger.info("Preference model trained", train_score=train_score, test_score=test_score)
     
     def _predict_compatibility(self, features: np.ndarray) -> float:
         """Uyumluluk skorunu tahmin et"""
@@ -295,7 +408,19 @@ class MLRecommendationEngine:
         """ML modelleri yoksa kural tabanlı sisteme geri dön"""
         from services.recommendation_engine import RecommendationEngine
         rule_engine = RecommendationEngine(self.db)
-        return rule_engine.generate_recommendations(student_id, limit)
+        recommendations = rule_engine.generate_recommendations(student_id, limit)
+        # Convert Pydantic models to dicts
+        result = []
+        for rec in recommendations:
+            rec_dict = rec.model_dump() if hasattr(rec, 'model_dump') else rec.dict()
+            # Ensure department is accessible as ORM object if needed
+            if 'department' not in rec_dict or isinstance(rec_dict['department'], dict):
+                # Get department ORM object
+                dept = self.db.query(Department).filter(Department.id == rec.department_id).first()
+                if dept:
+                    rec_dict['department'] = dept
+            result.append(rec_dict)
+        return result
     
     def _save_models(self):
         """Modelleri kaydet"""
