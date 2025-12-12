@@ -90,17 +90,24 @@ Backend şu adreste çalışacak: http://localhost:8002
 ```bash
 cd frontend
 
-# Docker ile Flutter paketlerini yükle
-docker run --rm -v ${PWD}:/app -w /app cirrusci/flutter:stable flutter pub get
+# Önce Docker image'ını build edin (Flutter 3.24.3 ile)
+docker build -t osym-frontend:latest .
 
-# Kod üretimi (router, freezed, json_serializable)
-docker run --rm -v ${PWD}:/app -w /app cirrusci/flutter:stable flutter pub run build_runner build --delete-conflicting-outputs
+# Docker ile Flutter paketlerini yükle
+docker run --rm -v ${PWD}:/app -w /app osym-frontend:latest flutter pub get
+
+# Kod üretimi (router, freezed, json_serializable) - gerekirse
+docker run --rm -v ${PWD}:/app -w /app osym-frontend:latest flutter pub run build_runner build --delete-conflicting-outputs
 
 # Android için çalıştır
-docker run --rm -v ${PWD}:/app -w /app -p 5555:5555 cirrusci/flutter:stable flutter run
+docker run --rm -v ${PWD}:/app -w /app -p 5555:5555 osym-frontend:latest flutter run
 
 # Web için çalıştır
-docker run --rm -v ${PWD}:/app -w /app -p 8080:8080 cirrusci/flutter:stable flutter run -d web-server --web-port=8080 --web-hostname=0.0.0.0
+docker run --rm -v ${PWD}:/app -w /app -p 8080:8080 osym-frontend:latest flutter run -d web-server --web-port=8080 --web-hostname=0.0.0.0
+
+# Veya docker-compose kullanarak (önerilen)
+cd ../docker
+docker-compose up frontend
 ```
 
 ## 📝 Eksik Kod Üretimleri

@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   // Tinder-style colors (from Figma)
-  static const Color primaryPink = Color(0xFFFD5068);  // Tinder red
+  static const Color primaryPink = Color(0xFFFD5068); // Tinder red
   static const Color primaryYellow = Color(0xFFFDCE50); // Tinder yellow
-  static const Color primaryBlue = Color(0xFF00B6F1);   // Tinder blue
+  static const Color primaryBlue = Color(0xFF00B6F1); // Tinder blue
   static const Color darkBackground = Color(0xFF1A1A1A); // Dark mode bg
   static const Color lightBackground = Color(0xFFFAFAFA); // Light mode bg
-  
+
   // Ana renkler
   static const Color seaGreen = Color(0xFF2E8B57);
   static const Color lightSeaGreen = Color(0xFF3CB371);
   static const Color darkSeaGreen = Color(0xFF2F4F4F);
-  
+
   // Renk paleti
   static const Map<String, Color> colorPalette = {
     'seagreen': Color(0xFF2E8B57),
@@ -52,7 +52,7 @@ class AppTheme {
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: primaryColor,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -64,7 +64,7 @@ class AppTheme {
   static ThemeData getDarkTheme(Color primaryColor) {
     const darkBackground = Color(0xFF191919);
     const darkSurface = Color(0xFF212121);
-    
+
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
@@ -77,7 +77,7 @@ class AppTheme {
       appBarTheme: AppBarTheme(
         centerTitle: true,
         elevation: 0,
-        backgroundColor: primaryColor.withOpacity(0.9),
+        backgroundColor: primaryColor.withValues(alpha: 0.9),
         foregroundColor: Colors.white,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -94,14 +94,14 @@ class AppTheme {
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: primaryColor,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 2,
         color: darkSurface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
       ),
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: darkSurface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),

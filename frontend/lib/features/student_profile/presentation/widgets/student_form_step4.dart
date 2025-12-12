@@ -90,7 +90,7 @@ class StudentFormStep4 extends ConsumerWidget {
           
           // Budget Preference
           DropdownButtonFormField<String>(
-            value: student.budgetPreference,
+            initialValue: student.budgetPreference,
             decoration: const InputDecoration(
               labelText: 'Bütçe Tercihi',
               border: OutlineInputBorder(),

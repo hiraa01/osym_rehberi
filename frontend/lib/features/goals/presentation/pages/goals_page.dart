@@ -15,28 +15,63 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
   int _selectedTab = 0; // 0: Bölümler, 1: Üniversiteler
   String _departmentSearchQuery = '';
   String _universitySearchQuery = '';
+  String _selectedFieldType = 'SAY'; // Filtre için seçili alan türü
   
   @override
   void initState() {
     super.initState();
   }
 
+  Widget _buildFilterChip(String label, String value, {IconData? icon}) {
+    final isSelected = _selectedFieldType == value;
+    final theme = Theme.of(context);
+    return FilterChip(
+      label: icon != null 
+          ? Icon(icon, size: 18)
+          : Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() {
+          _selectedFieldType = selected ? value : 'SAY';
+        });
+      },
+      selectedColor: theme.colorScheme.primary,
+      checkmarkColor: Colors.white,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.grey[700],
+        fontSize: 13,
+        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Hedefim'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          _selectedTab == 0 ? 'Bölümler' : 'Üniversiteler',
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         elevation: 0,
       ),
       body: Column(
           children: [
-          // Tab Bar
+          // Tab Bar - Stitch Style
                         Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-              ),
+              color: Colors.grey[100],
             ),
             child: Row(
               children: [
@@ -44,15 +79,15 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                   child: _buildTabButton(
                     'Bölümler',
                     0,
-                    Icons.school_outlined,
+                    Icons.school,
                           ),
                         ),
-                        const SizedBox(width: 16),
+                const SizedBox(width: 12),
                         Expanded(
                   child: _buildTabButton(
                     'Üniversiteler',
                     1,
-                    Icons.account_balance_outlined,
+                    Icons.account_balance,
                                   ),
                                 ),
                             ],
@@ -64,10 +99,22 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                 ? _buildDepartmentsTab(context)
                 : _buildUniversitiesTab(context),
           ),
-          // Swipe butonu
-          if (_selectedTab == 1)
+          // Alt butonlar
             Container(
               padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
               child: ElevatedButton.icon(
                 onPressed: () {
                   Navigator.of(context).push(
@@ -76,16 +123,35 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                     ),
                   );
                 },
-                icon: const Icon(Icons.swipe),
+                    icon: const Icon(Icons.school, size: 20),
                 label: const Text('Üniversiteleri Keşfet'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 16,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 12),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    onPressed: () {
+                      // Rehber koç sayfasına git
+                    },
+                    icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
+                  ),
+                ),
+              ],
               ),
             ),
         ],
@@ -95,35 +161,35 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
   
   Widget _buildTabButton(String label, int index, IconData icon) {
     final isSelected = _selectedTab == index;
+    final theme = Theme.of(context);
     return InkWell(
       onTap: () {
         setState(() {
           _selectedTab = index;
         });
       },
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.purple.withOpacity(0.1) : Colors.transparent,
+          color: isSelected ? theme.colorScheme.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          border: isSelected
-              ? Border.all(color: Colors.purple, width: 2)
-              : Border.all(color: Colors.grey[300]!, width: 1),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon,
-              color: isSelected ? Colors.purple : Colors.grey[600],
+              color: isSelected ? Colors.white : Colors.grey[600],
               size: 20,
             ),
             const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? Colors.purple : Colors.grey[600],
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? Colors.white : Colors.grey[600],
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                fontSize: 14,
               ),
                     ),
                   ],
@@ -142,21 +208,26 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
           final query = _departmentSearchQuery.toLowerCase();
           final deptName = (dept['name'] ?? dept['program_name'] ?? '').toString().toLowerCase();
           final uniName = (dept['university']?['name'] ?? '').toString().toLowerCase();
-          return deptName.contains(query) || uniName.contains(query);
+          final fieldType = dept['field_type']?.toString() ?? '';
+          final matchesQuery = deptName.contains(query) || uniName.contains(query);
+          final matchesFieldType = _selectedFieldType == 'ALL' || fieldType == _selectedFieldType;
+          return matchesQuery && matchesFieldType;
         }).toList();
         
         return Column(
           children: [
-            // Arama barı
+            // Arama barı - Stitch Style
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: TextField(
                 decoration: InputDecoration(
-                  hintText: 'Bölüm ara (örn: bilgisayar)',
+                  hintText: 'Bölüm veya üniversite ara...',
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  filled: true,
+                  fillColor: Colors.grey[50],
                 ),
                 onChanged: (value) {
                   setState(() {
@@ -165,6 +236,27 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                 },
               ),
             ),
+            // Filtre butonları - Stitch Style
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildFilterChip('Sayısal', 'SAY'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Eşit Ağırlık', 'EA'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Sözel', 'SÖZ'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Dil', 'DİL'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Filtre', 'ALL', icon: Icons.filter_list),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
             // Departman listesi
             Expanded(
               child: ListView.builder(
@@ -173,22 +265,54 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                 cacheExtent: 500, // ✅ Render edilmemiş widget'lar için cache
                 itemBuilder: (context, index) {
                   final dept = filteredDepartments[index];
+                  final uni = dept['university'] as Map<String, dynamic>?;
+                  final isFavorite = false; // TODO: Favori kontrolü
+                  
                   return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
               ),
                     child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       leading: CircleAvatar(
-                        backgroundColor: Colors.purple.withOpacity(0.1),
-                        child: const Icon(Icons.school, color: Colors.purple),
+                        radius: 24,
+                        backgroundColor: Colors.blue.shade100,
+                        child: Text(
+                          (uni?['name'] ?? 'Ü').substring(0, 1).toUpperCase(),
+                          style: TextStyle(
+                            color: Colors.blue.shade700,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                      title: Text(dept['name'] ?? dept['program_name'] ?? 'Bilinmeyen Bölüm'),
-                      subtitle: Text(
-                        '${dept['university']?['name'] ?? 'Bilinmeyen Üniversite'} • ${dept['field_type'] ?? 'N/A'}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      title: Text(
+                        dept['name'] ?? dept['program_name'] ?? 'Bilinmeyen Bölüm',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          uni?['name'] ?? 'Bilinmeyen Üniversite',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ),
+                      trailing: IconButton(
+                        icon: Icon(
+                          isFavorite ? Icons.star : Icons.star_border,
+                          color: isFavorite ? Colors.blue : Colors.grey[400],
+                        ),
+                        onPressed: () {
+                          // Favori ekle/kaldır
+                        },
+                      ),
                       onTap: () => _showDepartmentDetails(context, dept),
                     ),
                   );
@@ -244,22 +368,55 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                 itemBuilder: (context, index) {
                   final uni = filteredUniversities[index];
                   return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+                            Theme.of(context).colorScheme.primary.withValues(alpha: 0.02),
+                          ],
+                        ),
                     ),
                     child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.blue.withOpacity(0.1),
-                        child: const Icon(Icons.account_balance, color: Colors.blue),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        leading: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.account_balance, color: Colors.blue, size: 22),
                       ),
-                      title: Text(uni['name'] ?? 'Bilinmeyen Üniversite'),
-                      subtitle: Text(
+                        title: Text(
+                          uni['name'] ?? 'Bilinmeyen Üniversite',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
                         '${uni['city']} • ${uni['university_type']}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                            ),
+                          ),
                       ),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        trailing: Icon(
+                          Icons.arrow_forward_ios,
+                          size: 16,
+                          color: Colors.grey[400],
+                        ),
                       onTap: () => _showUniversityDetails(context, uni),
+                      ),
                     ),
                   );
                 },

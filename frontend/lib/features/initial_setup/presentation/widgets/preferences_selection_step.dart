@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -113,6 +114,43 @@ class _PreferencesSelectionStepState
         // Student ID'yi kaydet
         final studentId = studentResponse.data['id'] as int;
         await prefs.setInt('student_id', studentId);
+        
+        // preferred_departments'ı SharedPreferences'ta sakla (backend'de yok)
+        await prefs.setString(
+          'preferred_departments_$studentId',
+          jsonEncode(_selectedDepartments),
+        );
+        
+        // Tüm denemeleri kaydet
+        for (int i = 0; i < widget.examScores.length; i++) {
+          final examScores = widget.examScores[i];
+          try {
+            await _apiService.createExamAttempt({
+              'student_id': studentId,
+              'name': 'Deneme ${i + 1}',
+              'attempt_number': i + 1,
+              'exam_date': DateTime.now().toIso8601String(),
+              'tyt_turkish_net': examScores['tyt_turkish_net'] ?? 0.0,
+              'tyt_math_net': examScores['tyt_math_net'] ?? 0.0,
+              'tyt_social_net': examScores['tyt_social_net'] ?? 0.0,
+              'tyt_science_net': examScores['tyt_science_net'] ?? 0.0,
+              'ayt_math_net': examScores['ayt_math_net'] ?? 0.0,
+              'ayt_physics_net': examScores['ayt_physics_net'] ?? 0.0,
+              'ayt_chemistry_net': examScores['ayt_chemistry_net'] ?? 0.0,
+              'ayt_biology_net': examScores['ayt_biology_net'] ?? 0.0,
+              'ayt_literature_net': examScores['ayt_literature_net'] ?? 0.0,
+              'ayt_history1_net': examScores['ayt_history1_net'] ?? 0.0,
+              'ayt_geography1_net': examScores['ayt_geography1_net'] ?? 0.0,
+              'ayt_philosophy_net': examScores['ayt_philosophy_net'] ?? 0.0,
+              'ayt_history2_net': examScores['ayt_history2_net'] ?? 0.0,
+              'ayt_geography2_net': examScores['ayt_geography2_net'] ?? 0.0,
+              'ayt_religion_net': examScores['ayt_religion_net'] ?? 0.0,
+              'ayt_foreign_language_net': examScores['ayt_foreign_language_net'] ?? 0.0,
+            });
+          } catch (e) {
+            debugPrint('Error saving exam attempt ${i + 1}: $e');
+          }
+        }
       }
 
       // Kullanıcı setup tamamlandı olarak işaretle

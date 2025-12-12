@@ -11,16 +11,57 @@ class ExamAttemptsPage extends StatefulWidget {
   State<ExamAttemptsPage> createState() => _ExamAttemptsPageState();
 }
 
-class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
+class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBindingObserver {
   final ApiService _apiService = ApiService();
   List<dynamic> _attempts = [];
   bool _isLoading = true;
   int? _studentId;
+  int? _lastKnownStudentId; // Son bilinen student_id'yi takip et
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadAttempts();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sayfa görünür olduğunda student_id değişikliğini kontrol et
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndReloadIfNeeded();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Uygulama foreground'a geldiğinde verileri yenile
+    if (state == AppLifecycleState.resumed) {
+      _checkAndReloadIfNeeded();
+    }
+  }
+
+  // Student ID değiştiyse veya sayfa tekrar açıldıysa verileri yenile
+  Future<void> _checkAndReloadIfNeeded() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentStudentId = prefs.getInt('student_id');
+      
+      // Student ID değiştiyse veya ilk kez yükleniyorsa yenile
+      if (currentStudentId != _lastKnownStudentId) {
+        _lastKnownStudentId = currentStudentId;
+        await _loadAttempts();
+      }
+    } catch (e) {
+      debugPrint('Error checking student ID: $e');
+    }
   }
 
   // Yerel cache'den denemeleri yükle (student_id'ye özel)
@@ -39,13 +80,31 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
           if (mounted) {
             setState(() {
               _attempts = cached;
+              _studentId = studentId; // Student ID'yi de kaydet
               _isLoading = false;
             });
           }
         }
+      } else {
+        // Student ID yoksa cache'i temizle (farklı kullanıcı olabilir)
+        _clearOldCache(prefs);
       }
     } catch (e) {
       debugPrint('Error loading cached attempts: $e');
+    }
+  }
+
+  // Eski cache'leri temizle (farklı kullanıcı için)
+  Future<void> _clearOldCache(SharedPreferences prefs) async {
+    try {
+      final keys = prefs.getKeys();
+      for (final key in keys) {
+        if (key.startsWith('exam_attempts_cache_')) {
+          await prefs.remove(key);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error clearing old cache: $e');
     }
   }
 
@@ -73,9 +132,29 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
     
     try {
       final prefs = await SharedPreferences.getInstance();
-      _studentId = prefs.getInt('student_id');
+      final currentStudentId = prefs.getInt('student_id');
       
-      if (_studentId != null) {
+      // Student ID yoksa veya değiştiyse cache'i temizle
+      if (currentStudentId == null) {
+        await _clearOldCache(prefs);
+        if (mounted) {
+          setState(() {
+            _attempts = [];
+            _studentId = null;
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+      
+      // Student ID değiştiyse cache'i temizle
+      if (_studentId != null && _studentId != currentStudentId) {
+        await _clearOldCache(prefs);
+      }
+      
+      _studentId = currentStudentId;
+      _lastKnownStudentId = currentStudentId; // Son bilinen student_id'yi kaydet
+      
         // Backend'den güncel verileri yükle
         final response = await _apiService.getStudentAttempts(_studentId!);
         final attempts = response.data['attempts'] ?? [];
@@ -88,16 +167,20 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
             _attempts = attempts;
             _isLoading = false;
           });
-        }
-      } else {
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
       }
     } catch (e) {
       debugPrint('Error loading attempts from backend: $e');
       // Backend hatası olsa bile cache'deki veriler gösterildi
+      // Ancak student_id yoksa veya değiştiyse boş liste göster
       if (mounted) {
+        final prefs = await SharedPreferences.getInstance();
+        final currentStudentId = prefs.getInt('student_id');
+        if (currentStudentId == null || currentStudentId != _studentId) {
+          setState(() {
+            _attempts = [];
+            _studentId = null;
+          });
+        }
         setState(() => _isLoading = false);
       }
     }
@@ -107,10 +190,19 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Deneme Sonuçlarım'),
+        title: const Text(
+          'Denemelerim',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         elevation: 0,
         actions: [
-          IconButton(
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            child: CircleAvatar(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: IconButton(
             onPressed: () async {
               final result = await Navigator.of(context).push(
                 MaterialPageRoute(
@@ -118,11 +210,13 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
                 ),
               );
               if (result == true) {
-                _loadAttempts(); // Yenile
+                    _loadAttempts();
               }
             },
-            icon: const Icon(Icons.add),
+                icon: const Icon(Icons.add, color: Colors.white),
             tooltip: 'Deneme Ekle',
+              ),
+            ),
           ),
         ],
       ),
@@ -130,38 +224,49 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
           ? const Center(child: CircularProgressIndicator())
           : _attempts.isEmpty
               ? _buildEmptyState()
-              : _buildAttemptsList(),
+              : RefreshIndicator(
+                  onRefresh: _loadAttempts,
+                  child: _buildAttemptsList(),
+                ),
     );
   }
 
   Widget _buildEmptyState() {
+    final theme = Theme.of(context);
     return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
             Icons.quiz_rounded,
-            size: 100,
-            color: Colors.grey[300],
+                size: 80,
+                color: theme.colorScheme.primary,
+              ),
           ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 32),
           Text(
             'Henüz deneme eklenmemiş',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+            const SizedBox(height: 12),
           Text(
-            'İlk denemenizi ekleyerek başlayın',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
+              'İlk denemenizi ekleyerek başlayın ve performansınızı takip edin',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
-          const SizedBox(height: 32),
+            const SizedBox(height: 40),
           ElevatedButton.icon(
             onPressed: () async {
               final result = await Navigator.of(context).push(
@@ -173,7 +278,7 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
                 _loadAttempts();
               }
             },
-            icon: const Icon(Icons.add),
+              icon: const Icon(Icons.add_circle_outline),
             label: const Text('Deneme Ekle'),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(
@@ -181,62 +286,175 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
                 vertical: 16,
               ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(28),
+                ),
               ),
             ),
+          ],
           ),
-        ],
       ),
     );
   }
 
   Widget _buildAttemptsList() {
+    final theme = Theme.of(context);
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _attempts.length,
-      cacheExtent: 500, // ✅ Render edilmemiş widget'lar için cache
+      cacheExtent: 500,
       itemBuilder: (context, index) {
         final attempt = _attempts[index];
+        final attemptName = attempt['name'] ?? 'Deneme ${attempt['attempt_number'] ?? index + 1}';
+        final tytNet = (attempt['tyt_turkish_net'] ?? 0.0) +
+            (attempt['tyt_math_net'] ?? 0.0) +
+            (attempt['tyt_social_net'] ?? 0.0) +
+            (attempt['tyt_science_net'] ?? 0.0);
+        final aytNet = (attempt['ayt_math_net'] ?? 0.0) +
+            (attempt['ayt_physics_net'] ?? 0.0) +
+            (attempt['ayt_chemistry_net'] ?? 0.0) +
+            (attempt['ayt_biology_net'] ?? 0.0);
+        final tytScore = attempt['tyt_score']?.toDouble() ?? 0.0;
+        final aytScore = attempt['ayt_score']?.toDouble() ?? 0.0;
+        final examDate = attempt['exam_date'] != null
+            ? DateTime.tryParse(attempt['exam_date'].toString())
+            : null;
+        final dateStr = examDate != null
+            ? '${examDate.day} ${_getMonthName(examDate.month)} ${examDate.year}'
+            : '';
+        
+        // TYT veya AYT hangisi daha yüksekse ona göre badge
+        final hasTyt = tytNet > 0;
+        final hasAyt = aytNet > 0;
+        final examType = hasTyt && hasAyt ? 'TYT+AYT' : (hasTyt ? 'TYT' : 'AYT');
+        
         return Card(
+          elevation: 0,
           margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Theme.of(context).primaryColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: InkWell(
+            onTap: () {
+              // Detay sayfasına git
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                attemptName,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
               child: Text(
-                '#${attempt['attempt_number'] ?? index + 1}',
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+                                examType,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.green.shade700,
+                                ),
               ),
             ),
-            title: Text(
-              'Deneme ${attempt['attempt_number'] ?? index + 1}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (hasTyt)
+                          Text(
+                            'TYT Net: ${tytNet.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[700],
+                            ),
             ),
-            subtitle: Text(
-              'TYT: ${attempt['tyt_score']?.toStringAsFixed(2) ?? '0.00'} | '
-              'AYT: ${attempt['ayt_score']?.toStringAsFixed(2) ?? '0.00'}',
-            ),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
+                        if (hasTyt && hasAyt) const SizedBox(height: 2),
+                        if (hasAyt)
+                          Text(
+                            'AYT Net: ${aytNet.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                        if (dateStr.isNotEmpty) ...[
+                          const SizedBox(height: 4),
                 Text(
-                  '${attempt['total_score']?.toStringAsFixed(2) ?? '0.00'}',
+                            dateStr,
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (hasTyt && tytScore > 0)
+                        Text(
+                          'TYT Puan: ${tytScore.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
                   ),
                 ),
-                const Text(
-                  'Toplam',
-                  style: TextStyle(fontSize: 10, color: Colors.grey),
+                      if (hasAyt && aytScore > 0) ...[
+                        if (hasTyt && tytScore > 0) const SizedBox(height: 4),
+                        Text(
+                          'AYT Puan: ${aytScore.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Icon(
+                        Icons.chevron_right,
+                        color: Colors.grey[400],
+                        size: 20,
+                      ),
+                    ],
                 ),
               ],
+              ),
             ),
           ),
         );
       },
     );
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+    ];
+    return months[month - 1];
   }
 }
 

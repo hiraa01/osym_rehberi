@@ -8,7 +8,7 @@ class ExamAttempt(Base):
     __tablename__ = "exam_attempts"
 
     id = Column(Integer, primary_key=True, index=True)
-    student_id = Column(Integer, ForeignKey('students.id'), nullable=False)
+    student_id = Column(Integer, ForeignKey('students.id'), nullable=False, index=True)  # ✅ Index eklendi - performans için kritik
     
     # Deneme bilgileri
     attempt_number = Column(Integer, nullable=False)  # Kaçıncı deneme

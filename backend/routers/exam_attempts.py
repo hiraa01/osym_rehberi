@@ -124,6 +124,7 @@ async def get_student_attempts(
     if not student:
         raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
     
+    # ✅ OPTIMIZED: Index kullanarak hızlı sorgu
     attempts = db.query(ExamAttempt)\
         .filter(ExamAttempt.student_id == student_id)\
         .order_by(ExamAttempt.attempt_number.desc())\

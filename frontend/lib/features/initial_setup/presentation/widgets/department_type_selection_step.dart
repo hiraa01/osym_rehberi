@@ -105,7 +105,7 @@ class _DepartmentTypeSelectionStepState extends State<DepartmentTypeSelectionSte
                         ),
                         borderRadius: BorderRadius.circular(16),
                         color: isSelected 
-                            ? type['color'].withOpacity(0.1)
+                            ? type['color'].withValues(alpha: 0.1)
                             : Colors.transparent,
                       ),
                       child: Row(
@@ -113,7 +113,7 @@ class _DepartmentTypeSelectionStepState extends State<DepartmentTypeSelectionSte
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: type['color'].withOpacity(0.1),
+                              color: type['color'].withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(

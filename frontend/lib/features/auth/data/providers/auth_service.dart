@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dio/dio.dart';
 
 import '../../../../core/services/api_service.dart';
 import '../models/user_model.dart';
@@ -52,7 +53,17 @@ class AuthService {
     try {
       // Backend'den güncel kullanıcı bilgilerini al
       final response = await _apiService.getUserInfo(userId);
-      final updatedUser = UserModel.fromJson(response.data);
+      
+      // Null kontrolü ve response.data tip kontrolü
+      if (response.data == null) {
+        throw Exception('Kullanıcı bilgileri alınamadı');
+      }
+
+      if (response.data is! Map<String, dynamic>) {
+        throw Exception('Geçersiz kullanıcı bilgisi formatı');
+      }
+
+      final updatedUser = UserModel.fromJson(response.data as Map<String, dynamic>);
       
       // Güncel bilgileri kaydet
       _currentUser = updatedUser;
@@ -81,13 +92,52 @@ class AuthService {
     String? name,
   }) async {
     try {
+      debugPrint('🔵 Register attempt: email=$email, phone=$phone, name=$name');
+      
       final response = await _apiService.register(
         email: email,
         phone: phone,
         name: name,
       );
 
-      final authResponse = AuthResponse.fromJson(response.data);
+      debugPrint('🔵 Register response status: ${response.statusCode}');
+      debugPrint('🔵 Register response data type: ${response.data.runtimeType}');
+      debugPrint('🔵 Register response data: ${response.data}');
+
+      // Response status kontrolü - 400-499 hataları da artık response olarak geliyor
+      if (response.statusCode == null || response.statusCode! < 200 || response.statusCode! >= 300) {
+        // Backend'den hata response'u geldi
+        String errorMessage = 'Kayıt başarısız';
+        
+        if (response.data != null) {
+          if (response.data is Map) {
+            errorMessage = (response.data as Map)['detail'] ?? 
+                          (response.data as Map)['message'] ?? 
+                          errorMessage;
+          } else if (response.data is String) {
+            errorMessage = response.data as String;
+          }
+        }
+        
+        debugPrint('🔴 Register failed: $errorMessage (Status: ${response.statusCode})');
+        throw Exception(errorMessage);
+      }
+
+      // Null kontrolü ve response.data tip kontrolü
+      if (response.data == null) {
+        debugPrint('🔴 Register failed: response.data is null');
+        throw Exception('Kayıt başarısız: Sunucudan yanıt alınamadı');
+      }
+
+      if (response.data is! Map<String, dynamic>) {
+        debugPrint('🔴 Unexpected response format: ${response.data.runtimeType}');
+        debugPrint('🔴 Response data: ${response.data}');
+        throw Exception('Kayıt başarısız: Geçersiz yanıt formatı (${response.data.runtimeType})');
+      }
+
+      debugPrint('🟢 Register response is valid Map, parsing...');
+      final authResponse = AuthResponse.fromJson(response.data as Map<String, dynamic>);
+      debugPrint('🟢 Register successful: user_id=${authResponse.user.id}');
 
       // Token ve user bilgilerini kaydet
       await _saveAuth(authResponse.token, authResponse.user.id);
@@ -99,7 +149,34 @@ class AuthService {
       await _loadAndSaveStudentId(authResponse.user.id);
 
       return authResponse.user;
+    } on DioException catch (e) {
+      // Dio hatalarını özel olarak handle et
+      debugPrint('🔴 DioException during register: ${e.type}');
+      
+      if (e.response != null) {
+        // Backend'den hata response'u geldi
+        final statusCode = e.response!.statusCode;
+        final errorData = e.response!.data;
+        
+        debugPrint('🔴 Error status: $statusCode');
+        debugPrint('🔴 Error data type: ${errorData.runtimeType}');
+        debugPrint('🔴 Error data: $errorData');
+        
+        // Backend'den gelen hata mesajını extract et
+        String errorMessage = 'Kayıt başarısız';
+        if (errorData is Map) {
+          errorMessage = errorData['detail'] ?? errorData['message'] ?? errorMessage;
+        } else if (errorData is String) {
+          errorMessage = errorData;
+        }
+        
+        throw Exception(errorMessage);
+      } else {
+        // Network/connection hatası
+        throw Exception('Bağlantı hatası: ${e.message}');
+      }
     } catch (e) {
+      debugPrint('🔴 Unexpected error during register: $e');
       rethrow;
     }
   }
@@ -114,7 +191,16 @@ class AuthService {
         phone: phone,
       );
 
-      final authResponse = AuthResponse.fromJson(response.data);
+      // Null kontrolü ve response.data tip kontrolü
+      if (response.data == null) {
+        throw Exception('Giriş başarısız: Sunucudan yanıt alınamadı');
+      }
+
+      if (response.data is! Map<String, dynamic>) {
+        throw Exception('Giriş başarısız: Geçersiz yanıt formatı');
+      }
+
+      final authResponse = AuthResponse.fromJson(response.data as Map<String, dynamic>);
 
       // Token ve user bilgilerini kaydet
       await _saveAuth(authResponse.token, authResponse.user.id);
@@ -141,7 +227,7 @@ class AuthService {
       if (cachedStudentId != null) {
         // Cache'de varsa, backend'den doğrula
         try {
-          final studentResponse = await _apiService.getStudent(cachedStudentId);
+          await _apiService.getStudent(cachedStudentId);
           // Student bulundu, geçerli
           return;
         } catch (_) {
@@ -184,7 +270,16 @@ class AuthService {
         isInitialSetupCompleted: isInitialSetupCompleted,
       );
 
-      _currentUser = UserModel.fromJson(response.data);
+      // Null kontrolü ve response.data tip kontrolü
+      if (response.data == null) {
+        throw Exception('Kullanıcı bilgileri güncellenemedi');
+      }
+
+      if (response.data is! Map<String, dynamic>) {
+        throw Exception('Geçersiz yanıt formatı');
+      }
+
+      _currentUser = UserModel.fromJson(response.data as Map<String, dynamic>);
       return _currentUser!;
     } catch (e) {
       rethrow;

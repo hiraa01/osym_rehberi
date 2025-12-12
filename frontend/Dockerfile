@@ -16,12 +16,15 @@ RUN apt-get update && apt-get install -y \
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
-# Install Flutter 3.16.9 (specific version)
+# Install Flutter 3.24.3 (specific version)
 RUN git clone https://github.com/flutter/flutter.git -b stable /flutter
 ENV PATH="/flutter/bin:${PATH}"
 
-# Switch to Flutter 3.16.9
-RUN cd /flutter && git checkout 3.16.9
+# Switch to Flutter 3.24.3 (use latest stable if tag doesn't exist)
+RUN cd /flutter && \
+    git fetch --tags && \
+    (git checkout 3.24.3 2>/dev/null || git checkout stable) && \
+    flutter --version
 
 # Enable web support
 RUN flutter config --enable-web

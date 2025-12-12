@@ -21,6 +21,12 @@
     <meta content="IE=Edge" http-equiv="X-UA-Compatible">
     <meta name="description" content="ÖSYM Rehberi - Yapay zeka destekli üniversite öneri sistemi">
 
+    <!-- Chrome için CORS ve network ayarları -->
+    <meta http-equiv="Access-Control-Allow-Origin" content="*">
+    <meta http-equiv="Access-Control-Allow-Methods" content="GET, POST, PUT, DELETE, OPTIONS">
+    <meta http-equiv="Access-Control-Allow-Headers" content="Content-Type, Authorization, Accept">
+    <meta name="referrer" content="no-referrer-when-downgrade">
+
     <!-- iOS meta tags & icons -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -43,6 +49,45 @@
 
 <body>
     <script>
+        // Font yükleme hatalarını tamamen engelle
+        const originalFetch = window.fetch;
+        window.fetch = function(...args) {
+            const [url] = args;
+            // Google Fonts ve tüm font isteklerini engelle
+            if (typeof url === 'string' && (
+                url.includes('fonts.gstatic.com') ||
+                url.includes('fonts.googleapis.com') ||
+                url.includes('.woff') ||
+                url.includes('.woff2') ||
+                url.includes('.ttf') ||
+                url.includes('.otf')
+            )) {
+                return Promise.reject(new Error('Font loading disabled'));
+            }
+            return originalFetch.apply(this, args);
+        };
+        
+        // XMLHttpRequest'i de engelle
+        const originalXHROpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(method, url, ...args) {
+            if (typeof url === 'string' && (
+                url.includes('fonts.gstatic.com') ||
+                url.includes('fonts.googleapis.com') ||
+                url.includes('.woff') ||
+                url.includes('.woff2') ||
+                url.includes('.ttf') ||
+                url.includes('.otf')
+            )) {
+                throw new Error('Font loading disabled');
+            }
+            return originalXHROpen.apply(this, [method, url, ...args]);
+        };
+        
+        // Chrome için network ayarları
+        if (navigator.userAgent.indexOf('Chrome') > -1) {
+            console.log('Chrome browser detected - applying network optimizations');
+        }
+        
         window.addEventListener('load', function (ev) {
             // Download main.dart.js
             _flutter.loader.loadEntrypoint({

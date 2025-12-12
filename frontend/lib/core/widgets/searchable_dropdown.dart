@@ -144,7 +144,7 @@ class _SearchableDropdownState<T> extends State<SearchableDropdown<T>> {
                               selected: isSelected,
                               selectedTileColor: Theme.of(context)
                                   .primaryColor
-                                  .withOpacity(0.1),
+                                  .withValues(alpha: 0.1),
                               leading: isSelected
                                   ? Icon(
                                       Icons.check_circle,

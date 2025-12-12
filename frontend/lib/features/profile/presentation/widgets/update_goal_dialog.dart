@@ -45,7 +45,7 @@ class _UpdateGoalDialogState extends ConsumerState<UpdateGoalDialog> {
                           child: Text(name, overflow: TextOverflow.ellipsis),
                         );
                       }).toList(),
-                      value: _selectedDepartment,
+                      initialValue: _selectedDepartment,
                       onChanged: (value) {
                         setState(() => _selectedDepartment = value);
                       },
@@ -59,7 +59,7 @@ class _UpdateGoalDialogState extends ConsumerState<UpdateGoalDialog> {
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                     ),
                     items: const [DropdownMenuItem(value: 'loading', child: Text('Yükleniyor...'))],
-                    value: 'loading',
+                    initialValue: 'loading',
                     onChanged: null,
                   ),
                   error: (error, stack) => DropdownButtonFormField<String>(
@@ -70,7 +70,7 @@ class _UpdateGoalDialogState extends ConsumerState<UpdateGoalDialog> {
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                     ),
                     items: const [DropdownMenuItem(value: 'error', child: Text('Hata'))],
-                    value: 'error',
+                    initialValue: 'error',
                     onChanged: null,
                   ),
                 );
@@ -96,7 +96,7 @@ class _UpdateGoalDialogState extends ConsumerState<UpdateGoalDialog> {
                           child: Text(city, overflow: TextOverflow.ellipsis),
                         );
                       }).toList(),
-                      value: _selectedCity,
+                      initialValue: _selectedCity,
                       onChanged: (value) {
                         setState(() => _selectedCity = value);
                       },
@@ -110,7 +110,7 @@ class _UpdateGoalDialogState extends ConsumerState<UpdateGoalDialog> {
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                     ),
                     items: const [DropdownMenuItem(value: 'loading', child: Text('Yükleniyor...'))],
-                    value: 'loading',
+                    initialValue: 'loading',
                     onChanged: null,
                   ),
                   error: (error, stack) => DropdownButtonFormField<String>(
@@ -121,7 +121,7 @@ class _UpdateGoalDialogState extends ConsumerState<UpdateGoalDialog> {
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                     ),
                     items: const [DropdownMenuItem(value: 'error', child: Text('Hata'))],
-                    value: 'error',
+                    initialValue: 'error',
                     onChanged: null,
                   ),
                 );
@@ -148,7 +148,7 @@ class _UpdateGoalDialogState extends ConsumerState<UpdateGoalDialog> {
                           child: Text(name, overflow: TextOverflow.ellipsis),
                         );
                       }).toList(),
-                      value: _selectedUniversity,
+                      initialValue: _selectedUniversity,
                       onChanged: (value) {
                         setState(() => _selectedUniversity = value);
                       },
@@ -162,7 +162,7 @@ class _UpdateGoalDialogState extends ConsumerState<UpdateGoalDialog> {
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                     ),
                     items: const [DropdownMenuItem(value: 'loading', child: Text('Yükleniyor...'))],
-                    value: 'loading',
+                    initialValue: 'loading',
                     onChanged: null,
                   ),
                   error: (error, stack) => DropdownButtonFormField<String>(
@@ -173,7 +173,7 @@ class _UpdateGoalDialogState extends ConsumerState<UpdateGoalDialog> {
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                     ),
                     items: const [DropdownMenuItem(value: 'error', child: Text('Hata'))],
-                    value: 'error',
+                    initialValue: 'error',
                     onChanged: null,
                   ),
                 );

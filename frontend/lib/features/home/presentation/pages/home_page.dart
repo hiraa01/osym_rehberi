@@ -52,7 +52,11 @@ class HomePage extends ConsumerWidget {
                               'Profilinizi oluşturun, deneme sonuçlarınızı girin ve size en uygun bölümleri keşfedin!',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: Theme.of(context).textTheme.bodyLarge?.color?.withOpacity(0.7),
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.color
+                                    ?.withValues(alpha: 0.7),
                                 fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
                               ),
                             ),
@@ -145,7 +149,7 @@ class HomePage extends ConsumerWidget {
                     
                     // Info Card
                     Card(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                       child: Padding(
                         padding: ResponsiveUtils.getResponsivePadding(context),
                         child: Row(
@@ -196,7 +200,7 @@ class HomePage extends ConsumerWidget {
               Container(
                 padding: EdgeInsets.all(ResponsiveUtils.getResponsiveSpacing(context, 12)),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -220,7 +224,11 @@ class HomePage extends ConsumerWidget {
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                        color: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.color
+                            ?.withValues(alpha: 0.7),
                         fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
                       ),
                     ),
@@ -230,7 +238,11 @@ class HomePage extends ConsumerWidget {
               Icon(
                 Icons.arrow_forward_ios,
                 size: ResponsiveUtils.getResponsiveIconSize(context, 16),
-                color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.5),
+                color: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.color
+                    ?.withValues(alpha: 0.5),
               ),
             ],
           ),

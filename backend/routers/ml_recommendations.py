@@ -60,25 +60,25 @@ async def get_ml_recommendations(
         for rec in recommendations:
             # ML motoru dict döner
             if isinstance(rec, dict):
-                department = rec['department']
-                university = db.query(University).filter(University.id == department.university_id).first()
-                result.append(MLRecommendationResponse(
-                    id=rec.get('id'),
-                    student_id=rec['student_id'],
-                    department_id=rec['department_id'],
-                    compatibility_score=rec['compatibility_score'],
-                    success_probability=rec['success_probability'],
-                    preference_score=rec['preference_score'],
-                    final_score=rec['final_score'],
-                    recommendation_reason=rec['recommendation_reason'],
-                    is_safe_choice=rec['is_safe_choice'],
-                    is_dream_choice=rec['is_dream_choice'],
-                    is_realistic_choice=rec['is_realistic_choice'],
-                    department=DepartmentWithUniversityResponse(
-                        **department.__dict__,
-                        university=university
-                    )
-                ))
+            department = rec['department']
+            university = db.query(University).filter(University.id == department.university_id).first()
+            result.append(MLRecommendationResponse(
+                id=rec.get('id'),
+                student_id=rec['student_id'],
+                department_id=rec['department_id'],
+                compatibility_score=rec['compatibility_score'],
+                success_probability=rec['success_probability'],
+                preference_score=rec['preference_score'],
+                final_score=rec['final_score'],
+                recommendation_reason=rec['recommendation_reason'],
+                is_safe_choice=rec['is_safe_choice'],
+                is_dream_choice=rec['is_dream_choice'],
+                is_realistic_choice=rec['is_realistic_choice'],
+                department=DepartmentWithUniversityResponse(
+                    **department.__dict__,
+                    university=university
+                )
+            ))
             else:
                 # Kural tabanlı motor RecommendationResponse (Pydantic) döner
                 # rec.department zaten DepartmentWithUniversityResponse tipinde

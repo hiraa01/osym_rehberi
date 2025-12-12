@@ -18,22 +18,23 @@ class AnimatedBottomBar extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     
     return Container(
-      height: 90, // Overflow için daha yüksek
+      height: 92, // Overflow'u önlemek için height artırıldı
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(24),
+          top: Radius.circular(28),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.5 : 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -3),
+            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, -4),
+            spreadRadius: 0,
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), // Padding azaltıldı
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: List.generate(
@@ -59,24 +60,24 @@ class AnimatedBottomBar extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOutCubic,
-          // Baloncuk efekti için transform - overflow'u önlemek için azaltıldı
-          transform: Matrix4.translationValues(0, isSelected ? -4 : 0, 0),
+          // Softer animation
+          transform: Matrix4.translationValues(0, isSelected ? -3 : 0, 0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // İkon container - baloncuk
+              // İkon container - Modern MD3 style
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOutCubic,
-                width: isSelected ? 56 : 40,
-                height: isSelected ? 56 : 40,
+                width: isSelected ? 52 : 40,
+                height: isSelected ? 52 : 40,
                 decoration: BoxDecoration(
                   gradient: isSelected
                       ? LinearGradient(
                           colors: [
                             primaryColor,
-                            primaryColor.withOpacity(0.85),
+                            primaryColor.withValues(alpha: 0.9),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -87,9 +88,9 @@ class AnimatedBottomBar extends StatelessWidget {
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: primaryColor.withOpacity(0.4),
-                            blurRadius: 16,
-                            spreadRadius: 2,
+                            color: primaryColor.withValues(alpha: 0.3), // Softer shadow
+                            blurRadius: 12, // Less blur
+                            spreadRadius: 1,
                           ),
                         ]
                       : null,
@@ -98,25 +99,29 @@ class AnimatedBottomBar extends StatelessWidget {
                   isSelected ? item.activeIcon : item.icon,
                   color: isSelected
                       ? Colors.white
-                      : (isDark ? Colors.grey[600] : Colors.grey[500]),
-                  size: isSelected ? 26 : 24,
+                      : (isDark ? Colors.grey[500] : Colors.grey[600]),
+                  size: isSelected ? 25 : 23,
                 ),
               ),
-              const SizedBox(height: 4),
-              // Label
-              AnimatedDefaultTextStyle(
+              const SizedBox(height: 4), // Spacing azaltıldı
+              // Label - Modern typography
+              Flexible(
+                child: AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 300),
                 style: TextStyle(
-                  fontSize: isSelected ? 12 : 11,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontSize: isSelected ? 11 : 10, // Font size azaltıldı
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected
                       ? primaryColor
-                      : (isDark ? Colors.grey[600] : Colors.grey[500]),
+                      : (isDark ? Colors.grey[500] : Colors.grey[600]),
+                    letterSpacing: 0.1,
                 ),
                 child: Text(
                   item.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
             ],

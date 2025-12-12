@@ -79,7 +79,7 @@ class StudentFormStep1 extends ConsumerWidget {
           
           // Class Level Dropdown
           DropdownButtonFormField<String>(
-            value: student.classLevel,
+            initialValue: student.classLevel,
             decoration: const InputDecoration(
               labelText: 'Sınıf Seviyesi *',
               border: OutlineInputBorder(),
@@ -98,7 +98,7 @@ class StudentFormStep1 extends ConsumerWidget {
           
           // Exam Type Dropdown
           DropdownButtonFormField<String>(
-            value: student.examType,
+            initialValue: student.examType,
             decoration: const InputDecoration(
               labelText: 'Sınav Türü *',
               border: OutlineInputBorder(),
@@ -118,7 +118,7 @@ class StudentFormStep1 extends ConsumerWidget {
           
           // Field Type Dropdown
           DropdownButtonFormField<String>(
-            value: student.fieldType,
+            initialValue: student.fieldType,
             decoration: const InputDecoration(
               labelText: 'Alan Türü *',
               border: OutlineInputBorder(),

@@ -70,11 +70,18 @@ Backend şu adreste çalışacak:
 ```bash
 cd frontend
 
-# Paketleri yükle
-docker run --rm -v ${PWD}:/app -w /app cirrusci/flutter:stable flutter pub get
+# Önce Docker image'ını build edin (Flutter 3.24.3 ile)
+docker build -t osym-frontend:latest .
+
+# Paketleri yükle (build edilmiş image ile)
+docker run --rm -v ${PWD}:/app -w /app osym-frontend:latest flutter pub get
 
 # Uygulamayı çalıştır
-docker run --rm -v ${PWD}:/app -w /app cirrusci/flutter:stable flutter run
+docker run --rm -v ${PWD}:/app -w /app -p 8080:8080 osym-frontend:latest flutter run -d web-server --web-port=8080 --web-hostname=0.0.0.0
+
+# Veya docker-compose kullanarak
+cd ../docker
+docker-compose up frontend
 ```
 
 #### Flutter SDK ile

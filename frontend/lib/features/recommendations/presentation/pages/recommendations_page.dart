@@ -260,34 +260,19 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tercih Önerilerim'),
+        title: const Text(
+          'Tercih Asistanım',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         elevation: 0,
         actions: [
-          PopupMenuButton<String>(
-            onSelected: _handleExport,
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'pdf',
-                child: Row(
-                  children: [
-                    Icon(Icons.picture_as_pdf, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text('PDF Olarak Dışa Aktar'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'excel',
-                child: Row(
-                  children: [
-                    Icon(Icons.table_chart, color: Colors.green),
-                    SizedBox(width: 8),
-                    Text('Excel Olarak Dışa Aktar'),
-                  ],
-                ),
-              ),
-            ],
-            icon: const Icon(Icons.share),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              // Ayarlar sayfasına git
+            },
           ),
         ],
       ),
@@ -314,26 +299,45 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-            // Bilgi Kartı
+            // Bilgi Kartı - Stitch Style
             Card(
-              color: Colors.blue.shade50,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.blue.shade200),
+                borderRadius: BorderRadius.circular(24),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
+                    ],
+                  ),
+                ),
+                padding: const EdgeInsets.all(20.0),
                 child: Row(
                   children: [
-                    Icon(Icons.lightbulb, color: Colors.blue.shade700, size: 32),
-                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        Icons.lightbulb_outline,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Text(
                         'Puanlarınıza ve tercihlerinize göre size özel üniversite önerileri',
-                        style: TextStyle(
-                          color: Colors.blue.shade900,
-                          fontSize: 14,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
@@ -343,107 +347,99 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
             ),
             const SizedBox(height: 24),
 
-            // Filtreler
-            Column(
+            // Filtreler - Stitch Style
+            Row(
               children: [
-                Consumer(
+                Expanded(
+                  child: Consumer(
                   builder: (context, ref, child) {
                     final citiesAsync = ref.watch(cityListProvider);
                     return citiesAsync.when(
                       data: (cities) {
-                        final allCities = ['Tüm Şehirler', ...cities];
-                        return DropdownButtonFormField<String>(
-                          decoration: const InputDecoration(
-                            labelText: 'Şehir',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
-                          items: allCities.map((city) {
-                            return DropdownMenuItem(
-                              value: city == 'Tüm Şehirler' ? 'all' : city,
-                              child: Text(city),
-                            );
-                          }).toList(),
-                          value: _selectedCity,
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() => _selectedCity = value);
-                            }
-                          },
+                          return OutlinedButton.icon(
+                            onPressed: () => _showCityFilter(context, cities),
+                            icon: const Icon(Icons.location_city, size: 18),
+                            label: Text(
+                              _selectedCity == 'all' ? 'Şehir Filtrele' : _selectedCity,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                         );
                       },
-                      loading: () => DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(
-                          labelText: 'Şehir',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        items: const [DropdownMenuItem(value: 'all', child: Text('Yükleniyor...'))],
-                        value: 'all',
-                        onChanged: null,
+                        loading: () => OutlinedButton(
+                          onPressed: null,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Şehir Filtrele'),
                       ),
-                      error: (error, stack) => DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(
-                          labelText: 'Şehir',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        items: const [DropdownMenuItem(value: 'all', child: Text('Hata'))],
-                        value: 'all',
-                        onChanged: null,
+                        error: (_, __) => OutlinedButton(
+                          onPressed: null,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Şehir Filtrele'),
                       ),
                     );
                   },
+                  ),
                 ),
-                const SizedBox(height: 12),
-                Consumer(
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Consumer(
                   builder: (context, ref, child) {
                     final universityTypesAsync = ref.watch(universityTypeListProvider);
                     return universityTypesAsync.when(
                       data: (types) {
-                        final allTypes = ['Tümü', ...types];
-                        return DropdownButtonFormField<String>(
-                          decoration: const InputDecoration(
-                            labelText: 'Üniversite Türü',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
-                          items: allTypes.map((type) {
-                            return DropdownMenuItem(
-                              value: type == 'Tümü' ? 'all' : type,
-                              child: Text(type),
-                            );
-                          }).toList(),
-                          value: _selectedType,
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() => _selectedType = value);
-                            }
-                          },
+                          return OutlinedButton.icon(
+                            onPressed: () => _showUniversityTypeFilter(context, types),
+                            icon: const Icon(Icons.school, size: 18),
+                            label: Text(
+                              _selectedType == 'all' ? 'Üniversite Filtrele' : _selectedType,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                         );
                       },
-                      loading: () => DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(
-                          labelText: 'Üniversite Türü',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        items: const [DropdownMenuItem(value: 'all', child: Text('Yükleniyor...'))],
-                        value: 'all',
-                        onChanged: null,
+                        loading: () => OutlinedButton(
+                          onPressed: null,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Üniversite Filtrele'),
                       ),
-                      error: (error, stack) => DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(
-                          labelText: 'Üniversite Türü',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        items: const [DropdownMenuItem(value: 'all', child: Text('Hata'))],
-                        value: 'all',
-                        onChanged: null,
+                        error: (_, __) => OutlinedButton(
+                          onPressed: null,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Üniversite Filtrele'),
                       ),
                     );
                   },
+                  ),
                 ),
               ],
             ),
@@ -480,94 +476,97 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                                       final recId = rec['id'] ?? index;
                                       final isBookmarked = _bookmarkedIds.contains(recId);
                                       
+                                      // Üniversite görseli URL'i (varsa)
+                                      final imageUrl = uni?['image_url']?.toString() ?? 
+                                          'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=800&q=80';
+                                      final compatibilityPercent = (finalScore * 100).toInt();
+                                      
                                       return Card(
-                                        margin: const EdgeInsets.only(bottom: 12),
-                                        elevation: 2,
+                                        margin: const EdgeInsets.only(bottom: 16),
+                                        elevation: 0,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(16),
                                         ),
-                                        child: InkWell(
-                                          onTap: () {},
-                                          borderRadius: BorderRadius.circular(12),
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(16.0),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(16),
                                             child: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                Row(
+                                              // Üniversite görseli
+                                              Stack(
                                                   children: [
                                                     Container(
-                                                      padding: const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 4,
-                                                      ),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.green.shade100,
-                                                        borderRadius: BorderRadius.circular(6),
-                                                      ),
-                                                      child: Text(
-                                                        '${finalScore.toStringAsFixed(0)}% Uyum',
-                                                        style: TextStyle(
-                                                          color: Colors.green.shade700,
-                                                          fontSize: 12,
-                                                          fontWeight: FontWeight.bold,
-                                                        ),
+                                                    height: 180,
+                                                    width: double.infinity,
+                                                    decoration: BoxDecoration(
+                                                      image: DecorationImage(
+                                                        image: NetworkImage(imageUrl),
+                                                        fit: BoxFit.cover,
                                                       ),
                                                     ),
-                                                    const Spacer(),
-                                                    IconButton(
-                                                      onPressed: () => _toggleBookmark(recId),
-                                                      icon: Icon(
-                                                        isBookmarked
-                                                            ? Icons.bookmark
-                                                            : Icons.bookmark_border,
-                                                        color: isBookmarked
-                                                            ? Theme.of(context).primaryColor
-                                                            : Colors.grey[600],
+                                                  ),
+                                                  // Uyumluluk yüzdesi badge
+                                                  Positioned(
+                                                    top: 12,
+                                                    right: 12,
+                                                    child: Container(
+                                                      padding: const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 6,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.blue,
+                                                        borderRadius: BorderRadius.circular(12),
+                                                      ),
+                                                      child: Text(
+                                                        '%$compatibilityPercent Uyumlu',
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 12,
+                                                          fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
                                                       ),
                                                     ),
                                                   ],
                                                 ),
-                                const SizedBox(height: 12),
+                                              // İçerik
+                                              Padding(
+                                                padding: const EdgeInsets.all(16),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
                                 Text(
                                   dept?['name'] ?? 'Bilinmeyen Bölüm',
                                   style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),
+                                                      maxLines: 2,
+                                                      overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  uni?['name'] ?? 'Bilinmeyen Üniversite',
+                                                      '${uni?['name'] ?? 'Bilinmeyen Üniversite'}, ${dept?['faculty'] ?? 'Fakülte'}',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Colors.grey[700],
                                   ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    _buildInfoChip(
-                                      Icons.location_on,
-                                      uni?['city'] ?? '-',
-                                      Colors.blue,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _buildInfoChip(
-                                      Icons.school,
-                                      uni?['university_type'] ?? '-',
-                                      Colors.orange,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _buildInfoChip(
-                                      Icons.trending_up,
-                                      dept?['min_score']?.toStringAsFixed(1) ?? '-',
-                                      Colors.purple,
+                                                    const SizedBox(height: 8),
+                                                    Text(
+                                                      'Şehir: ${uni?['city'] ?? '-'}, Puan Türü: ${dept?['field_type'] ?? '-'}',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.grey[600],
+                                                      ),
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
+                                              ),
+                                            ],
                           ),
                         ),
                       );
@@ -600,24 +599,126 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
     );
   }
 
+  void _showCityFilter(BuildContext context, List<String> cities) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Şehir Seçin',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                title: const Text('Tüm Şehirler'),
+                leading: Radio<String>(
+                  value: 'all',
+                  groupValue: _selectedCity,
+                  onChanged: (value) {
+                    setState(() => _selectedCity = value!);
+                    Navigator.pop(context);
+                  },
+                ),
+              ),
+              ...cities.map((city) {
+                return ListTile(
+                  title: Text(city),
+                  leading: Radio<String>(
+                    value: city,
+                    groupValue: _selectedCity,
+                    onChanged: (value) {
+                      setState(() => _selectedCity = value!);
+                      Navigator.pop(context);
+                    },
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showUniversityTypeFilter(BuildContext context, List<String> types) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Üniversite Türü Seçin',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                title: const Text('Tümü'),
+                leading: Radio<String>(
+                  value: 'all',
+                  groupValue: _selectedType,
+                  onChanged: (value) {
+                    setState(() => _selectedType = value!);
+                    Navigator.pop(context);
+                  },
+                ),
+              ),
+              ...types.map((type) {
+                return ListTile(
+                  title: Text(type),
+                  leading: Radio<String>(
+                    value: type,
+                    groupValue: _selectedType,
+                    onChanged: (value) {
+                      setState(() => _selectedType = value!);
+                      Navigator.pop(context);
+                    },
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildInfoChip(IconData icon, String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
           Text(
             label,
             style: TextStyle(
               fontSize: 12,
               color: color,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

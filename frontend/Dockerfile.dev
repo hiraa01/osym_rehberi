@@ -1,0 +1,63 @@
+FROM ubuntu:22.04
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    unzip \
+    xz-utils \
+    zip \
+    libglu1-mesa \
+    python3 \
+    openjdk-17-jdk \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Java 17 environment
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+# Install Android SDK Command Line Tools
+ENV ANDROID_HOME=/opt/android-sdk
+ENV PATH="${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools"
+
+# Create Android SDK directory
+RUN mkdir -p ${ANDROID_HOME}/cmdline-tools && \
+    cd ${ANDROID_HOME}/cmdline-tools && \
+    wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip && \
+    unzip -q commandlinetools-linux-11076708_latest.zip && \
+    mv cmdline-tools latest && \
+    rm commandlinetools-linux-11076708_latest.zip
+
+# Accept Android licenses and install required SDK components
+RUN yes | sdkmanager --licenses || true && \
+    sdkmanager "platform-tools" "platforms;android-36" "build-tools;34.0.0" "ndk;28.2.13676358" && \
+    chmod -R 755 ${ANDROID_HOME}
+
+# Install Flutter 3.24.3 (specific version)
+RUN git clone https://github.com/flutter/flutter.git -b stable /flutter
+ENV PATH="/flutter/bin:${PATH}"
+
+# Switch to Flutter 3.24.3 (use specific commit or tag)
+RUN cd /flutter && \
+    git fetch --tags && \
+    git checkout 3.24.3 || \
+    (git fetch origin stable && git checkout $(git rev-list -n 1 --first-parent --grep="3.24.3" origin/stable || git rev-list -n 1 origin/stable))
+
+# Enable web and Android support
+RUN flutter config --enable-web && \
+    flutter config --enable-android
+
+# Accept Flutter licenses
+RUN yes | flutter doctor --android-licenses || true
+
+# Verify Flutter version and doctor
+RUN flutter --version && \
+    flutter doctor -v
+
+# Set working directory
+WORKDIR /app
+
+# Default command (can be overridden)
+CMD ["flutter", "--version"]
+

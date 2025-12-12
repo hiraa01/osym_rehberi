@@ -8,7 +8,13 @@ void main() {
   // Error handling ekleyelim
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Font yükleme hatalarını engelle
   FlutterError.onError = (FlutterErrorDetails details) {
+    // Font yükleme hatalarını görmezden gel
+    if (details.exception.toString().contains('Failed to load font') ||
+        details.exception.toString().contains('fonts.gstatic.com')) {
+      return; // Font hatalarını loglamadan geç
+    }
     debugPrint('Flutter Error: ${details.exception}');
     debugPrint('Stack trace: ${details.stack}');
   };

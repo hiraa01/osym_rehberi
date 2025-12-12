@@ -283,27 +283,71 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                Expanded(
                   child: Text(
-                    'Net: ${net.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.primary,
+                    label,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.calculate,
+                          size: 14,
+                          color: Colors.grey[700],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Net Hesaplaması',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Net: ',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[700],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            net.toStringAsFixed(2),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -452,8 +496,6 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
               final studentResponse = await _apiService.createStudent({
                 'user_id': userId,
                 'name': prefs.getString('user_name') ?? 'Öğrenci',
-                'school': 'Lise',
-                'grade': 12,
                 'class_level': '12',
                 'exam_type': 'TYT+AYT',
                 'field_type': _selectedDepartmentType,
@@ -477,8 +519,9 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
           final response = await _apiService.createExamAttempt({
             'student_id': studentId,
             'attempt_number': attemptNumber,
-            'exam_name': _examNameController.text.trim(),  // ✅ Deneme adı eklendi
-            'exam_type': 'TYT+AYT',
+            'exam_name': _examNameController.text.trim().isEmpty 
+                ? 'Deneme $attemptNumber' 
+                : _examNameController.text.trim(),  // ✅ Deneme adı eklendi
             'exam_date': DateTime.now().toIso8601String(),
             ...nets,
           });

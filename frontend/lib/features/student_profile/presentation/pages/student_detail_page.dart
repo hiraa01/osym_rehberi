@@ -350,7 +350,7 @@ class StudentDetailPage extends ConsumerWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isMain
-            ? Theme.of(context).primaryColor.withOpacity(0.1)
+            ? Theme.of(context).primaryColor.withValues(alpha: 0.1)
             : Colors.grey[100],
         borderRadius: BorderRadius.circular(8),
       ),

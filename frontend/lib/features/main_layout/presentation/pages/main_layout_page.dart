@@ -63,9 +63,9 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
             index: _currentIndex,
             children: _pages,
           ),
+          const CoachChatFab(), // Stack içinde Positioned widget
         ],
       ),
-      floatingActionButton: const CoachChatFab(),
       bottomNavigationBar: AnimatedBottomBar(
         currentIndex: _currentIndex,
         onTap: (index) {

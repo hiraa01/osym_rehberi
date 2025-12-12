@@ -18,7 +18,7 @@ router = APIRouter()
 # Spesifik endpoints (önce bunlar)
 @router.get("/cities/", response_model=List[str])
 async def get_cities(db: Session = Depends(get_db)):
-    """81 il + KKTC şehirlerini getir (81 il öncelikli)"""
+    """81 il + KKTC şehirlerini getir (81 il öncelikli) - OPTIMIZED"""
     # 81 il listesi (seed_yok_data.py'den)
     TURKISH_81_CITIES = [
         "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Aksaray", "Amasya", "Ankara", "Antalya",
@@ -33,9 +33,10 @@ async def get_cities(db: Session = Depends(get_db)):
         "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Uşak", "Van", "Yalova", "Yozgat", "Zonguldak"
     ]
     
-    # Database'den gelen şehirler
-    cities = db.query(University.city).distinct().all()
-    db_cities = [city[0] for city in cities if city[0]]
+    # ✅ OPTIMIZED: Sadece distinct city değerlerini çek (tüm kayıtları değil)
+    from sqlalchemy import distinct
+    cities_result = db.query(distinct(University.city)).filter(University.city.isnot(None)).all()
+    db_cities = [city[0] for city in cities_result if city[0]]
     
     # KKTC şehirlerini bul
     kktc_cities = [city for city in db_cities if 'kktc' in city.lower()]
@@ -94,8 +95,10 @@ async def get_field_types(db: Session = Depends(get_db)):
     if cached is not None:
         return cached
     
-    field_types = db.query(Department.field_type).distinct().all()
-    result = [field_type[0] for field_type in field_types]
+    # ✅ OPTIMIZED: Sadece distinct field_type değerlerini çek
+    from sqlalchemy import distinct
+    field_types_result = db.query(distinct(Department.field_type)).filter(Department.field_type.isnot(None)).all()
+    result = [field_type[0] for field_type in field_types_result if field_type[0]]
     
     # Cache'e kaydet
     set_cache(cache_key, result, ttl=timedelta(hours=1))
@@ -240,7 +243,7 @@ async def create_department(department: DepartmentCreate, db: Session = Depends(
 @router.get("/departments/", response_model=List[DepartmentWithUniversityResponse])
 async def get_departments(
     skip: int = Query(0, ge=0),
-    limit: int = Query(10000, ge=1, le=10000),  # ✅ Limit artırıldı - tüm bölümleri getir
+    limit: int = Query(500, ge=1, le=5000),  # ✅ Limit azaltıldı - performans için (pagination kullanın)
     field_type: Optional[str] = Query(None),
     university_id: Optional[int] = Query(None),
     city: Optional[str] = Query(None),

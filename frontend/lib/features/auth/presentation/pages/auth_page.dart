@@ -13,7 +13,7 @@ class AuthPage extends StatefulWidget {
   State<AuthPage> createState() => _AuthPageState();
 }
 
-class _AuthPageState extends State<AuthPage> {
+class _AuthPageState extends State<AuthPage> with SingleTickerProviderStateMixin {
   late final AuthService _authService;
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -23,11 +23,21 @@ class _AuthPageState extends State<AuthPage> {
   bool _isRegisterMode = true;
   bool _useEmail = true;
   bool _isLoading = false;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
     _authService = getAuthService(ApiService());
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
+    _animationController.forward();
   }
 
   @override
@@ -35,6 +45,7 @@ class _AuthPageState extends State<AuthPage> {
     _emailController.dispose();
     _phoneController.dispose();
     _nameController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -44,7 +55,6 @@ class _AuthPageState extends State<AuthPage> {
     setState(() => _isLoading = true);
 
     try {
-      // Mark onboarding as completed
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('has_seen_onboarding', true);
 
@@ -66,7 +76,6 @@ class _AuthPageState extends State<AuthPage> {
           phone: !_useEmail ? _phoneController.text.trim() : null,
         );
         
-        // Kullanıcı durumuna göre yönlendirme
         if (mounted) {
           if (!user.isInitialSetupCompleted) {
             Navigator.of(context).pushReplacement(
@@ -85,6 +94,10 @@ class _AuthPageState extends State<AuthPage> {
           SnackBar(
             content: Text('Hata: ${e.toString()}'),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -97,8 +110,11 @@ class _AuthPageState extends State<AuthPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Form(
@@ -106,60 +122,90 @@ class _AuthPageState extends State<AuthPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 48),
+                  const SizedBox(height: 40),
                 
-                // Logo ve başlık
-                Icon(
+                  // Logo and title - Stitch Style
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          theme.colorScheme.primary,
+                          theme.colorScheme.primary.withValues(alpha: 0.8),
+                        ],
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                          blurRadius: 20,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
                   Icons.school_rounded,
-                  size: 80,
-                  color: Theme.of(context).primaryColor,
+                      size: 64,
+                      color: Colors.white,
+                    ),
                 ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 32),
+                  
                 Text(
                   _isRegisterMode ? 'Kayıt Ol' : 'Giriş Yap',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
+                    style: theme.textTheme.displaySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                 Text(
                   _isRegisterMode
                       ? 'ÖSYM Rehberi\'ne hoş geldiniz'
                       : 'Hesabınıza giriş yapın',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
                 const SizedBox(height: 48),
                 
-                // Email/Telefon seçimi
-                SegmentedButton<bool>(
-                  selected: {_useEmail},
-                  onSelectionChanged: (Set<bool> selection) {
-                    setState(() {
-                      _useEmail = selection.first;
-                    });
-                  },
-                  segments: const [
-                    ButtonSegment<bool>(
-                      value: true,
-                      label: Text('Email'),
-                      icon: Icon(Icons.email_outlined),
+                  // Email/Phone selection - Stitch Style
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    ButtonSegment<bool>(
-                      value: false,
-                      label: Text('Telefon'),
-                      icon: Icon(Icons.phone_outlined),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildSelectionButton(
+                            context,
+                            'Email',
+                            Icons.email_outlined,
+                            _useEmail,
+                            () => setState(() => _useEmail = true),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildSelectionButton(
+                            context,
+                            'Telefon',
+                            Icons.phone_outlined,
+                            !_useEmail,
+                            () => setState(() => _useEmail = false),
+                          ),
                     ),
                   ],
+                    ),
                 ),
                 const SizedBox(height: 24),
                 
-                // İsim alanı (sadece kayıt için)
+                  // Name field (only for register)
                 if (_isRegisterMode) ...[
                   TextFormField(
                     controller: _nameController,
@@ -167,8 +213,10 @@ class _AuthPageState extends State<AuthPage> {
                       labelText: 'İsim Soyisim',
                       prefixIcon: const Icon(Icons.person_outline),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                       ),
+                        filled: true,
+                        fillColor: theme.colorScheme.surface,
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -180,7 +228,7 @@ class _AuthPageState extends State<AuthPage> {
                   const SizedBox(height: 16),
                 ],
                 
-                // Email veya telefon alanı
+                  // Email or phone field
                 if (_useEmail)
                   TextFormField(
                     controller: _emailController,
@@ -189,8 +237,10 @@ class _AuthPageState extends State<AuthPage> {
                       labelText: 'Email',
                       prefixIcon: const Icon(Icons.email_outlined),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                       ),
+                        filled: true,
+                        fillColor: theme.colorScheme.surface,
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -210,9 +260,11 @@ class _AuthPageState extends State<AuthPage> {
                       labelText: 'Telefon Numarası',
                       prefixIcon: const Icon(Icons.phone_outlined),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                       ),
                       hintText: '5XXXXXXXXX',
+                        filled: true,
+                        fillColor: theme.colorScheme.surface,
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -224,53 +276,120 @@ class _AuthPageState extends State<AuthPage> {
                       return null;
                     },
                   ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 32),
                 
-                // Submit button
+                  // Submit button - Stitch Style
                 ElevatedButton(
                   onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(28),
                     ),
+                      elevation: 0,
                   ),
                   child: _isLoading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
                         )
                       : Text(
                           _isRegisterMode ? 'Kayıt Ol' : 'Giriş Yap',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                         ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                 
-                // Switch mode button
+                  // Switch mode button - Stitch Style
                 TextButton(
                   onPressed: () {
                     setState(() {
                       _isRegisterMode = !_isRegisterMode;
+                        _emailController.clear();
+                        _phoneController.clear();
+                        _nameController.clear();
                     });
                   },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   child: Text(
                     _isRegisterMode
                         ? 'Zaten hesabım var, giriş yap'
                         : 'Hesabım yok, kayıt ol',
-                    style: const TextStyle(fontSize: 14),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: theme.colorScheme.primary,
+                      ),
                   ),
                 ),
               ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
-}
 
+  Widget _buildSelectionButton(
+    BuildContext context,
+    String label,
+    IconData icon,
+    bool isSelected,
+    VoidCallback onTap,
+  ) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? theme.colorScheme.primary
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected
+                  ? Colors.white
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected
+                    ? Colors.white
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

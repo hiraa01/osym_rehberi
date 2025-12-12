@@ -5,8 +5,8 @@ import '../../../auth/data/providers/auth_service.dart';
 import '../../../auth/presentation/pages/auth_check_page.dart';
 import '../../../settings/presentation/pages/theme_settings_page.dart';
 import '../widgets/edit_profile_dialog.dart';
-import '../widgets/update_goal_dialog.dart';
-import '../../../initial_setup/presentation/widgets/preferences_selection_step.dart';
+import '../../../goals/presentation/pages/update_goal_page.dart';
+import '../../../preferences/presentation/pages/update_preferences_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -18,26 +18,37 @@ class ProfilePage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profilim'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'Profil Sayfası',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         elevation: 0,
       ),
       body: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              // Profil kartı
+            // Profil kartı - Stitch Style
               Card(
-                elevation: 2,
+              elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.all(24.0),
                   child: Column(
+                  children: [
+                    Stack(
                     children: [
                       CircleAvatar(
                         radius: 50,
-                        backgroundColor: Theme.of(context).primaryColor,
+                          backgroundColor: Theme.of(context).colorScheme.primary,
                         child: Text(
                           (user?.name?.substring(0, 1).toUpperCase() ?? 'Ö'),
                           style: const TextStyle(
@@ -46,13 +57,32 @@ class ProfilePage extends StatelessWidget {
                             color: Colors.white,
                           ),
                         ),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: const Icon(
+                              Icons.edit,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ],
                       ),
                       const SizedBox(height: 16),
                       Text(
                         user?.name ?? 'Kullanıcı',
                         style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -91,18 +121,20 @@ class ProfilePage extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 8.0),
           child: Text(
-            'Hesap Ayarları',
+            'HESAP AYARLARI',
             style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1,
+              color: Colors.grey,
             ),
           ),
         ),
         const SizedBox(height: 12),
         Card(
-          elevation: 1,
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
             children: [
@@ -121,7 +153,7 @@ class ProfilePage extends StatelessWidget {
                   );
                 },
               ),
-              const Divider(height: 1),
+              Divider(height: 1, indent: 56, endIndent: 16),
               _buildListTile(
                 context,
                 'Tercihlerimi Güncelle',
@@ -129,36 +161,21 @@ class ProfilePage extends StatelessWidget {
                 () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => Scaffold(
-                        appBar: AppBar(title: const Text('Tercihlerimi Güncelle')),
-                        body: PreferencesSelectionStep(
-                          departmentType: 'SAY', // Varsayılan, güncelleme modunda kullanıcı değiştirebilir
-                          examScores: const [], // Güncelleme modunda netler gerekmiyor
-                          onPreferencesCompleted: (prefs) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Tercihler güncellendi!'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          },
-                          onBack: () => Navigator.pop(context),
-                        ),
-                      ),
+                      builder: (_) => const UpdatePreferencesPage(),
                     ),
                   );
                 },
               ),
-              const Divider(height: 1),
+              Divider(height: 1, indent: 56, endIndent: 16),
               _buildListTile(
                 context,
                 'Hedef Bölümümü Değiştir',
                 Icons.flag_outlined,
                 () {
-                  showDialog(
-                    context: context,
-                    builder: (_) => const UpdateGoalDialog(),
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const UpdateGoalPage(),
+                    ),
                   );
                 },
               ),
@@ -169,34 +186,51 @@ class ProfilePage extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 8.0),
           child: Text(
-            'Uygulama',
+            'UYGULAMA AYARLARI',
             style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1,
+              color: Colors.grey,
             ),
           ),
         ),
         const SizedBox(height: 12),
         Card(
-          elevation: 1,
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
             children: [
-              _buildListTile(
-                context,
-                'Tema Ayarları',
-                Icons.palette_outlined,
-                () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const ThemeSettingsPage(),
-                    ),
-                  );
-                },
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.info_outline,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 22,
+                  ),
+                ),
+                title: const Text(
+                  'Tema',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                trailing: Switch(
+                  value: false, // TODO: Tema durumunu kontrol et
+                  onChanged: (value) {
+                    // Tema değiştir
+                  },
+                ),
               ),
-              const Divider(height: 1),
+              Divider(height: 1, indent: 56, endIndent: 16),
               _buildListTile(
                 context,
                 'Hakkında',
@@ -215,7 +249,7 @@ class ProfilePage extends StatelessWidget {
                   );
                 },
               ),
-              const Divider(height: 1),
+              Divider(height: 1, indent: 56, endIndent: 16),
               _buildListTile(
                 context,
                 'Çıkış Yap',
@@ -224,6 +258,9 @@ class ProfilePage extends StatelessWidget {
                   final confirm = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
                       title: const Text('Çıkış Yap'),
                       content: const Text(
                         'Çıkış yapmak istediğinize emin misiniz?',
@@ -235,6 +272,11 @@ class ProfilePage extends StatelessWidget {
                         ),
                         ElevatedButton(
                           onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                           child: const Text('Çıkış Yap'),
                         ),
                       ],
@@ -267,11 +309,27 @@ class ProfilePage extends StatelessWidget {
     VoidCallback onTap, {
     Color? color,
   }) {
+    final theme = Theme.of(context);
     return ListTile(
-      leading: Icon(icon, color: color),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: (color ?? theme.colorScheme.primary).withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          icon,
+          color: color ?? theme.colorScheme.primary,
+          size: 22,
+        ),
+      ),
       title: Text(
         title,
-        style: TextStyle(color: color),
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
       ),
       trailing: Icon(
         Icons.arrow_forward_ios,
