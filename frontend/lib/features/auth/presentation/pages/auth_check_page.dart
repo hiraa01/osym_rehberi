@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/services/api_service.dart';
 import '../../data/providers/auth_service.dart';
-import '../../../onboarding/presentation/pages/onboarding_page.dart';
+import '../../../onboarding/presentation/pages/stitch_onboarding_page.dart';
 import '../../../initial_setup/presentation/pages/initial_setup_page.dart';
 import '../../../main_layout/presentation/pages/main_layout_page.dart';
 import 'auth_page.dart';
@@ -28,35 +28,35 @@ class _AuthCheckPageState extends State<AuthCheckPage> {
   Future<void> _checkAuthStatus() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       // 1. Onboarding kontrolü
       final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
       if (!hasSeenOnboarding) {
         if (mounted) {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const OnboardingPage()),
+            MaterialPageRoute(builder: (_) => const StitchOnboardingPage()),
           );
         }
         return;
       }
-      
+
       // 2. Auth token kontrolü
       final authToken = prefs.getString('auth_token');
       final userId = prefs.getInt('user_id');
-      
+
       if (authToken != null && userId != null) {
         // Token var, kullanıcı giriş yapmış
         // OFFLINE-FIRST: Önce local storage'dan yükle, backend'e istek atma
         final authService = getAuthService(ApiService());
-        
+
         try {
           // Local storage'dan kullanıcı bilgilerini yükle (API çağrısı YOK)
           await authService.loadStoredAuth();
-          
+
           if (authService.isAuthenticated && authService.currentUser != null) {
             // Kullanıcı local'de var
             final user = authService.currentUser!;
-            
+
             if (mounted) {
               if (!user.isInitialSetupCompleted) {
                 // İlk kurulum tamamlanmamış
@@ -70,7 +70,7 @@ class _AuthCheckPageState extends State<AuthCheckPage> {
                 );
               }
             }
-            
+
             // Background'da backend ile sync yap (optional)
             _syncWithBackend(authService, userId);
           } else {
@@ -91,7 +91,7 @@ class _AuthCheckPageState extends State<AuthCheckPage> {
       _navigateToAuth();
     }
   }
-  
+
   // Background'da backend ile sync (UI'ı bloklamaz)
   Future<void> _syncWithBackend(dynamic authService, int userId) async {
     try {
@@ -144,4 +144,3 @@ class _AuthCheckPageState extends State<AuthCheckPage> {
     );
   }
 }
-

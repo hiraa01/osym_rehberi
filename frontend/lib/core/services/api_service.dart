@@ -39,18 +39,21 @@ class ApiService {
 
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout:
-          const Duration(seconds: 90), // Backend'e bağlanma için 90 saniye (yavaş network için)
+      connectTimeout: const Duration(
+          seconds:
+              120), // Backend'e bağlanma için 120 saniye (yavaş network için)
       receiveTimeout: const Duration(
-          seconds: 180), // Default: 180 saniye (normal endpoint'ler için)
-      sendTimeout: const Duration(seconds: 90), // Veri göndermek için 90 saniye
+          seconds: 300), // Default: 300 saniye (normal endpoint'ler için)
+      sendTimeout:
+          const Duration(seconds: 120), // Veri göndermek için 120 saniye
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Accept-Encoding': 'gzip, deflate', // Gzip desteği
       },
       // Android için connection ayarları
-      persistentConnection: true, // ✅ True yaparak bağlantıyı yeniden kullan (daha hızlı)
+      persistentConnection:
+          true, // ✅ True yaparak bağlantıyı yeniden kullan (daha hızlı)
       // Tüm status kodlarını kabul et (400-499 hataları da response olarak gelsin)
       validateStatus: (status) => status != null && status < 600,
       // Chrome için özel ayarlar
@@ -96,8 +99,8 @@ class ApiService {
           // Kritik endpoint'ler için özel timeout'lar tanımlanmıştır
           // NOT: connectTimeout sadece BaseOptions'ta ayarlanabilir, Options'ta yok
           options.receiveTimeout =
-              const Duration(seconds: 180); // Default: 180 saniye
-          options.sendTimeout = const Duration(seconds: 90);
+              const Duration(seconds: 300); // Default: 300 saniye
+          options.sendTimeout = const Duration(seconds: 120);
           if (kDebugMode) {
             debugPrint('[Android] Request: ${options.method} ${options.uri}');
             debugPrint('[Android] Headers: ${options.headers}');
@@ -247,15 +250,15 @@ class ApiService {
       },
       options: Options(
         receiveTimeout: const Duration(
-            seconds: 120), // 2 dakika (pagination ile daha hızlı olmalı)
-        sendTimeout: const Duration(seconds: 30),
+            seconds: 180), // 3 dakika (pagination ile daha hızlı olmalı)
+        sendTimeout: const Duration(seconds: 60),
       ),
     );
   }
 
   Future<Response> getDepartments({
     int skip = 0,
-    int limit = 2000, // ✅ Pagination - daha yüksek limit (tüm bölümler için)
+    int limit = 100, // ✅ Pagination - default 100 kayıt (performans için)
   }) async {
     // Bölümler çok sayıda olabilir - pagination kullanın
     return await _dio.get(
@@ -266,8 +269,8 @@ class ApiService {
       },
       options: Options(
         receiveTimeout: const Duration(
-            seconds: 120), // 2 dakika (pagination ile daha hızlı olmalı)
-        sendTimeout: const Duration(seconds: 30),
+            seconds: 180), // 3 dakika (pagination ile daha hızlı olmalı)
+        sendTimeout: const Duration(seconds: 60),
       ),
     );
   }
@@ -374,7 +377,15 @@ class ApiService {
   }
 
   Future<Response> getStudentRecommendations(int studentId) async {
-    return await _dio.get('/recommendations/student/$studentId');
+    return await _dio.get(
+      '/recommendations/student/$studentId',
+      options: Options(
+        receiveTimeout: const Duration(seconds: 120),
+        sendTimeout: const Duration(seconds: 60),
+        validateStatus: (status) =>
+            status != null && status < 500, // 4xx hatalarını da handle et
+      ),
+    );
   }
 
   Future<Response> clearStudentRecommendations(int studentId) async {
@@ -408,9 +419,9 @@ class ApiService {
         'w_p': wP,
       },
       options: Options(
-        receiveTimeout:
-            const Duration(seconds: 150), // ✅ 2.5 dakika - makul timeout
-        sendTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(
+            seconds: 240), // ✅ 4 dakika - LLM yanıtları için yeterli timeout
+        sendTimeout: const Duration(seconds: 120),
         validateStatus: (status) =>
             status != null && status < 500, // ✅ 4xx hatalarını da handle et
       ),

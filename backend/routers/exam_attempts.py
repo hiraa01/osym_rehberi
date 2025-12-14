@@ -37,15 +37,27 @@ async def create_exam_attempt(
             api_logger.warning(f"Student not found: student_id={attempt.student_id}")
             raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
         
+        # ✅ attempt_number'ı otomatik hesapla (öğrencinin mevcut deneme sayısına göre)
+        if attempt.attempt_number is None:
+            existing_attempts_count = db.query(ExamAttempt).filter(
+                ExamAttempt.student_id == attempt.student_id
+            ).count()
+            attempt_number = existing_attempts_count + 1
+            api_logger.debug(f"Auto-calculated attempt_number={attempt_number} for student_id={attempt.student_id}")
+        else:
+            attempt_number = attempt.attempt_number
+        
         # Puanları hesapla (öğrencinin field_type'ını kullan)
         api_logger.debug(f"Calculating scores for student_id={attempt.student_id}")
         attempt_data = attempt.dict()
         attempt_data['field_type'] = student.field_type  # ✅ field_type eklendi!
+        attempt_data['attempt_number'] = attempt_number  # ✅ attempt_number eklendi!
         scores = ScoreCalculator.calculate_all_scores(attempt_data)
         api_logger.debug(f"Scores calculated: total_score={scores.get('total_score')}")
         
         # Deneme kaydet - obp_score'u dict'ten çıkarıp ayrı ver
         attempt_dict = attempt.dict()
+        attempt_dict['attempt_number'] = attempt_number  # ✅ attempt_number eklendi!
         obp_score = attempt_dict.pop('obp_score', 0.0)  # ✅ obp_score'u çıkar
         
         api_logger.debug(f"Creating ExamAttempt object for student_id={attempt.student_id}")

@@ -70,13 +70,13 @@ class _PreferencesSelectionStepState
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getInt('user_id');
       final userName = prefs.getString('user_name') ?? 'Öğrenci';
-      
+
       if (userId != null) {
         // Son denemenin netlerini kullan (veya ilk deneme netlerini)
-        final latestScores = widget.examScores.isNotEmpty 
-            ? widget.examScores.last 
+        final latestScores = widget.examScores.isNotEmpty
+            ? widget.examScores.last
             : <String, double>{};
-        
+
         // Öğrenci profili oluştur - Backend şemasına uygun format
         final studentResponse = await _apiService.createStudent({
           'name': userName,
@@ -102,7 +102,8 @@ class _PreferencesSelectionStepState
           'ayt_history2_net': latestScores['ayt_history2_net'] ?? 0.0,
           'ayt_geography2_net': latestScores['ayt_geography2_net'] ?? 0.0,
           'ayt_religion_net': latestScores['ayt_religion_net'] ?? 0.0,
-          'ayt_foreign_language_net': latestScores['ayt_foreign_language_net'] ?? 0.0,
+          'ayt_foreign_language_net':
+              latestScores['ayt_foreign_language_net'] ?? 0.0,
           // Tercihler
           'preferred_cities': _selectedCities,
           'preferred_university_types': null,
@@ -110,25 +111,24 @@ class _PreferencesSelectionStepState
           'scholarship_preference': false,
           'interest_areas': null,
         });
-        
+
         // Student ID'yi kaydet
         final studentId = studentResponse.data['id'] as int;
         await prefs.setInt('student_id', studentId);
-        
+
         // preferred_departments'ı SharedPreferences'ta sakla (backend'de yok)
         await prefs.setString(
           'preferred_departments_$studentId',
           jsonEncode(_selectedDepartments),
         );
-        
+
         // Tüm denemeleri kaydet
         for (int i = 0; i < widget.examScores.length; i++) {
           final examScores = widget.examScores[i];
           try {
             await _apiService.createExamAttempt({
               'student_id': studentId,
-              'name': 'Deneme ${i + 1}',
-              'attempt_number': i + 1,
+              'exam_name': 'Deneme ${i + 1}',
               'exam_date': DateTime.now().toIso8601String(),
               'tyt_turkish_net': examScores['tyt_turkish_net'] ?? 0.0,
               'tyt_math_net': examScores['tyt_math_net'] ?? 0.0,
@@ -145,7 +145,8 @@ class _PreferencesSelectionStepState
               'ayt_history2_net': examScores['ayt_history2_net'] ?? 0.0,
               'ayt_geography2_net': examScores['ayt_geography2_net'] ?? 0.0,
               'ayt_religion_net': examScores['ayt_religion_net'] ?? 0.0,
-              'ayt_foreign_language_net': examScores['ayt_foreign_language_net'] ?? 0.0,
+              'ayt_foreign_language_net':
+                  examScores['ayt_foreign_language_net'] ?? 0.0,
             });
           } catch (e) {
             debugPrint('Error saving exam attempt ${i + 1}: $e');
@@ -209,7 +210,6 @@ class _PreferencesSelectionStepState
           ),
           const SizedBox(height: 24),
 
-
           // Şehir seçimi
           const Text(
             'Tercih Ettiğiniz Şehirler',
@@ -244,7 +244,9 @@ class _PreferencesSelectionStepState
               children: [
                 // ✅ Arama yapılabilir dropdown
                 SearchableDropdown<String>(
-                  items: cities.where((c) => !_selectedCities.contains(c)).toList(),
+                  items: cities
+                      .where((c) => !_selectedCities.contains(c))
+                      .toList(),
                   itemAsString: (item) => item,
                   hintText: 'Şehir ekle...',
                   searchHintText: 'Şehir ara (örn: ankara)',
@@ -284,7 +286,7 @@ class _PreferencesSelectionStepState
             ),
           ),
           const SizedBox(height: 12),
-          
+
           // Alan türü seçimi
           const Text(
             'Alan Türü',
@@ -297,9 +299,7 @@ class _PreferencesSelectionStepState
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: [
-              'SAY', 'EA', 'SÖZ', 'DİL'
-            ].map((field) {
+            children: ['SAY', 'EA', 'SÖZ', 'DİL'].map((field) {
               final isSelected = _selectedFieldType == field;
               return ChoiceChip(
                 label: Text(field),
@@ -314,7 +314,7 @@ class _PreferencesSelectionStepState
             }).toList(),
           ),
           const SizedBox(height: 16),
-          
+
           departmentsAsync.when(
             loading: () => const Center(
               child: Padding(
@@ -346,10 +346,13 @@ class _PreferencesSelectionStepState
                         return false;
                       }
                     }
-                    
+
                     return true;
                   })
-                  .map((dept) => dept['name'] as String? ?? dept['program_name'] as String? ?? '')
+                  .map((dept) =>
+                      dept['name'] as String? ??
+                      dept['program_name'] as String? ??
+                      '')
                   .where((name) => name.isNotEmpty)
                   .toSet()
                   .toList()
@@ -374,7 +377,7 @@ class _PreferencesSelectionStepState
                     itemAsString: (item) => item,
                     hintText: hintText,
                     searchHintText: 'Bölüm ara (örn: bilgisayar)',
-                    onChanged: _selectedFieldType != null 
+                    onChanged: _selectedFieldType != null
                         ? (String? dept) {
                             if (dept != null) {
                               setState(() => _selectedDepartments.add(dept));
@@ -392,7 +395,8 @@ class _PreferencesSelectionStepState
                           label: Text(deptName),
                           deleteIcon: const Icon(Icons.close, size: 18),
                           onDeleted: () {
-                            setState(() => _selectedDepartments.remove(deptName));
+                            setState(
+                                () => _selectedDepartments.remove(deptName));
                           },
                         );
                       }).toList(),
@@ -448,4 +452,3 @@ class _PreferencesSelectionStepState
     );
   }
 }
-

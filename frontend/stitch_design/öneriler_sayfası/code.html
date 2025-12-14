@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+
+<html class="light" lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Öneriler Sayfası</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#196ee6",
+              "background-light": "#f6f7f8",
+              "background-dark": "#111821",
+            },
+            fontFamily: {
+              "display": ["Lexend", "sans-serif"]
+            },
+            borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 24px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<!-- Top App Bar -->
+<header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm">
+<div class="flex items-center p-4 pb-2 justify-between">
+<div class="flex size-12 shrink-0 items-center justify-start text-gray-800 dark:text-gray-200">
+<span class="material-symbols-outlined">arrow_back_ios_new</span>
+</div>
+<h1 class="text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center text-gray-900 dark:text-gray-50">Önerilerim</h1>
+<div class="flex w-12 items-center justify-end">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-12 bg-transparent text-gray-800 dark:text-gray-200 gap-2 text-base font-bold leading-normal tracking-[0.015em] min-w-0 p-0">
+<span class="material-symbols-outlined">ios_share</span>
+</button>
+</div>
+</div>
+</header>
+<main class="flex-grow">
+<!-- Chips / Filters -->
+<div class="flex gap-3 p-4 pt-2 overflow-x-auto whitespace-nowrap">
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-white dark:bg-gray-800 px-4 shadow-sm">
+<p class="text-sm font-medium leading-normal text-gray-800 dark:text-gray-200">Şehir Filtrele</p>
+<span class="material-symbols-outlined text-gray-600 dark:text-gray-400 !text-xl">keyboard_arrow_down</span>
+</button>
+<button class="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-lg bg-white dark:bg-gray-800 px-4 shadow-sm">
+<p class="text-sm font-medium leading-normal text-gray-800 dark:text-gray-200">Üniversite Filtrele</p>
+<span class="material-symbols-outlined text-gray-600 dark:text-gray-400 !text-xl">keyboard_arrow_down</span>
+</button>
+</div>
+<!-- Card List -->
+<div class="flex flex-col gap-0 px-4 pb-4">
+<!-- Card 1 -->
+<div class="w-full @container py-2">
+<div class="flex flex-col items-stretch justify-start rounded-xl @xl:flex-row @xl:items-start shadow-[0_2px_8px_rgba(0,0,0,0.05)] bg-white dark:bg-gray-800">
+<div class="w-full bg-center bg-no-repeat aspect-[2/1] @xl:w-40 @xl:h-auto @xl:aspect-square bg-cover rounded-t-xl @xl:rounded-l-xl @xl:rounded-tr-none" data-alt="Boğaziçi University campus" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDZd4Z9oxRCp_BYoR-pJDkSo6xiJeXCDAwj5n3hOnEZgG6PGQDbDNU-SvH33F_ljb0uZDagSOYekM7IT0E-xpv4gnBLKO8L3l1JqsEm9fk-YEP4-EePEy-VCoPXrPgz987yX56o_yVrHyPFmIlVzBUAqIBeWNCzDnzJdNXI6Bqb-crca1mC3pfJJp_-E4VA0jHi1yBzx2UomjMpjY_ToulouFCZgbk2l9ryYAm58_QcsLjIZXV1o8ymPZZikQrlr3jj5A4edxUkk-bG");'></div>
+<div class="flex w-full min-w-0 grow flex-col items-stretch justify-center gap-1 p-4">
+<p class="text-primary text-sm font-semibold leading-normal">%95 Uyumlu</p>
+<p class="text-gray-900 dark:text-gray-50 text-lg font-bold leading-tight tracking-[-0.015em]">Bilgisayar Mühendisliği (İngilizce)</p>
+<div class="flex flex-col gap-1 mt-1">
+<p class="text-gray-600 dark:text-gray-300 text-base font-normal leading-normal">Boğaziçi Üniversitesi, Mühendislik Fakültesi</p>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal">Şehir: İstanbul, Puan Türü: SAY</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="w-full @container py-2">
+<div class="flex flex-col items-stretch justify-start rounded-xl @xl:flex-row @xl:items-start shadow-[0_2px_8px_rgba(0,0,0,0.05)] bg-white dark:bg-gray-800">
+<div class="w-full bg-center bg-no-repeat aspect-[2/1] @xl:w-40 @xl:h-auto @xl:aspect-square bg-cover rounded-t-xl @xl:rounded-l-xl @xl:rounded-tr-none" data-alt="Hacettepe University building exterior" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBvA_BXs_3mW7cd3-jvHCJm8Mal8KldYIar8eZGHB88MhZDp9pdw71wAptA7VMnAVN-3jSJg66rzmT9PcPdMGRVLtsbnfr9Mvp8CNfXxhXosHOIogYXABymNaC3TgFumTbGTIMh0Nw1oWtpuDzJL69XINRdBsT_kjBf1bjkoPZW8-Tvshc2UbYBm4VpGjPgRi0jsQNuTPU-VtFNOltv47NP5I-F1FFW6JLXZRA67bCXLyWCCXeaIh785jvkcQVeCxNiMH47rjglRdnj");'></div>
+<div class="flex w-full min-w-0 grow flex-col items-stretch justify-center gap-1 p-4">
+<p class="text-primary text-sm font-semibold leading-normal">%92 Uyumlu</p>
+<p class="text-gray-900 dark:text-gray-50 text-lg font-bold leading-tight tracking-[-0.015em]">Tıp Fakültesi</p>
+<div class="flex flex-col gap-1 mt-1">
+<p class="text-gray-600 dark:text-gray-300 text-base font-normal leading-normal">Hacettepe Üniversitesi, Tıp Fakültesi</p>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal">Şehir: Ankara, Puan Türü: SAY</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="w-full @container py-2">
+<div class="flex flex-col items-stretch justify-start rounded-xl @xl:flex-row @xl:items-start shadow-[0_2px_8px_rgba(0,0,0,0.05)] bg-white dark:bg-gray-800">
+<div class="w-full bg-center bg-no-repeat aspect-[2/1] @xl:w-40 @xl:h-auto @xl:aspect-square bg-cover rounded-t-xl @xl:rounded-l-xl @xl:rounded-tr-none" data-alt="Koç University modern architecture" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAZ-pl-AyY8tahQbhdlbzPPfK7spBbVXViXyQeEKwGxWJsvG0M1VqxlGeDsbvym4ROgbMhu9btgEEg0a6pxXTv4nVHSPb8OGBuLSbIRa3o5kO1_ERwwolOsOSWaK4c30RMMhRPcSpH_LUTkhACg3C-1k-Quw5pjNMcoQXTtyq5ClHwA_w7V-DAGj2jJxdVOVKFtGwnCZqD6qGFmRNAxG2HkMa4Y0EDpHoFFVSvjkUprzBkWUx8TSfg21o_kaPPPOtP2Ap7F5eqFroHN");'></div>
+<div class="flex w-full min-w-0 grow flex-col items-stretch justify-center gap-1 p-4">
+<p class="text-primary text-sm font-semibold leading-normal">%88 Uyumlu</p>
+<p class="text-gray-900 dark:text-gray-50 text-lg font-bold leading-tight tracking-[-0.015em]">Endüstri Mühendisliği (%50 Burslu)</p>
+<div class="flex flex-col gap-1 mt-1">
+<p class="text-gray-600 dark:text-gray-300 text-base font-normal leading-normal">Koç Üniversitesi, Mühendislik Fakültesi</p>
+<p class="text-gray-500 dark:text-gray-400 text-sm font-normal leading-normal">Şehir: İstanbul, Puan Türü: SAY</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

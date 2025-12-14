@@ -252,7 +252,7 @@ async def create_department(department: DepartmentCreate, db: Session = Depends(
 @router.get("/departments/", response_model=List[DepartmentWithUniversityResponse])
 async def get_departments(
     skip: int = Query(0, ge=0),
-    limit: int = Query(500, ge=1, le=5000),  # ✅ Limit azaltıldı - performans için (pagination kullanın)
+    limit: int = Query(100, ge=1, le=500),  # ✅ Limit 100'e düşürüldü - performans için (pagination kullanın)
     field_type: Optional[str] = Query(None),
     university_id: Optional[int] = Query(None),
     city: Optional[str] = Query(None),
@@ -262,13 +262,17 @@ async def get_departments(
     has_scholarship: Optional[bool] = Query(None),
     db: Session = Depends(get_db)
 ):
-    """Bölüm listesini getir - OPTIMIZED with eager loading"""
-    # ✅ OPTIMIZED: Eager loading ile join yaparak N+1 problemini önle
-    from sqlalchemy.orm import joinedload
+    """Bölüm listesini getir - OPTIMIZED with eager loading and selectinload"""
+    # ✅ OPTIMIZED: selectinload ile N+1 problemini tamamen önle
+    from sqlalchemy.orm import selectinload
     
-    # Sadece city veya university_type filtresi varsa join yap
+    # ✅ OPTIMIZED: Sadece city veya university_type filtresi varsa join yap
     query = db.query(Department)
     
+    # ✅ OPTIMIZED: selectinload ile University bilgilerini tek sorguda çek (N+1 problemini önler)
+    query = query.options(selectinload(Department.university))
+    
+    # Filtreleme - city veya university_type için join gerekli
     if city or university_type:
         query = query.join(University, Department.university_id == University.id)
     
@@ -290,21 +294,13 @@ async def get_departments(
     # ✅ Bölüm adına göre alfabetik sıralama
     query = query.order_by(Department.name)
     
-    # ✅ OPTIMIZED: Tek sorguda tüm verileri çek (eager loading)
+    # ✅ OPTIMIZED: Tek sorguda tüm verileri çek (selectinload ile University bilgileri de dahil)
     departments = query.offset(skip).limit(limit).all()
     
-    # ✅ N+1 problemini çöz: Eager loading ile tüm üniversiteleri tek seferde çek
-    university_ids = {dept.university_id for dept in departments}
-    # ✅ OPTIMIZED: Index kullanarak hızlı sorgu
-    universities_dict = {
-        uni.id: uni 
-        for uni in db.query(University).filter(University.id.in_(university_ids)).all()
-    }
-    
-    # University bilgilerini ekle
+    # ✅ N+1 problemi çözüldü: selectinload sayesinde University bilgileri zaten yüklendi
     result = []
     for dept in departments:
-        university = universities_dict.get(dept.university_id)
+        university = dept.university  # ✅ Artık ek sorgu yok, zaten yüklü
         if not university:
             continue  # Üniversite bulunamazsa skip et
         

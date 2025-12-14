@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Hedefim - Bölümler</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#196ee6",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#111821",
+                    },
+                    fontFamily: {
+                        display: ["Lexend"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.5rem",
+                        lg: "1rem",
+                        xl: "1.5rem",
+                        full: "9999px"
+                    },
+                },
+            },
+        };
+    </script>
+<style>
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display">
+<div class="relative flex h-auto min-h-screen w-full flex-col bg-background-light dark:bg-background-dark group/design-root overflow-x-hidden pb-24">
+<header class="sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-sm">
+<div class="flex items-center p-4 pb-2 justify-between">
+<div class="flex size-10 shrink-0 items-center justify-center">
+</div>
+<h1 class="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-100 flex-1 text-center">Hedefim</h1>
+<div class="size-10 shrink-0"></div>
+</div>
+</header>
+<main class="flex-1">
+<div class="p-4 pb-2">
+<div class="grid grid-cols-2 gap-2 rounded-lg bg-gray-200/50 dark:bg-gray-800/50 p-1">
+<button class="flex h-10 items-center justify-center gap-x-2 rounded-md bg-white dark:bg-gray-700 text-primary dark:text-white shadow-sm">
+<span class="material-symbols-outlined text-xl">school</span>
+<p class="text-sm font-semibold">Bölümler</p>
+</button>
+<button class="flex h-10 items-center justify-center gap-x-2 rounded-md text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-xl">account_balance</span>
+<p class="text-sm font-semibold">Üniversiteler</p>
+</button>
+</div>
+</div>
+<div class="px-4 py-3">
+<label class="flex flex-col min-w-40 h-12 w-full">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full">
+<div class="text-gray-500 dark:text-gray-400 flex bg-white dark:bg-gray-800/50 items-center justify-center pl-4 rounded-l-lg border-y border-l border-gray-200 dark:border-gray-700">
+<span class="material-symbols-outlined text-2xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-r-lg text-gray-900 dark:text-gray-100 focus:outline-0 focus:ring-2 focus:ring-primary/50 ring-inset border-y border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 h-full placeholder:text-gray-500 dark:placeholder:text-gray-400 px-4 pl-2 text-base font-normal leading-normal focus:border-primary" placeholder="Bölüm veya üniversite ara..." value=""/>
+</div>
+</label>
+</div>
+<div class="flex gap-2 p-3 pt-0 overflow-x-auto scrollbar-hide">
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-1.5 rounded-lg bg-primary text-white pl-4 pr-3">
+<p class="text-sm font-medium leading-normal">Sayısal</p>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-1.5 rounded-lg bg-white dark:bg-gray-800/50 text-gray-800 dark:text-gray-200 pl-4 pr-3 border border-gray-200 dark:border-gray-700">
+<p class="text-sm font-medium leading-normal">Eşit Ağırlık</p>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-1.5 rounded-lg bg-white dark:bg-gray-800/50 text-gray-800 dark:text-gray-200 pl-4 pr-3 border border-gray-200 dark:border-gray-700">
+<p class="text-sm font-medium leading-normal">Sözel</p>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-1.5 rounded-lg bg-white dark:bg-gray-800/50 text-gray-800 dark:text-gray-200 pl-4 pr-3 border border-gray-200 dark:border-gray-700">
+<p class="text-sm font-medium leading-normal">Dil</p>
+</button>
+<button class="flex h-9 shrink-0 items-center justify-center gap-x-1.5 rounded-lg bg-white dark:bg-gray-800/50 text-gray-800 dark:text-gray-200 pl-4 pr-3 border border-gray-200 dark:border-gray-700">
+<span class="material-symbols-outlined text-xl">tune</span>
+<p class="text-sm font-medium leading-normal">Filtrele</p>
+</button>
+</div>
+<div class="flex flex-col gap-3 px-4 pb-4">
+<div class="flex items-center gap-4 bg-white dark:bg-gray-800/50 rounded-xl p-3 shadow-sm shadow-gray-200/50 dark:shadow-none border border-transparent dark:border-gray-700/50 min-h-[72px] justify-between">
+<div class="flex items-center gap-4 w-full min-w-0">
+<img class="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-14 shrink-0" data-alt="University crest for METU" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJN0qNZCsghWJHn6A6lbooxBDyiXfJu79f4DhoMHl45b-XssjmidxODl6f8gRn4XIu_2lQ99tWE_pih8EsXA9yjzEH3FS8tHnS7vjtcE-vdM5nbT9TRbdG_C6GGH-s6zaBCV5vDO2gchFHgNCl169bcV0e0TarxkwCYOlWQe9IfL4c6CCZdK08plkC9ynokdj3eFyOsmqXELdQ6J7YeCY0W5hTcTSkUy-X3PBzvbom3aDB3dNzgXJivT1ux18Q_c26RzCKpwemZbuQ"/>
+<div class="flex flex-col justify-center min-w-0">
+<p class="text-base font-semibold leading-tight text-gray-900 dark:text-gray-100 truncate">Bilgisayar Mühendisliği</p>
+<p class="text-sm font-normal leading-normal text-gray-500 dark:text-gray-400 truncate">Orta Doğu Teknik Üniversitesi</p>
+</div>
+</div>
+<button class="shrink-0">
+<div class="flex size-9 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary/80">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</button>
+</div>
+<div class="flex items-center gap-4 bg-white dark:bg-gray-800/50 rounded-xl p-3 shadow-sm shadow-gray-200/50 dark:shadow-none border border-transparent dark:border-gray-700/50 min-h-[72px] justify-between">
+<div class="flex items-center gap-4 w-full min-w-0">
+<img class="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-14 shrink-0" data-alt="University crest for Hacettepe" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRunVnKawT9XaC7IZioeOWIjnAZ_Zv3YOqBbDyeyEac2_314tDet7Q0wTBPpdLBUO8KjvWIme0FRyh0xAg4d827wrxNFmcPQPZgeNWLAQoXmRWAHsRpe9ysQCuVb6LhxvCcyoSPWuUMq1FiiUVp-W_Hl4JJbF6etbgpmv1u5bj7l6Q8OuyGo9gOhlRyiq2r-sSGG0-NsxqZ62l38c61HdpNIP-UI9n8boEyLd1lXHFO-f60iVPAqdif5I2KgR9I0jR6mm6Jgw869Yl"/>
+<div class="flex flex-col justify-center min-w-0">
+<p class="text-base font-semibold leading-tight text-gray-900 dark:text-gray-100 truncate">Tıp Fakültesi</p>
+<p class="text-sm font-normal leading-normal text-gray-500 dark:text-gray-400 truncate">Hacettepe Üniversitesi</p>
+</div>
+</div>
+<button class="shrink-0">
+<div class="flex size-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700/60 text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-xl">star</span>
+</div>
+</button>
+</div>
+<div class="flex items-center gap-4 bg-white dark:bg-gray-800/50 rounded-xl p-3 shadow-sm shadow-gray-200/50 dark:shadow-none border border-transparent dark:border-gray-700/50 min-h-[72px] justify-between">
+<div class="flex items-center gap-4 w-full min-w-0">
+<img class="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-14 shrink-0" data-alt="University crest for Bogazici" src="https://lh3.googleusercontent.com/aida-public/AB6AXuARo_zjkww-a4p2X8dVQHPs2NKyleOee16GaNR--7K6xW_zA4ARse-IGi61y3N7ujdpCZvG8NJqSGHEsfcqq53Vw6VmTVmdvd06Gwb8r20mqOVKWpaaguVsOeWvIAUtK1HS1Kglu1FKtuRZcRt3kAqGVemv_5oPAJaNd-z2KJpvRUCO3f2ksKzppWy0uWg2pM8cB70J_5kTWDRMuSYQYtrErzUvR_PEyudUlIpM3ZhOZ4TJCUxsJ9OfB3ZFQyoQ2iQuA73bMABP3aOw"/>
+<div class="flex flex-col justify-center min-w-0">
+<p class="text-base font-semibold leading-tight text-gray-900 dark:text-gray-100 truncate">Elektrik-Elektronik Mühendisliği</p>
+<p class="text-sm font-normal leading-normal text-gray-500 dark:text-gray-400 truncate">Boğaziçi Üniversitesi</p>
+</div>
+</div>
+<button class="shrink-0">
+<div class="flex size-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700/60 text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-xl">star</span>
+</div>
+</button>
+</div>
+<div class="flex items-center gap-4 bg-white dark:bg-gray-800/50 rounded-xl p-3 shadow-sm shadow-gray-200/50 dark:shadow-none border border-transparent dark:border-gray-700/50 min-h-[72px] justify-between">
+<div class="flex items-center gap-4 w-full min-w-0">
+<img class="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-14 shrink-0" data-alt="University crest for Istanbul University" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVt2F-lIl0ddHG6aGYM0i0lu_2rJaYTTJ4A2YJ8fMw8LEdheJzUH43uf2CWCrqHHYSLWeZuu97XjoB4ZRbMn9fMoVXQrOOg_SfgagM0n87EJas4reMBo4LjnGgjTXmwt2eg7XflqATKdNoBcLHp4kuknOELVGTTMDpf-N50jl2wDtQ6uFt2b1JVeS0UJ5BqQRSySkEIk8ABFbUKUrz2wUC8DNp9gEoqY3ICurdRnqGtHOWTCdF8seUBM0bmIxBWXX-U25iQJP9BXFK"/>
+<div class="flex flex-col justify-center min-w-0">
+<p class="text-base font-semibold leading-tight text-gray-900 dark:text-gray-100 truncate">Hukuk Fakültesi</p>
+<p class="text-sm font-normal leading-normal text-gray-500 dark:text-gray-400 truncate">İstanbul Üniversitesi</p>
+</div>
+</div>
+<button class="shrink-0">
+<div class="flex size-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700/60 text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-xl">star</span>
+</div>
+</button>
+</div>
+<div class="flex items-center gap-4 bg-white dark:bg-gray-800/50 rounded-xl p-3 shadow-sm shadow-gray-200/50 dark:shadow-none border border-transparent dark:border-gray-700/50 min-h-[72px] justify-between">
+<div class="flex items-center gap-4 w-full min-w-0">
+<img class="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-14 shrink-0" data-alt="University crest for ITU" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5L7mBbLY7Motd9uxoGsINbOeBFc9kw-INQrXxA1PGLnBXe922PKddY-Kqd2HOZYsL8BKXkWg1CsIqnUK6b2Sk-F13pebO8os16hOm3M38KlKO61RHfDpruUeXiijF0jtjL-PHaPGzCjQjqISvvFkmUmmejHiW1_kZKWCBNW7Pe0_L5byb3UDGuYmYBSI1eBMUB2ZcvdexaSX_Mvm7bOVmkCOFGqqxdU6NMrvghjozcACRKKudoiBA8G1buzT83hBeWK4yfehRBVBc"/>
+<div class="flex flex-col justify-center min-w-0">
+<p class="text-base font-semibold leading-tight text-gray-900 dark:text-gray-100 truncate">Endüstri Mühendisliği</p>
+<p class="text-sm font-normal leading-normal text-gray-500 dark:text-gray-400 truncate">İstanbul Teknik Üniversitesi</p>
+</div>
+</div>
+<button class="shrink-0">
+<div class="flex size-9 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary/80">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</button>
+</div>
+<div class="flex items-center gap-4 bg-white dark:bg-gray-800/50 rounded-xl p-3 shadow-sm shadow-gray-200/50 dark:shadow-none border border-transparent dark:border-gray-700/50 min-h-[72px] justify-between">
+<div class="flex items-center gap-4 w-full min-w-0">
+<img class="bg-center bg-no-repeat aspect-square bg-cover rounded-lg size-14 shrink-0" data-alt="University crest for Koc University" src="https://lh3.googleusercontent.com/aida-public/AB6AXuASEHUuDf4otTCDqBD-ytdvmhETHshNzSjz0OaqFbWlKY2ON6Wumg2YTRHrD3cUwOucNS88i8UjkH8m4PB-0oCXCfFVc3uqHevuMPYjzKsyZN4aet20HvOLQvDG2EzaDQTmlHGNu2edejQEzFZuu5C4S3sCJ6X9LAOtB4rlGYFVKX3I0iBtMSzGVybv5JLpUDET2bqe5Abvmt2BBQkdAo3O_o3UxLSgsSs6Ej3i-8_S5SrNW8uiY3lLPsV6hC-P27JJDiiPAu40Z8cI"/>
+<div class="flex flex-col justify-center min-w-0">
+<p class="text-base font-semibold leading-tight text-gray-900 dark:text-gray-100 truncate">İşletme</p>
+<p class="text-sm font-normal leading-normal text-gray-500 dark:text-gray-400 truncate">Koç Üniversitesi</p>
+</div>
+</div>
+<button class="shrink-0">
+<div class="flex size-9 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700/60 text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined text-xl">star</span>
+</div>
+</button>
+</div>
+</div>
+</main>
+<div class="fixed bottom-0 left-0 right-0 z-20 p-4 bg-gradient-to-t from-background-light dark:from-background-dark to-transparent">
+<div class="flex items-end justify-between gap-4">
+<button class="flex h-12 flex-grow items-center justify-center gap-x-2 rounded-lg bg-primary px-4 text-white shadow-lg shadow-primary/30">
+<span class="material-symbols-outlined">travel_explore</span>
+<span class="text-base font-semibold">Üniversiteleri Keşfet</span>
+</button>
+<button class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30">
+<span class="material-symbols-outlined text-2xl">forum</span>
+</button>
+</div>
+</div>
+</div>
+
+</body></html>

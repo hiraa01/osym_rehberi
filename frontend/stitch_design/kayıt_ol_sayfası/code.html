@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+
+<html class="light" lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kayıt Ol - YKS Asistanı</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#196ee6",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#111821",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1a222d",
+                        "border-light": "#dce0e5",
+                        "border-dark": "#36404d",
+                        "text-primary-light": "#111418",
+                        "text-primary-dark": "#ffffff",
+                        "text-secondary-light": "#637288",
+                        "text-secondary-dark": "#9ca3af",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display antialiased">
+<div class="relative flex h-auto min-h-screen w-full flex-col bg-background-light dark:bg-background-dark group/design-root overflow-x-hidden transition-colors duration-200">
+<!-- Top App Bar -->
+<div class="flex items-center sticky top-0 z-10 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm p-4 pb-2 justify-between">
+<div class="text-text-primary-light dark:text-text-primary-dark flex size-12 shrink-0 items-center justify-center cursor-pointer hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors">
+<span class="material-symbols-outlined text-[24px]">arrow_back</span>
+</div>
+<h2 class="text-text-primary-light dark:text-text-primary-dark text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center pr-12">Kayıt Ol</h2>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 flex flex-col px-4 pb-8 max-w-[480px] mx-auto w-full">
+<!-- Hero Section -->
+<div class="py-4">
+<div class="w-full bg-center bg-no-repeat bg-cover flex flex-col justify-end overflow-hidden rounded-xl h-[160px] shadow-sm mb-4" data-alt="abstract educational future concept with gradient blue waves" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCjHFAK9TGgpvt-5YHkRRyKwwSAArhi9Kko7xG4HQ7y4XD8dUN3wnR-YLP_dx3LqcsuuT86tkgJJ2wxJ1SfrYuFCNk6PkvSgmnIPijHu1MkACXpfvdovP2lho1nOy71iv1sitHoHPJrraO2audqHYVMRauUTzi0BhjIU-kQk6Npt4iD91ngPcuvdn7OppKxXRQ5v3dR1j8b3XeHwp1OkhYxIvzqw8n1Sy9csG461KhKw_tGQvJdd0dXIxY55HMHmB5RhT3SCtBx9NFD");'>
+<div class="bg-gradient-to-t from-black/60 to-transparent p-4">
+<h1 class="text-white text-2xl font-bold leading-tight">Geleceğini Tasarla</h1>
+</div>
+</div>
+<p class="text-text-secondary-light dark:text-text-secondary-dark text-base font-normal leading-normal">
+                    Yapay zeka asistanınla üniversite hayallerine en doğru adımlarla ilerle.
+                </p>
+</div>
+<!-- Form Section -->
+<form class="flex flex-col gap-4 mt-2" onsubmit="event.preventDefault();">
+<!-- Name Field -->
+<div class="flex flex-col gap-1.5">
+<label class="text-text-primary-light dark:text-text-primary-dark text-sm font-medium leading-normal">Ad Soyad</label>
+<div class="relative flex items-center">
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-text-primary-light dark:text-text-primary-dark focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark h-12 placeholder:text-text-secondary-light dark:placeholder:text-text-secondary-dark p-[15px] text-base font-normal leading-normal transition-all" placeholder="Adınız ve Soyadınız" type="text"/>
+<span class="material-symbols-outlined absolute right-4 text-text-secondary-light dark:text-text-secondary-dark pointer-events-none text-[20px]">person</span>
+</div>
+</div>
+<!-- Email Field -->
+<div class="flex flex-col gap-1.5">
+<label class="text-text-primary-light dark:text-text-primary-dark text-sm font-medium leading-normal">E-posta Adresi</label>
+<div class="relative flex items-center">
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-text-primary-light dark:text-text-primary-dark focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark h-12 placeholder:text-text-secondary-light dark:placeholder:text-text-secondary-dark p-[15px] text-base font-normal leading-normal transition-all" placeholder="ornek@email.com" type="email"/>
+<span class="material-symbols-outlined absolute right-4 text-text-secondary-light dark:text-text-secondary-dark pointer-events-none text-[20px]">mail</span>
+</div>
+</div>
+<!-- Password Field -->
+<div class="flex flex-col gap-1.5">
+<label class="text-text-primary-light dark:text-text-primary-dark text-sm font-medium leading-normal">Şifre</label>
+<div class="relative flex items-center">
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-text-primary-light dark:text-text-primary-dark focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark h-12 placeholder:text-text-secondary-light dark:placeholder:text-text-secondary-dark p-[15px] pr-12 text-base font-normal leading-normal transition-all" placeholder="••••••••" type="password"/>
+<button class="absolute right-0 h-full px-4 flex items-center justify-center text-text-secondary-light dark:text-text-secondary-dark hover:text-primary transition-colors focus:outline-none" type="button">
+<span class="material-symbols-outlined text-[20px]">visibility_off</span>
+</button>
+</div>
+</div>
+<!-- Confirm Password Field -->
+<div class="flex flex-col gap-1.5">
+<label class="text-text-primary-light dark:text-text-primary-dark text-sm font-medium leading-normal">Şifre Tekrar</label>
+<div class="relative flex items-center">
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-text-primary-light dark:text-text-primary-dark focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark h-12 placeholder:text-text-secondary-light dark:placeholder:text-text-secondary-dark p-[15px] pr-12 text-base font-normal leading-normal transition-all" placeholder="••••••••" type="password"/>
+</div>
+</div>
+<!-- Terms Checkbox -->
+<div class="flex items-start gap-3 mt-2">
+<div class="flex items-center h-5">
+<input class="w-5 h-5 border border-border-light dark:border-border-dark rounded bg-surface-light dark:bg-surface-dark text-primary focus:ring-2 focus:ring-primary/50 cursor-pointer" id="terms" type="checkbox"/>
+</div>
+<label class="text-sm font-normal text-text-secondary-light dark:text-text-secondary-dark leading-5 cursor-pointer select-none" for="terms">
+<span class="text-primary hover:underline">Kullanım Koşulları</span> ve <span class="text-primary hover:underline">Gizlilik Politikası</span>'nı okudum, onaylıyorum.
+                    </label>
+</div>
+<!-- Submit Button -->
+<button class="w-full mt-4 bg-primary hover:bg-blue-600 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-blue-500/20 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">person_add</span>
+                    Hesap Oluştur
+                </button>
+</form>
+<!-- Social Login Divider -->
+<div class="relative flex py-6 items-center">
+<div class="flex-grow border-t border-border-light dark:border-border-dark"></div>
+<span class="flex-shrink-0 mx-4 text-text-secondary-light dark:text-text-secondary-dark text-sm">veya şununla devam et</span>
+<div class="flex-grow border-t border-border-light dark:border-border-dark"></div>
+</div>
+<!-- Social Buttons -->
+<div class="grid grid-cols-2 gap-4">
+<button class="flex items-center justify-center gap-2 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark hover:bg-gray-50 dark:hover:bg-gray-800 text-text-primary-light dark:text-text-primary-dark font-medium py-3 px-4 rounded-xl transition-all">
+<img alt="Google" class="w-5 h-5" data-alt="Google Logo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0M_PegnH1dzZRkX3hqzIXtWnB5gL5MJhruw1cevAMUByMUE0aTk2HNUUgR95ANkr5IlBKpJOLwf4p3GEF9QC_Pie0DlHrRlZxeNpMzBDBf5m0THTEOaebKcUJMMc9giFd1cvruCk5fgAgb7zWC1YdFKwJM034DKAAyMDt2T-DDdPchoTrgjncfvK041-U3KAY98cvDG4JcrWqk4raDOVLZSmjiUkjvXe2rK-eb1_gkYS_0DYVSbHLkD8iaXxQymGpQ-PwPc4WIVnn"/>
+                    Google
+                </button>
+<button class="flex items-center justify-center gap-2 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark hover:bg-gray-50 dark:hover:bg-gray-800 text-text-primary-light dark:text-text-primary-dark font-medium py-3 px-4 rounded-xl transition-all">
+<img alt="Apple" class="w-5 h-5 dark:invert" data-alt="Apple Logo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBIexcJa7jVKmwxVU5jLS_2XBvaloQs7sKxgwmOGINw7fTaQH0BuVD2FRyM4vspIyqEovkWVB7Je6x2C02KwLe2GWecJoaBHRIEDRBkELVKCbElVdPSaqAYy6Ebg-LUCMpyIrcy1IzPHhIRyC9QLVO__mTsBK8XAoW-qGmlWsy_Qjf0ue8cswzjrNMGUtRMSjngWvvWsHMWd8btuRphUgWsyoaoJz3EwOJxTchpF9ng7pH1Q5QyunefSptvMT4lBpESGm77eZc_y4no"/>
+                    Apple
+                </button>
+</div>
+<!-- Footer Login Link -->
+<div class="mt-8 text-center">
+<p class="text-text-secondary-light dark:text-text-secondary-dark text-sm">
+                    Zaten bir hesabın var mı? 
+                    <a class="text-primary font-bold hover:underline ml-1" href="#">Giriş Yap</a>
+</p>
+</div>
+</div>
+</div>
+</body></html>

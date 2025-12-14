@@ -13,12 +13,12 @@ final universityListProvider =
       .toList();
 });
 
-// Department list provider - Map dönüşü için (tüm bölümler için yüksek limit)
+// Department list provider - Map dönüşü için (pagination ile)
 final departmentListProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final apiService = ref.read(apiServiceProvider);
-  // Tüm bölümleri almak için yüksek limit kullan
-  final response = await apiService.getDepartments(limit: 5000);
+  // ✅ OPTIMIZED: Pagination kullan - default 100 kayıt (performans için)
+  final response = await apiService.getDepartments(limit: 100);
 
   return (response.data as List)
       .map((department) => department as Map<String, dynamic>)

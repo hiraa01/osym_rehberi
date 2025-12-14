@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../../../dashboard/presentation/pages/dashboard_page.dart';
-import '../../../exam_attempts/presentation/pages/exam_attempts_page.dart';
-import '../../../goals/presentation/pages/goals_page.dart';
-import '../../../recommendations/presentation/pages/recommendations_page.dart';
-import '../../../profile/presentation/pages/profile_page.dart';
+import '../../../dashboard/presentation/pages/stitch_dashboard_page.dart';
+import '../../../exam_attempts/presentation/pages/stitch_exam_attempts_page.dart';
+import '../../../goals/presentation/pages/stitch_goals_page.dart';
+import '../../../recommendations/presentation/pages/stitch_recommendations_page.dart';
+import '../../../profile/presentation/pages/stitch_profile_page.dart';
 import '../../../coach_chat/presentation/coach_chat_fab.dart';
-import '../widgets/animated_bottom_bar.dart';
+import '../widgets/stitch_bottom_nav_bar.dart';
 
 class MainLayoutPage extends StatefulWidget {
   const MainLayoutPage({super.key});
@@ -17,65 +17,47 @@ class MainLayoutPage extends StatefulWidget {
 
 class _MainLayoutPageState extends State<MainLayoutPage> {
   int _currentIndex = 0;
+  final PageController _pageController =
+      PageController(initialPage: 2); // Anasayfa ortada
 
-  final List<Widget> _pages = const [
-    ExamAttemptsPage(),
-    GoalsPage(),
-    DashboardPage(), // Anasayfa ortada
-    RecommendationsPage(),
-    ProfilePage(),
-  ];
-
-  final List<BottomBarItem> _barItems = const [
-    BottomBarItem(
-      icon: Icons.assignment_outlined,
-      activeIcon: Icons.assignment,
-      label: 'Denemeler',
-    ),
-    BottomBarItem(
-      icon: Icons.flag_outlined,
-      activeIcon: Icons.flag,
-      label: 'Hedefim',
-    ),
-    BottomBarItem(
-      icon: Icons.home_outlined,
-      activeIcon: Icons.home,
-      label: 'Anasayfa', // Anasayfa ortada
-    ),
-    BottomBarItem(
-      icon: Icons.lightbulb_outline,
-      activeIcon: Icons.lightbulb,
-      label: 'Öneriler',
-    ),
-    BottomBarItem(
-      icon: Icons.person_outline,
-      activeIcon: Icons.person,
-      label: 'Profil',
-    ),
-  ];
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          IndexedStack(
-            index: _currentIndex,
-            children: _pages,
+          PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            children: const [
+              StitchExamAttemptsPage(),
+              StitchGoalsPage(),
+              StitchDashboardPage(), // Anasayfa ortada - Stitch Design
+              StitchRecommendationsPage(),
+              StitchProfilePage(),
+            ],
           ),
           const CoachChatFab(), // Stack içinde Positioned widget
         ],
       ),
-      bottomNavigationBar: AnimatedBottomBar(
+      bottomNavigationBar: StitchBottomNavBar(
         currentIndex: _currentIndex,
         onTap: (index) {
           setState(() {
             _currentIndex = index;
           });
+          _pageController.jumpToPage(index);
         },
-        items: _barItems,
       ),
     );
   }
 }
-

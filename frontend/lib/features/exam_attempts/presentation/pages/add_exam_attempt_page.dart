@@ -15,7 +15,7 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
   final ApiService _apiService = ApiService();
   final _formKey = GlobalKey<FormState>();
   final _examNameController = TextEditingController();
-  
+
   String _selectedDepartmentType = 'SAY'; // SAY, EA, SÖZ, DİL
   final Map<String, Map<String, int>> _answers = {}; // correct/wrong answers
   bool _isSaving = false;
@@ -32,7 +32,7 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final studentId = prefs.getInt('student_id');
-      
+
       if (studentId != null) {
         final response = await _apiService.getStudent(studentId);
         final fieldType = response.data['field_type'] as String?;
@@ -47,7 +47,7 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
     } catch (e) {
       debugPrint('Error loading field_type: $e');
     }
-    
+
     if (mounted) {
       setState(() => _isLoading = false);
     }
@@ -77,7 +77,7 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
         body: const Center(child: CircularProgressIndicator()),
       );
     }
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Yeni Deneme Ekle'),
@@ -167,7 +167,8 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
                         width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
                     : const Text(
@@ -267,82 +268,206 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
         final correct = _answers[key]?['correct'] ?? 0;
         final wrong = _answers[key]?['wrong'] ?? 0;
         final net = _calculateNet(key);
-    
+
         return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Ders adı ve net
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          margin: const EdgeInsets.only(bottom: 16),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                // Ders adı ve net
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.calculate,
-                          size: 14,
-                          color: Colors.grey[700],
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Net Hesaplaması',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[700],
-                            fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.calculate,
+                              size: 14,
+                              color: Colors.grey[700],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Net Hesaplaması',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[700],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withValues(alpha: 0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Net: ',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[700],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                net.toStringAsFixed(2),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Doğru ve Yanlış inputları
+                Row(
+                  children: [
+                    // Doğru
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Net: ',
+                          const Text(
+                            'Doğru',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[700],
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          Text(
-                            net.toStringAsFixed(2),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
+                          const SizedBox(height: 4),
+                          TextFormField(
+                            initialValue: correct > 0 ? correct.toString() : '',
+                            keyboardType: TextInputType.number,
+                            maxLength: maxQuestions.toString().length,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            decoration: InputDecoration(
+                              hintText: '0',
+                              suffixText: '/$maxQuestions',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              counterText: '', // Sayaç metnini gizle
                             ),
+                            validator: (value) {
+                              final intValue = int.tryParse(value ?? '') ?? 0;
+                              if (intValue > maxQuestions) {
+                                return 'Maksimum $maxQuestions olabilir';
+                              }
+                              return null;
+                            },
+                            onChanged: (value) {
+                              final correctValue = int.tryParse(value) ?? 0;
+                              if (correctValue <= maxQuestions) {
+                                setCardState(() {
+                                  _answers[key] = {
+                                    'correct': correctValue,
+                                    'wrong': _answers[key]?['wrong'] ?? 0,
+                                  };
+                                });
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Yanlış
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Yanlış',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          TextFormField(
+                            initialValue: wrong > 0 ? wrong.toString() : '',
+                            keyboardType: TextInputType.number,
+                            maxLength: maxQuestions.toString().length,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            decoration: InputDecoration(
+                              hintText: '0',
+                              suffixText: '/$maxQuestions',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              counterText: '', // Sayaç metnini gizle
+                            ),
+                            validator: (value) {
+                              final intValue = int.tryParse(value ?? '') ?? 0;
+                              if (intValue > maxQuestions) {
+                                return 'Maksimum $maxQuestions olabilir';
+                              }
+                              return null;
+                            },
+                            onChanged: (value) {
+                              final wrongValue = int.tryParse(value) ?? 0;
+                              if (wrongValue <= maxQuestions) {
+                                setCardState(() {
+                                  _answers[key] = {
+                                    'correct': _answers[key]?['correct'] ?? 0,
+                                    'wrong': wrongValue,
+                                  };
+                                });
+                              }
+                            },
                           ),
                         ],
                       ),
@@ -351,125 +476,8 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            // Doğru ve Yanlış inputları
-            Row(
-              children: [
-                // Doğru
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Doğru',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      TextFormField(
-                        initialValue: correct > 0 ? correct.toString() : '',
-                        keyboardType: TextInputType.number,
-                        maxLength: maxQuestions.toString().length,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        decoration: InputDecoration(
-                          hintText: '0',
-                          suffixText: '/$maxQuestions',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                          counterText: '', // Sayaç metnini gizle
-                        ),
-                        validator: (value) {
-                          final intValue = int.tryParse(value ?? '') ?? 0;
-                          if (intValue > maxQuestions) {
-                            return 'Maksimum $maxQuestions olabilir';
-                          }
-                          return null;
-                        },
-                        onChanged: (value) {
-                          final correctValue = int.tryParse(value) ?? 0;
-                          if (correctValue <= maxQuestions) {
-                            setCardState(() {
-                              _answers[key] = {
-                                'correct': correctValue,
-                                'wrong': _answers[key]?['wrong'] ?? 0,
-                              };
-                            });
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Yanlış
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Yanlış',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      TextFormField(
-                        initialValue: wrong > 0 ? wrong.toString() : '',
-                        keyboardType: TextInputType.number,
-                        maxLength: maxQuestions.toString().length,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        decoration: InputDecoration(
-                          hintText: '0',
-                          suffixText: '/$maxQuestions',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                          counterText: '', // Sayaç metnini gizle
-                        ),
-                        validator: (value) {
-                          final intValue = int.tryParse(value ?? '') ?? 0;
-                          if (intValue > maxQuestions) {
-                            return 'Maksimum $maxQuestions olabilir';
-                          }
-                          return null;
-                        },
-                        onChanged: (value) {
-                          final wrongValue = int.tryParse(value) ?? 0;
-                          if (wrongValue <= maxQuestions) {
-                            setCardState(() {
-                              _answers[key] = {
-                                'correct': _answers[key]?['correct'] ?? 0,
-                                'wrong': wrongValue,
-                              };
-                            });
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+          ),
+        );
       },
     );
   }
@@ -477,17 +485,17 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
   void _saveExamAttempt() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isSaving = true);
-      
+
       try {
         final prefs = await SharedPreferences.getInstance();
         int? studentId = prefs.getInt('student_id');
-        
+
         // Net'leri hesapla
         final Map<String, double> nets = {};
         _answers.forEach((key, value) {
           nets[key] = _calculateNet(key);
         });
-        
+
         // Eğer student_id yoksa, önce student oluştur
         if (studentId == null) {
           final userId = prefs.getInt('user_id');
@@ -508,31 +516,27 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
             }
           }
         }
-        
+
         if (studentId != null) {
           // Deneme sayısını al (retry mekanizması ile)
           try {
-            final attemptsResponse = await _apiService.getStudentAttempts(studentId);
-            final attempts = attemptsResponse.data['attempts'] ?? [];
-            final attemptNumber = attempts.length + 1;
-          
+            // ✅ attempt_number backend tarafında otomatik hesaplanıyor - göndermeye gerek yok
             // Deneme kaydet (retry mekanizması ile)
             final response = await _apiService.createExamAttempt({
-            'student_id': studentId,
-            'attempt_number': attemptNumber,
-            'exam_name': _examNameController.text.trim().isEmpty 
-                ? 'Deneme $attemptNumber' 
-                : _examNameController.text.trim(),  // ✅ Deneme adı eklendi
-            'exam_date': DateTime.now().toIso8601String(),
-            ...nets,
-          });
-          
+              'student_id': studentId,
+              'exam_name': _examNameController.text.trim().isEmpty
+                  ? 'Deneme'
+                  : _examNameController.text.trim(), // ✅ Deneme adı eklendi
+              'exam_date': DateTime.now().toIso8601String(),
+              ...nets,
+            });
+
             // ✅ Yeni denemeyi cache'e ekle (student_id'ye özel)
             try {
               final prefs = await SharedPreferences.getInstance();
               final cacheKey = 'exam_attempts_cache_$studentId';
               final cachedJson = prefs.getString(cacheKey);
-              
+
               if (cachedJson != null) {
                 final cached = jsonDecode(cachedJson) as List;
                 // Backend'den yeni denemeyi al ve cache'e ekle
@@ -547,7 +551,7 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
             } catch (_) {
               // Cache güncelleme hatası - önemli değil
             }
-            
+
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -562,18 +566,18 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
             debugPrint('Error getting attempt count: $e');
             // Devam et - attempt_number = 1 olarak ayarla
             final attemptNumber = 1;
-            
+
             // Deneme kaydet (retry mekanizması ile)
             final response = await _apiService.createExamAttempt({
               'student_id': studentId,
               'attempt_number': attemptNumber,
-              'exam_name': _examNameController.text.trim().isEmpty 
-                  ? 'Deneme $attemptNumber' 
+              'exam_name': _examNameController.text.trim().isEmpty
+                  ? 'Deneme $attemptNumber'
                   : _examNameController.text.trim(),
               'exam_date': DateTime.now().toIso8601String(),
               ...nets,
             });
-            
+
             // Cache'e ekle
             try {
               final prefs = await SharedPreferences.getInstance();
@@ -581,7 +585,7 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
               final newAttempt = response.data as Map<String, dynamic>;
               await prefs.setString(cacheKey, jsonEncode([newAttempt]));
             } catch (_) {}
-            
+
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -599,15 +603,17 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
         debugPrint('Save exam attempt error: $e');
         if (mounted) {
           String errorMessage = 'Deneme kaydedilemedi. ';
-          if (e.toString().contains('Connection closed') || 
+          if (e.toString().contains('Connection closed') ||
               e.toString().contains('unknown')) {
-            errorMessage += 'Sunucuya bağlanılamadı. Lütfen internet bağlantınızı kontrol edin ve tekrar deneyin.';
+            errorMessage +=
+                'Sunucuya bağlanılamadı. Lütfen internet bağlantınızı kontrol edin ve tekrar deneyin.';
           } else if (e.toString().contains('timeout')) {
-            errorMessage += 'İstek zaman aşımına uğradı. Lütfen tekrar deneyin.';
+            errorMessage +=
+                'İstek zaman aşımına uğradı. Lütfen tekrar deneyin.';
           } else {
             errorMessage += 'Hata: ${e.toString()}';
           }
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(errorMessage),

@@ -22,7 +22,7 @@ services:
       - backend_data:/app/data
       - backend_logs:/app/logs
       - ml_models:/app/ml_models
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --timeout-keep-alive 75
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --timeout-keep-alive 120
     depends_on:
       db:
         condition: service_healthy
@@ -30,19 +30,19 @@ services:
     networks:
       - osym_network
 
-  frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-    container_name: osym_rehberi_frontend
-    ports:
-      - "3002:3000"
-    volumes:
-      - ../frontend:/app
-      - /app/node_modules
-    environment:
-      - CHOKIDAR_USEPOLLING=true
-    command: flutter run -d web-server --web-hostname 0.0.0.0 --web-port 3000
+  # frontend:
+  #   build:
+  #     context: ../frontend
+  #     dockerfile: Dockerfile
+  #   container_name: osym_rehberi_frontend
+  #   ports:
+  #     - "3002:3000"
+  #   volumes:
+  #     - ../frontend:/app
+  #     - /app/node_modules
+  #   environment:
+  #     - CHOKIDAR_USEPOLLING=true
+  #   command: flutter run -d web-server --web-hostname 0.0.0.0 --web-port 3000
 
   db:
     image: postgres:15-alpine

@@ -5,7 +5,7 @@ from datetime import datetime
 
 class ExamAttemptBase(BaseModel):
     student_id: int
-    attempt_number: int
+    attempt_number: Optional[int] = None  # ✅ Optional - backend otomatik hesaplayacak
     exam_date: Optional[datetime] = None
     exam_name: Optional[str] = None
     

@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 
@@ -21,6 +22,9 @@ class University(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
+    # ✅ OPTIMIZED: Relationship tanımlandı - eager loading için
+    departments = relationship("Department", back_populates="university", lazy="selectin")
+    
     def __repr__(self):
         return f"<University(id={self.id}, name='{self.name}', city='{self.city}')>"
 
@@ -29,7 +33,7 @@ class Department(Base):
     __tablename__ = "departments"
 
     id = Column(Integer, primary_key=True, index=True)
-    university_id = Column(Integer, nullable=False, index=True)
+    university_id = Column(Integer, ForeignKey("universities.id"), nullable=False, index=True)  # ✅ ForeignKey eklendi
     name = Column(String(200), nullable=False, index=True)
     field_type = Column(String(20), nullable=False, index=True)  # ✅ Index eklendi - filtreleme için kritik
     language = Column(String(20), default="Turkish")  # Turkish, English
@@ -61,6 +65,9 @@ class Department(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # ✅ OPTIMIZED: Relationship tanımlandı - eager loading için
+    university = relationship("University", back_populates="departments")
     
     def __repr__(self):
         return f"<Department(id={self.id}, name='{self.name}', university_id={self.university_id})>"
