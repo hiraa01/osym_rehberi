@@ -44,17 +44,47 @@ async def _periodic_ml_training_task():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    api_logger.info("Starting application...")
     create_tables()
+    
+    # ✅ Cache'i startup'ta yükle - statik veriler için
+    api_logger.info("Loading cache for static data...")
+    try:
+        db = next(get_db())
+        try:
+            # Cities cache
+            from sqlalchemy import distinct
+            from models.university import University, Department
+            cities_result = db.query(distinct(University.city)).filter(University.city.isnot(None)).all()
+            cities = [city[0] for city in cities_result if city[0]]
+            from core.cache import set_cache
+            from datetime import timedelta
+            set_cache("cities", cities, ttl=timedelta(hours=24))  # 24 saat cache
+            api_logger.info(f"Cached {len(cities)} cities")
+            
+            # Field types cache
+            field_types_result = db.query(distinct(Department.field_type)).filter(Department.field_type.isnot(None)).all()
+            field_types = [ft[0] for ft in field_types_result if ft[0]]
+            set_cache("field_types", field_types, ttl=timedelta(hours=24))  # 24 saat cache
+            api_logger.info(f"Cached {len(field_types)} field types")
+        finally:
+            db.close()
+    except Exception as e:
+        api_logger.warning(f"Cache loading failed (non-critical): {str(e)}")
+    
     # Periodik ML eğitim görevini başlat
     app.state.ml_training_task = asyncio.create_task(_periodic_ml_training_task())
+    api_logger.info("Application started successfully")
     yield
     # Shutdown
+    api_logger.info("Shutting down application...")
     # Periodik görev iptali
     task = getattr(app.state, "ml_training_task", None)
     if task:
         task.cancel()
         with contextlib.suppress(Exception):
             await task
+    api_logger.info("Application shutdown complete")
 
 
 app = FastAPI(

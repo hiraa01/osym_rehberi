@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../auth/data/providers/auth_service.dart';
 import '../../../auth/presentation/pages/auth_check_page.dart';
-import '../../../settings/presentation/pages/theme_settings_page.dart';
 import '../widgets/edit_profile_dialog.dart';
 import '../../../goals/presentation/pages/update_goal_page.dart';
 import '../../../preferences/presentation/pages/update_preferences_page.dart';
@@ -31,32 +30,33 @@ class ProfilePage extends StatelessWidget {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
             // Profil kartı - Stitch Style
-              Card(
+            Card(
               elevation: 0,
-                shape: RoundedRectangleBorder(
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
-                ),
-                child: Padding(
+              ),
+              child: Padding(
                 padding: const EdgeInsets.all(24.0),
-                  child: Column(
+                child: Column(
                   children: [
                     Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 50,
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                        child: Text(
-                          (user?.name?.substring(0, 1).toUpperCase() ?? 'Ö'),
-                          style: const TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
+                          child: Text(
+                            (user?.name?.substring(0, 1).toUpperCase() ?? 'Ö'),
+                            style: const TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
                         ),
                         Positioned(
                           bottom: 0,
@@ -76,36 +76,36 @@ class ProfilePage extends StatelessWidget {
                           ),
                         ),
                       ],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        user?.name ?? 'Kullanıcı',
-                        style: const TextStyle(
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      user?.name ?? 'Kullanıcı',
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
-                        ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        user?.email ?? user?.phone ?? '',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      user?.email ?? user?.phone ?? '',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
+            ),
+            const SizedBox(height: 24),
 
-              // Ayarlar ve seçenekler
-              _buildSettingsSection(
-                context,
-                user,
-              ),
-            ],
-          ),
+            // Ayarlar ve seçenekler
+            _buildSettingsSection(
+              context,
+              user,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -204,11 +204,15 @@ class ProfilePage extends StatelessWidget {
           child: Column(
             children: [
               ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 leading: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -224,7 +228,7 @@ class ProfilePage extends StatelessWidget {
                   ),
                 ),
                 trailing: Switch(
-                  value: false, // TODO: Tema durumunu kontrol et
+                  value: false,
                   onChanged: (value) {
                     // Tema değiştir
                   },
@@ -287,7 +291,8 @@ class ProfilePage extends StatelessWidget {
                     await authService.logout();
                     if (context.mounted) {
                       Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const AuthCheckPage()),
+                        MaterialPageRoute(
+                            builder: (_) => const AuthCheckPage()),
                         (route) => false,
                       );
                     }
@@ -340,4 +345,3 @@ class ProfilePage extends StatelessWidget {
     );
   }
 }
-

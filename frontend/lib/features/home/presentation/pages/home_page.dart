@@ -106,7 +106,6 @@ class HomePage extends ConsumerWidget {
                               title: 'Tercih Önerileri',
                               subtitle: 'Size uygun bölümleri görün',
                               onTap: () {
-                                // TODO: Navigate to student selection first, then recommendations
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text('Önce bir profil oluşturun'),

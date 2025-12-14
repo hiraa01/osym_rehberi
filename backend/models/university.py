@@ -9,7 +9,7 @@ class University(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False, index=True)
     city = Column(String(50), nullable=False, index=True)
-    university_type = Column(String(20), nullable=False)  # devlet, vakif
+    university_type = Column(String(20), nullable=False, index=True)  # ✅ Index eklendi - filtreleme için kritik
     website = Column(String(200), nullable=True)
     established_year = Column(Integer, nullable=True)
     
@@ -31,7 +31,7 @@ class Department(Base):
     id = Column(Integer, primary_key=True, index=True)
     university_id = Column(Integer, nullable=False, index=True)
     name = Column(String(200), nullable=False, index=True)
-    field_type = Column(String(20), nullable=False)  # EA, SAY, SÖZ, DİL
+    field_type = Column(String(20), nullable=False, index=True)  # ✅ Index eklendi - filtreleme için kritik
     language = Column(String(20), default="Turkish")  # Turkish, English
     
     # Academic Information
@@ -40,7 +40,7 @@ class Department(Base):
     degree_type = Column(String(20), default="Bachelor")  # Bachelor, Master, PhD
     
     # Admission Requirements
-    min_score = Column(Float, nullable=True)
+    min_score = Column(Float, nullable=True, index=True)  # ✅ Index eklendi - filtreleme için kritik
     min_rank = Column(Integer, nullable=True)
     quota = Column(Integer, nullable=True)
     scholarship_quota = Column(Integer, default=0)

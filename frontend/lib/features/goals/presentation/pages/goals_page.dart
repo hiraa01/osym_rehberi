@@ -16,7 +16,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
   String _departmentSearchQuery = '';
   String _universitySearchQuery = '';
   String _selectedFieldType = 'SAY'; // Filtre için seçili alan türü
-  
+
   @override
   void initState() {
     super.initState();
@@ -26,9 +26,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
     final isSelected = _selectedFieldType == value;
     final theme = Theme.of(context);
     return FilterChip(
-      label: icon != null 
-          ? Icon(icon, size: 18)
-          : Text(label),
+      label: icon != null ? Icon(icon, size: 18) : Text(label),
       selected: isSelected,
       onSelected: (selected) {
         setState(() {
@@ -66,11 +64,11 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
         elevation: 0,
       ),
       body: Column(
-          children: [
+        children: [
           // Tab Bar - Stitch Style
-                        Container(
+          Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
+            decoration: BoxDecoration(
               color: Colors.grey[100],
             ),
             child: Row(
@@ -80,19 +78,19 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                     'Bölümler',
                     0,
                     Icons.school,
-                          ),
-                        ),
+                  ),
+                ),
                 const SizedBox(width: 12),
-                        Expanded(
+                Expanded(
                   child: _buildTabButton(
                     'Üniversiteler',
                     1,
                     Icons.account_balance,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           // Tab Content
           Expanded(
             child: _selectedTab == 0
@@ -100,8 +98,8 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                 : _buildUniversitiesTab(context),
           ),
           // Alt butonlar
-            Container(
-              padding: const EdgeInsets.all(16),
+          Container(
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
@@ -115,19 +113,19 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
             child: Row(
               children: [
                 Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const UniversitySwipePage(),
-                    ),
-                  );
-                },
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const UniversitySwipePage(),
+                        ),
+                      );
+                    },
                     icon: const Icon(Icons.school, size: 20),
-                label: const Text('Üniversiteleri Keşfet'),
-                style: ElevatedButton.styleFrom(
+                    label: const Text('Üniversiteleri Keşfet'),
+                    style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Colors.white,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -148,17 +146,18 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                     onPressed: () {
                       // Rehber koç sayfasına git
                     },
-                    icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
+                    icon: const Icon(Icons.chat_bubble_outline,
+                        color: Colors.white),
                   ),
                 ),
               ],
-              ),
             ),
+          ),
         ],
       ),
     );
   }
-  
+
   Widget _buildTabButton(String label, int index, IconData icon) {
     final isSelected = _selectedTab == index;
     final theme = Theme.of(context);
@@ -191,29 +190,34 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 fontSize: 14,
               ),
-                    ),
-                  ],
-                ),
+            ),
+          ],
+        ),
       ),
     );
   }
-  
+
   Widget _buildDepartmentsTab(BuildContext context) {
     final departmentAsync = ref.watch(departmentListProvider);
-    
+
     return departmentAsync.when(
       data: (departments) {
         // Filtreleme
         final filteredDepartments = departments.where((dept) {
           final query = _departmentSearchQuery.toLowerCase();
-          final deptName = (dept['name'] ?? dept['program_name'] ?? '').toString().toLowerCase();
-          final uniName = (dept['university']?['name'] ?? '').toString().toLowerCase();
+          final deptName = (dept['name'] ?? dept['program_name'] ?? '')
+              .toString()
+              .toLowerCase();
+          final uniName =
+              (dept['university']?['name'] ?? '').toString().toLowerCase();
           final fieldType = dept['field_type']?.toString() ?? '';
-          final matchesQuery = deptName.contains(query) || uniName.contains(query);
-          final matchesFieldType = _selectedFieldType == 'ALL' || fieldType == _selectedFieldType;
+          final matchesQuery =
+              deptName.contains(query) || uniName.contains(query);
+          final matchesFieldType =
+              _selectedFieldType == 'ALL' || fieldType == _selectedFieldType;
           return matchesQuery && matchesFieldType;
         }).toList();
-        
+
         return Column(
           children: [
             // Arama barı - Stitch Style
@@ -266,16 +270,16 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                 itemBuilder: (context, index) {
                   final dept = filteredDepartments[index];
                   final uni = dept['university'] as Map<String, dynamic>?;
-                  final isFavorite = false; // TODO: Favori kontrolü
-                  
+
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
                     elevation: 0,
-              shape: RoundedRectangleBorder(
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
-              ),
+                    ),
                     child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       leading: CircleAvatar(
                         radius: 24,
                         backgroundColor: Colors.blue.shade100,
@@ -288,7 +292,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                         ),
                       ),
                       title: Text(
-                        dept['name'] ?? dept['program_name'] ?? 'Bilinmeyen Bölüm',
+                        dept['name'] ??
+                            dept['program_name'] ??
+                            'Bilinmeyen Bölüm',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -305,40 +311,40 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                         ),
                       ),
                       trailing: IconButton(
-                        icon: Icon(
-                          isFavorite ? Icons.star : Icons.star_border,
-                          color: isFavorite ? Colors.blue : Colors.grey[400],
+                        icon: const Icon(
+                          Icons.star_border,
+                          color: Colors.grey,
                         ),
                         onPressed: () {
-                          // Favori ekle/kaldır
+                          // Favori ekle/kaldır özelliği eklenecek
                         },
                       ),
                       onTap: () => _showDepartmentDetails(context, dept),
                     ),
                   );
                 },
-                                  ),
-                                ),
-                              ],
+              ),
+            ),
+          ],
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Center(child: Text('Hata: $error')),
     );
   }
-  
+
   Widget _buildUniversitiesTab(BuildContext context) {
     final universityAsync = ref.watch(universityListProvider);
-    
+
     return universityAsync.when(
       data: (universities) {
         // Filtreleme
         final filteredUniversities = universities.where((uni) {
           final query = _universitySearchQuery.toLowerCase();
           return uni['name'].toString().toLowerCase().contains(query) ||
-                 uni['city'].toString().toLowerCase().contains(query);
+              uni['city'].toString().toLowerCase().contains(query);
         }).toList();
-        
+
         return Column(
           children: [
             // Arama barı
@@ -380,42 +386,55 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
-                            Theme.of(context).colorScheme.primary.withValues(alpha: 0.02),
+                            Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.05),
+                            Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.02),
                           ],
                         ),
-                    ),
-                    child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
                         leading: Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
                             color: Colors.blue.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.account_balance, color: Colors.blue, size: 22),
-                      ),
+                          child: const Icon(Icons.account_balance,
+                              color: Colors.blue, size: 22),
+                        ),
                         title: Text(
                           uni['name'] ?? 'Bilinmeyen Üniversite',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
                         ),
                         subtitle: Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
-                        '${uni['city']} • ${uni['university_type']}',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                            ),
+                            '${uni['city']} • ${uni['university_type']}',
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.7),
+                                    ),
                           ),
-                      ),
+                        ),
                         trailing: Icon(
                           Icons.arrow_forward_ios,
                           size: 16,
                           color: Colors.grey[400],
                         ),
-                      onTap: () => _showUniversityDetails(context, uni),
+                        onTap: () => _showUniversityDetails(context, uni),
                       ),
                     ),
                   );
@@ -429,7 +448,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
       error: (error, stack) => Center(child: Text('Hata: $error')),
     );
   }
-  
+
   void _showDepartmentDetails(BuildContext context, Map<String, dynamic> dept) {
     final uni = dept['university'] as Map<String, dynamic>?;
     showDialog(
@@ -437,17 +456,19 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
       builder: (context) => AlertDialog(
         title: Text(dept['name'] ?? dept['program_name'] ?? 'Bilinmeyen Bölüm'),
         content: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
-                      children: [
+            children: [
               _buildDetailRow('Üniversite', uni?['name'] ?? 'Belirtilmemiş'),
               _buildDetailRow('Şehir', uni?['city'] ?? 'Belirtilmemiş'),
-              _buildDetailRow('Alan Türü', dept['field_type'] ?? 'Belirtilmemiş'),
+              _buildDetailRow(
+                  'Alan Türü', dept['field_type'] ?? 'Belirtilmemiş'),
               _buildDetailRow('Dil', dept['language'] ?? 'Belirtilmemiş'),
               _buildDetailRow('Süre', '${dept['duration'] ?? 4} yıl'),
               _buildDetailRow('Kontenjan', '${dept['quota'] ?? 0}'),
-              _buildDetailRow('Min Puan', dept['min_score']?.toString() ?? 'Belirtilmemiş'),
+              _buildDetailRow(
+                  'Min Puan', dept['min_score']?.toString() ?? 'Belirtilmemiş'),
             ],
           ),
         ),
@@ -455,12 +476,12 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Kapat'),
-                        ),
-                      ],
-                    ),
+          ),
+        ],
+      ),
     );
   }
-  
+
   void _showUniversityDetails(BuildContext context, Map<String, dynamic> uni) {
     showDialog(
       context: context,
@@ -472,8 +493,10 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildDetailRow('Şehir', uni['city'] ?? 'Belirtilmemiş'),
-              _buildDetailRow('Üniversite Türü', uni['university_type'] ?? 'Belirtilmemiş'),
-              _buildDetailRow('Kuruluş Yılı', '${uni['established_year'] ?? 'Belirtilmemiş'}'),
+              _buildDetailRow(
+                  'Üniversite Türü', uni['university_type'] ?? 'Belirtilmemiş'),
+              _buildDetailRow('Kuruluş Yılı',
+                  '${uni['established_year'] ?? 'Belirtilmemiş'}'),
               if (uni['website'] != null)
                 _buildDetailRow('Website', uni['website'] ?? 'Belirtilmemiş'),
             ],
@@ -494,7 +517,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+        children: [
           SizedBox(
             width: 100,
             child: Text(
@@ -504,10 +527,9 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
           ),
           Expanded(
             child: Text(value),
-            ),
-          ],
-        ),
+          ),
+        ],
+      ),
     );
   }
 }
-

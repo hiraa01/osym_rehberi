@@ -4,57 +4,60 @@ from sqlalchemy.orm import sessionmaker
 import os
 
 # Database URL - PostgreSQL for production, SQLite for development
-# ✅ SQLite dosyasını persistent volume'a kaydet (/app/data altında)
-# Volume mount: backend_data:/app/data
-DB_DIR = "/app/data"
-DB_FILE = os.path.join(DB_DIR, "osym_rehber.db")
+# ✅ PostgreSQL'e geçiş yapıldı - performans için kritik
+# Environment variable'dan al, yoksa PostgreSQL varsayılan değerlerini kullan
+POSTGRES_USER = os.getenv("POSTGRES_USER", "osym_user")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "osym_password")
+POSTGRES_DB = os.getenv("POSTGRES_DB", "osym_rehber")
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "db")  # Docker compose'da servis adı
+POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
 
-# Data dizinini oluştur (yoksa)
-if not os.path.exists(DB_DIR):
-    os.makedirs(DB_DIR, exist_ok=True)
-
-# ✅ SQLite URL format: 4 slash (///) for absolute path on Unix
-# sqlite:///path = relative, sqlite:////path = absolute
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{os.path.abspath(DB_FILE)}")
+# PostgreSQL connection string
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+)
 
 # Create engine with connection pooling for better performance
+# ✅ PostgreSQL'e geçiş yapıldı - SQLite artık kullanılmıyor
 if DATABASE_URL.startswith("sqlite"):
+    # SQLite fallback (sadece development için)
     engine = create_engine(
         DATABASE_URL,
         connect_args={
             "check_same_thread": False,
         },
-        pool_pre_ping=True,  # Connection health check
-        pool_recycle=3600,   # Recycle connections after 1 hour
+        pool_pre_ping=True,
+        pool_recycle=3600,
     )
     
-    # ✅ SQLite performans optimizasyonları - Event listener ile
     @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_conn, connection_record):
-        """SQLite performans optimizasyonları - Her bağlantıda çalışır"""
+        """SQLite performans optimizasyonları"""
         cursor = dbapi_conn.cursor()
-        # WAL mode - çoklu okuma/yazma performansı için kritik (10x hızlanma)
         cursor.execute("PRAGMA journal_mode=WAL")
-        # Synchronous mode - güvenlik vs performans dengesi (NORMAL = güvenli ama hızlı)
         cursor.execute("PRAGMA synchronous=NORMAL")
-        # Cache size - daha fazla bellek kullan ama daha hızlı (64MB)
         cursor.execute("PRAGMA cache_size=-64000")
-        # Temp store - geçici verileri RAM'de tut
         cursor.execute("PRAGMA temp_store=MEMORY")
-        # Foreign keys - referans bütünlüğü için
         cursor.execute("PRAGMA foreign_keys=ON")
-        # Optimize - sorgu planlayıcıyı optimize et
         cursor.execute("PRAGMA optimize")
         cursor.close()
 else:
-    # PostgreSQL için connection pool - OPTIMIZED
+    # ✅ PostgreSQL için optimize edilmiş connection pool
     engine = create_engine(
         DATABASE_URL,
-        pool_size=20,        # Connection pool size (artırıldı)
-        max_overflow=30,     # Additional connections beyond pool_size (artırıldı)
+        pool_size=30,        # Connection pool size (20 -> 30)
+        max_overflow=50,     # Additional connections beyond pool_size (30 -> 50)
         pool_pre_ping=True,  # Connection health check
-        pool_recycle=1800,   # Recycle connections after 30 minutes (daha sık)
+        pool_recycle=1800,   # Recycle connections after 30 minutes
+        pool_timeout=30,     # Wait time for connection from pool (seconds)
         echo=False,          # SQL query logging (production'da kapalı)
+        # PostgreSQL özel optimizasyonlar
+        connect_args={
+            "connect_timeout": 20,  # Connection timeout (10 -> 20 seconds)
+            "application_name": "osym_rehberi_api",  # Connection identifier
+            "options": "-c statement_timeout=300000",  # 5 minutes query timeout
+        },
     )
 
 # Create session

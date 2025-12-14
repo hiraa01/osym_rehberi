@@ -11,7 +11,8 @@ class ExamAttemptsPage extends StatefulWidget {
   State<ExamAttemptsPage> createState() => _ExamAttemptsPageState();
 }
 
-class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBindingObserver {
+class _ExamAttemptsPageState extends State<ExamAttemptsPage>
+    with WidgetsBindingObserver {
   final ApiService _apiService = ApiService();
   List<dynamic> _attempts = [];
   bool _isLoading = true;
@@ -53,7 +54,7 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBinding
     try {
       final prefs = await SharedPreferences.getInstance();
       final currentStudentId = prefs.getInt('student_id');
-      
+
       // Student ID değiştiyse veya ilk kez yükleniyorsa yenile
       if (currentStudentId != _lastKnownStudentId) {
         _lastKnownStudentId = currentStudentId;
@@ -69,12 +70,12 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBinding
     try {
       final prefs = await SharedPreferences.getInstance();
       final studentId = prefs.getInt('student_id');
-      
+
       if (studentId != null) {
         // ✅ Student ID'ye özel cache key
         final cacheKey = 'exam_attempts_cache_$studentId';
         final cachedJson = prefs.getString(cacheKey);
-        
+
         if (cachedJson != null) {
           final cached = jsonDecode(cachedJson) as List;
           if (mounted) {
@@ -113,7 +114,7 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBinding
     try {
       final prefs = await SharedPreferences.getInstance();
       final studentId = prefs.getInt('student_id');
-      
+
       if (studentId != null) {
         // ✅ Student ID'ye özel cache key
         final cacheKey = 'exam_attempts_cache_$studentId';
@@ -127,13 +128,13 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBinding
   Future<void> _loadAttempts() async {
     // Önce yerel cache'den yükle (hızlı görüntüleme için)
     await _loadCachedAttempts();
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final currentStudentId = prefs.getInt('student_id');
-      
+
       // Student ID yoksa veya değiştiyse cache'i temizle
       if (currentStudentId == null) {
         await _clearOldCache(prefs);
@@ -146,30 +147,47 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBinding
         }
         return;
       }
-      
+
       // Student ID değiştiyse cache'i temizle
       if (_studentId != null && _studentId != currentStudentId) {
         await _clearOldCache(prefs);
       }
-      
+
       _studentId = currentStudentId;
-      _lastKnownStudentId = currentStudentId; // Son bilinen student_id'yi kaydet
-      
-        // Backend'den güncel verileri yükle
-        final response = await _apiService.getStudentAttempts(_studentId!);
-        final attempts = response.data['attempts'] ?? [];
-        
-        // Yerel cache'e kaydet
-        await _saveAttemptsToCache(attempts);
-        
-        if (mounted) {
-          setState(() {
-            _attempts = attempts;
-            _isLoading = false;
-          });
+      _lastKnownStudentId =
+          currentStudentId; // Son bilinen student_id'yi kaydet
+
+      // Backend'den güncel verileri yükle (retry mekanizması ile)
+      final response = await _apiService.getStudentAttempts(_studentId!);
+      final attempts = response.data['attempts'] ?? [];
+
+      // Yerel cache'e kaydet
+      await _saveAttemptsToCache(attempts);
+
+      if (mounted) {
+        setState(() {
+          _attempts = attempts;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       debugPrint('Error loading attempts from backend: $e');
+
+      // Kullanıcıya bilgi ver (sadece connection hataları için)
+      if (mounted &&
+          (e.toString().contains('Connection closed') ||
+              e.toString().contains('unknown') ||
+              e.toString().contains('timeout'))) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Sunucuya bağlanılamadı. Cache\'deki veriler gösteriliyor.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+
       // Backend hatası olsa bile cache'deki veriler gösterildi
       // Ancak student_id yoksa veya değiştiyse boş liste göster
       if (mounted) {
@@ -203,18 +221,18 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBinding
             child: CircleAvatar(
               backgroundColor: Theme.of(context).colorScheme.primary,
               child: IconButton(
-            onPressed: () async {
-              final result = await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const AddExamAttemptPage(),
-                ),
-              );
-              if (result == true) {
+                onPressed: () async {
+                  final result = await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const AddExamAttemptPage(),
+                    ),
+                  );
+                  if (result == true) {
                     _loadAttempts();
-              }
-            },
+                  }
+                },
                 icon: const Icon(Icons.add, color: Colors.white),
-            tooltip: 'Deneme Ekle',
+                tooltip: 'Deneme Ekle',
               ),
             ),
           ),
@@ -236,9 +254,9 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBinding
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -246,65 +264,65 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBinding
                 shape: BoxShape.circle,
               ),
               child: Icon(
-            Icons.quiz_rounded,
+                Icons.quiz_rounded,
                 size: 80,
                 color: theme.colorScheme.primary,
               ),
-          ),
+            ),
             const SizedBox(height: 32),
-          Text(
-            'Henüz deneme eklenmemiş',
+            Text(
+              'Henüz deneme eklenmemiş',
               style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
             const SizedBox(height: 12),
-          Text(
+            Text(
               'İlk denemenizi ekleyerek başlayın ve performansınızı takip edin',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-          ),
-            const SizedBox(height: 40),
-          ElevatedButton.icon(
-            onPressed: () async {
-              final result = await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const AddExamAttemptPage(),
-                ),
-              );
-              if (result == true) {
-                _loadAttempts();
-              }
-            },
-              icon: const Icon(Icons.add_circle_outline),
-            label: const Text('Deneme Ekle'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 32,
-                vertical: 16,
               ),
-              shape: RoundedRectangleBorder(
+            ),
+            const SizedBox(height: 40),
+            ElevatedButton.icon(
+              onPressed: () async {
+                final result = await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const AddExamAttemptPage(),
+                  ),
+                );
+                if (result == true) {
+                  _loadAttempts();
+                }
+              },
+              icon: const Icon(Icons.add_circle_outline),
+              label: const Text('Deneme Ekle'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(28),
                 ),
               ),
             ),
           ],
-          ),
+        ),
       ),
     );
   }
 
   Widget _buildAttemptsList() {
-    final theme = Theme.of(context);
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _attempts.length,
       cacheExtent: 500,
       itemBuilder: (context, index) {
         final attempt = _attempts[index];
-        final attemptName = attempt['name'] ?? 'Deneme ${attempt['attempt_number'] ?? index + 1}';
+        final attemptName = attempt['name'] ??
+            'Deneme ${attempt['attempt_number'] ?? index + 1}';
         final tytNet = (attempt['tyt_turkish_net'] ?? 0.0) +
             (attempt['tyt_math_net'] ?? 0.0) +
             (attempt['tyt_social_net'] ?? 0.0) +
@@ -321,12 +339,13 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBinding
         final dateStr = examDate != null
             ? '${examDate.day} ${_getMonthName(examDate.month)} ${examDate.year}'
             : '';
-        
+
         // TYT veya AYT hangisi daha yüksekse ona göre badge
         final hasTyt = tytNet > 0;
         final hasAyt = aytNet > 0;
-        final examType = hasTyt && hasAyt ? 'TYT+AYT' : (hasTyt ? 'TYT' : 'AYT');
-        
+        final examType =
+            hasTyt && hasAyt ? 'TYT+AYT' : (hasTyt ? 'TYT' : 'AYT');
+
         return Card(
           elevation: 0,
           margin: const EdgeInsets.only(bottom: 12),
@@ -368,15 +387,15 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBinding
                                 color: Colors.green.shade100,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-              child: Text(
+                              child: Text(
                                 examType,
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.green.shade700,
                                 ),
-              ),
-            ),
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -387,7 +406,7 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBinding
                               fontSize: 14,
                               color: Colors.grey[700],
                             ),
-            ),
+                          ),
                         if (hasTyt && hasAyt) const SizedBox(height: 2),
                         if (hasAyt)
                           Text(
@@ -399,9 +418,9 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBinding
                           ),
                         if (dateStr.isNotEmpty) ...[
                           const SizedBox(height: 4),
-                Text(
+                          Text(
                             dateStr,
-                  style: TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[600],
                             ),
@@ -420,8 +439,8 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBinding
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                  ),
-                ),
+                          ),
+                        ),
                       if (hasAyt && aytScore > 0) ...[
                         if (hasTyt && tytScore > 0) const SizedBox(height: 4),
                         Text(
@@ -439,8 +458,8 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBinding
                         size: 20,
                       ),
                     ],
-                ),
-              ],
+                  ),
+                ],
               ),
             ),
           ),
@@ -451,10 +470,19 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> with WidgetsBinding
 
   String _getMonthName(int month) {
     const months = [
-      'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+      'Ocak',
+      'Şubat',
+      'Mart',
+      'Nisan',
+      'Mayıs',
+      'Haziran',
+      'Temmuz',
+      'Ağustos',
+      'Eylül',
+      'Ekim',
+      'Kasım',
+      'Aralık'
     ];
     return months[month - 1];
   }
 }
-

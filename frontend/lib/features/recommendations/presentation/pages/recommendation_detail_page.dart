@@ -15,7 +15,7 @@ class RecommendationDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // TODO: Replace with actual data from API
+    // Not: API verisi ile değiştirilecek
     final recommendation = _getMockRecommendation();
 
     return Scaffold(
@@ -311,7 +311,7 @@ class RecommendationDetailPage extends ConsumerWidget {
   }
 
   void _shareRecommendation(BuildContext context, Map<String, dynamic> recommendation) {
-    // TODO: Implement sharing functionality
+                    // Paylaşım özelliği eklenecek
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Paylaşım özelliği henüz hazır değil'),

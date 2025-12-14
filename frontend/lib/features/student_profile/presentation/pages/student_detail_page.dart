@@ -22,7 +22,11 @@ class StudentDetailPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () {
-              // TODO: Navigate to edit page
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Düzenleme sayfası yakında eklenecek'),
+                ),
+              );
             },
           ),
         ],

@@ -1,8 +1,9 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/services/api_service.dart';
-import '../../../../core/services/export_service.dart';
 import '../../../universities/data/providers/university_api_provider.dart';
 
 class RecommendationsPage extends ConsumerStatefulWidget {
@@ -18,116 +19,11 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
   bool _isLoading = true;
   String _selectedCity = 'all';
   String _selectedType = 'all';
-  Set<int> _bookmarkedIds = {};
   
   @override
   void initState() {
     super.initState();
     _loadRecommendations();
-    _loadBookmarks();
-  }
-
-  Future<void> _loadBookmarks() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bookmarks = prefs.getStringList('bookmarked_recommendations') ?? [];
-    setState(() {
-      _bookmarkedIds = bookmarks.map((e) => int.tryParse(e) ?? 0).toSet();
-    });
-  }
-
-  Future<void> _toggleBookmark(int id) async {
-    final prefs = await SharedPreferences.getInstance();
-    final isBookmarked = _bookmarkedIds.contains(id);
-    setState(() {
-      if (isBookmarked) {
-        _bookmarkedIds.remove(id);
-      } else {
-        _bookmarkedIds.add(id);
-      }
-    });
-    await prefs.setStringList(
-      'bookmarked_recommendations',
-      _bookmarkedIds.map((e) => e.toString()).toList(),
-    );
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            !isBookmarked ? 'Kaydedildi!' : 'Kayıttan kaldırıldı',
-          ),
-          duration: const Duration(seconds: 1),
-        ),
-      );
-    }
-  }
-
-  Future<void> _handleExport(String format) async {
-    if (!mounted) return;
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final studentName = prefs.getString('user_name') ?? 'Öğrenci';
-      
-      // Öğrenci tercihlerini al
-      final studentId = prefs.getInt('student_id');
-      if (studentId == null) {
-        scaffoldMessenger.showSnackBar(
-          const SnackBar(
-            content: Text('Önce öğrenci profili oluşturun'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-      
-      final studentResponse = await _apiService.getStudent(studentId);
-      final preferredCities = List<String>.from(studentResponse.data['preferred_cities'] ?? []);
-      final fieldType = studentResponse.data['field_type'] ?? 'SAY';
-      
-      // Bölümleri alan türüne göre filtrele
-      final departmentsResponse = await _apiService.getDepartments();
-      final allDepartments = (departmentsResponse.data as List)
-          .map((dept) => dept['name'] as String)
-          .where((name) => name.isNotEmpty)
-          .toSet()
-          .toList();
-      
-      if (format == 'pdf') {
-        await ExportService.exportPreferencesToPDF(
-          cities: preferredCities,
-          departments: allDepartments,
-          fieldType: fieldType,
-          studentName: studentName,
-        );
-      } else if (format == 'excel') {
-        await ExportService.exportPreferencesToExcel(
-          cities: preferredCities,
-          departments: allDepartments,
-          fieldType: fieldType,
-          studentName: studentName,
-        );
-      }
-      
-      if (mounted) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text('Tercih listesi ${format.toUpperCase()} olarak dışa aktarıldı'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text('Dışa aktarma hatası: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 
   Future<void> _loadRecommendations({bool forceRefresh = false}) async {
@@ -473,8 +369,6 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                                       final dept = rec['department'] as Map<String, dynamic>?;
                                       final uni = dept?['university'] as Map<String, dynamic>?;
                                       final finalScore = (rec['final_score'] ?? rec['compatibility_score'] ?? 0.0).toDouble();
-                                      final recId = rec['id'] ?? index;
-                                      final isBookmarked = _bookmarkedIds.contains(recId);
                                       
                                       // Üniversite görseli URL'i (varsa)
                                       final imageUrl = uni?['image_url']?.toString() ?? 
@@ -624,9 +518,11 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                 leading: Radio<String>(
                   value: 'all',
                   groupValue: _selectedCity,
-                  onChanged: (value) {
-                    setState(() => _selectedCity = value!);
-                    Navigator.pop(context);
+                  onChanged: (String? value) {
+                    if (value != null) {
+                      setState(() => _selectedCity = value);
+                      Navigator.pop(context);
+                    }
                   },
                 ),
               ),
@@ -636,9 +532,11 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                   leading: Radio<String>(
                     value: city,
                     groupValue: _selectedCity,
-                    onChanged: (value) {
-                      setState(() => _selectedCity = value!);
-                      Navigator.pop(context);
+                    onChanged: (String? value) {
+                      if (value != null) {
+                        setState(() => _selectedCity = value);
+                        Navigator.pop(context);
+                      }
                     },
                   ),
                 );
@@ -675,9 +573,11 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                 leading: Radio<String>(
                   value: 'all',
                   groupValue: _selectedType,
-                  onChanged: (value) {
-                    setState(() => _selectedType = value!);
-                    Navigator.pop(context);
+                  onChanged: (String? value) {
+                    if (value != null) {
+                      setState(() => _selectedType = value);
+                      Navigator.pop(context);
+                    }
                   },
                 ),
               ),
@@ -687,9 +587,11 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                   leading: Radio<String>(
                     value: type,
                     groupValue: _selectedType,
-                    onChanged: (value) {
-                      setState(() => _selectedType = value!);
-                      Navigator.pop(context);
+                    onChanged: (String? value) {
+                      if (value != null) {
+                        setState(() => _selectedType = value);
+                        Navigator.pop(context);
+                      }
                     },
                   ),
                 );
@@ -701,29 +603,5 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
     );
   }
 
-  Widget _buildInfoChip(IconData icon, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 

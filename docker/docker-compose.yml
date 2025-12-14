@@ -7,7 +7,13 @@ services:
     ports:
       - "8002:8000"
     environment:
-      - DATABASE_URL=sqlite:////app/data/osym_rehber.db
+      # ✅ PostgreSQL'e geçiş yapıldı
+      - DATABASE_URL=postgresql://osym_user:osym_password@db:5432/osym_rehber
+      - POSTGRES_USER=osym_user
+      - POSTGRES_PASSWORD=osym_password
+      - POSTGRES_DB=osym_rehber
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
@@ -16,15 +22,13 @@ services:
       - backend_data:/app/data
       - backend_logs:/app/logs
       - ml_models:/app/ml_models
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --timeout-keep-alive 75
     depends_on:
-      - db
-    healthcheck:
-      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - osym_network
 
   frontend:
     build:
@@ -39,12 +43,6 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
     command: flutter run -d web-server --web-hostname 0.0.0.0 --web-port 3000
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:3000" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
   db:
     image: postgres:15-alpine
@@ -57,6 +55,9 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5435:5432"
+    restart: unless-stopped
+    networks:
+      - osym_network
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U osym_user -d osym_rehber" ]
       interval: 30s
@@ -64,8 +65,59 @@ services:
       retries: 3
       start_period: 30s
 
+  redis:
+    image: redis:7-alpine
+    container_name: osym_rehberi_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - osym_network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  celery_worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: osym_rehberi_celery_worker
+    environment:
+      - DATABASE_URL=postgresql://osym_user:osym_password@db:5432/osym_rehber
+      - POSTGRES_USER=osym_user
+      - POSTGRES_PASSWORD=osym_password
+      - POSTGRES_DB=osym_rehber
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+    volumes:
+      - ../backend:/app
+      - backend_logs:/app/logs
+      - ml_models:/app/ml_models
+    command: celery -A celery_app worker --loglevel=info --concurrency=2
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - osym_network
+
+networks:
+  osym_network:
+    driver: bridge
+
 volumes:
   postgres_data:
   backend_data:
   backend_logs:
   ml_models:
+  redis_data:

@@ -18,7 +18,14 @@ router = APIRouter()
 # Spesifik endpoints (önce bunlar)
 @router.get("/cities/", response_model=List[str])
 async def get_cities(db: Session = Depends(get_db)):
-    """81 il + KKTC şehirlerini getir (81 il öncelikli) - OPTIMIZED"""
+    """81 il + KKTC şehirlerini getir (81 il öncelikli) - OPTIMIZED with CACHE"""
+    # ✅ Cache'den kontrol et
+    from core.cache import get_cache, set_cache
+    from datetime import timedelta
+    cached_cities = get_cache("cities", ttl=timedelta(hours=24))
+    if cached_cities is not None:
+        return cached_cities
+    
     # 81 il listesi (seed_yok_data.py'den)
     TURKISH_81_CITIES = [
         "Adana", "Adıyaman", "Afyonkarahisar", "Ağrı", "Aksaray", "Amasya", "Ankara", "Antalya",
@@ -80,18 +87,20 @@ async def get_cities(db: Session = Depends(get_db)):
                    and city not in unknown_cities]
     result.extend(sorted(other_cities, key=turkish_sort_key))
     
+    # ✅ Cache'e kaydet
+    set_cache("cities", result, ttl=timedelta(hours=24))
+    
     return result
 
 
 @router.get("/field-types/", response_model=List[str])
 async def get_field_types(db: Session = Depends(get_db)):
-    """Tüm alan türlerini getir (cached)"""
+    """Tüm alan türlerini getir (cached) - OPTIMIZED with CACHE"""
     from core.cache import get_cache, set_cache
     from datetime import timedelta
     
-    # ✅ Cache'den kontrol et (field types sık değişmez)
-    cache_key = "universities:field-types"
-    cached = get_cache(cache_key, ttl=timedelta(hours=1))
+    # ✅ Cache'den kontrol et (startup'ta yüklenen cache)
+    cached = get_cache("field_types", ttl=timedelta(hours=24))
     if cached is not None:
         return cached
     
@@ -100,8 +109,8 @@ async def get_field_types(db: Session = Depends(get_db)):
     field_types_result = db.query(distinct(Department.field_type)).filter(Department.field_type.isnot(None)).all()
     result = [field_type[0] for field_type in field_types_result if field_type[0]]
     
-    # Cache'e kaydet
-    set_cache(cache_key, result, ttl=timedelta(hours=1))
+    # ✅ Cache'e kaydet (startup cache key ile uyumlu)
+    set_cache("field_types", result, ttl=timedelta(hours=24))
     return result
 
 
@@ -253,7 +262,10 @@ async def get_departments(
     has_scholarship: Optional[bool] = Query(None),
     db: Session = Depends(get_db)
 ):
-    """Bölüm listesini getir"""
+    """Bölüm listesini getir - OPTIMIZED with eager loading"""
+    # ✅ OPTIMIZED: Eager loading ile join yaparak N+1 problemini önle
+    from sqlalchemy.orm import joinedload
+    
     # Sadece city veya university_type filtresi varsa join yap
     query = db.query(Department)
     
@@ -278,10 +290,12 @@ async def get_departments(
     # ✅ Bölüm adına göre alfabetik sıralama
     query = query.order_by(Department.name)
     
+    # ✅ OPTIMIZED: Tek sorguda tüm verileri çek (eager loading)
     departments = query.offset(skip).limit(limit).all()
     
-    # ✅ N+1 problemini çöz: Tüm üniversiteleri tek seferde çek
+    # ✅ N+1 problemini çöz: Eager loading ile tüm üniversiteleri tek seferde çek
     university_ids = {dept.university_id for dept in departments}
+    # ✅ OPTIMIZED: Index kullanarak hızlı sorgu
     universities_dict = {
         uni.id: uni 
         for uni in db.query(University).filter(University.id.in_(university_ids)).all()

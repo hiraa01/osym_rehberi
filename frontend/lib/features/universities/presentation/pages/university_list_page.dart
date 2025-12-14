@@ -161,7 +161,6 @@ class _UniversityListPageState extends ConsumerState<UniversityListPage> {
                   return UniversityCard(
                     university: university,
                     onTap: () {
-                      // TODO: Navigate to university detail
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('${university.name} detayı henüz hazır değil'),
@@ -188,7 +187,6 @@ class _UniversityListPageState extends ConsumerState<UniversityListPage> {
                   return UniversityCard(
                     university: university,
                     onTap: () {
-                      // TODO: Navigate to university detail
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('${university.name} detayı henüz hazır değil'),

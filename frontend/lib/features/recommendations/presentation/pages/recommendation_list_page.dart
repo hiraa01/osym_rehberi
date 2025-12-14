@@ -100,7 +100,7 @@ class _RecommendationListPageState extends ConsumerState<RecommendationListPage>
       );
     }
 
-    // TODO: Replace with actual data from API
+    // Not: API verisi ile değiştirilecek
     final recommendations = _getMockRecommendations();
 
     if (recommendations.isEmpty) {

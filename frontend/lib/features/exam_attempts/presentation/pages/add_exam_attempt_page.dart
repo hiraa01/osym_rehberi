@@ -510,13 +510,14 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
         }
         
         if (studentId != null) {
-          // Deneme sayısını al
-          final attemptsResponse = await _apiService.getStudentAttempts(studentId);
-          final attempts = attemptsResponse.data['attempts'] ?? [];
-          final attemptNumber = attempts.length + 1;
+          // Deneme sayısını al (retry mekanizması ile)
+          try {
+            final attemptsResponse = await _apiService.getStudentAttempts(studentId);
+            final attempts = attemptsResponse.data['attempts'] ?? [];
+            final attemptNumber = attempts.length + 1;
           
-          // Deneme kaydet
-          final response = await _apiService.createExamAttempt({
+            // Deneme kaydet (retry mekanizması ile)
+            final response = await _apiService.createExamAttempt({
             'student_id': studentId,
             'attempt_number': attemptNumber,
             'exam_name': _examNameController.text.trim().isEmpty 
@@ -526,35 +527,70 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
             ...nets,
           });
           
-          // ✅ Yeni denemeyi cache'e ekle (student_id'ye özel)
-          try {
-            final prefs = await SharedPreferences.getInstance();
-            final cacheKey = 'exam_attempts_cache_$studentId';
-            final cachedJson = prefs.getString(cacheKey);
+            // ✅ Yeni denemeyi cache'e ekle (student_id'ye özel)
+            try {
+              final prefs = await SharedPreferences.getInstance();
+              final cacheKey = 'exam_attempts_cache_$studentId';
+              final cachedJson = prefs.getString(cacheKey);
+              
+              if (cachedJson != null) {
+                final cached = jsonDecode(cachedJson) as List;
+                // Backend'den yeni denemeyi al ve cache'e ekle
+                final newAttempt = response.data as Map<String, dynamic>;
+                cached.add(newAttempt);
+                await prefs.setString(cacheKey, jsonEncode(cached));
+              } else {
+                // Cache yoksa, yeni denemeyi tek başına kaydet
+                final newAttempt = response.data as Map<String, dynamic>;
+                await prefs.setString(cacheKey, jsonEncode([newAttempt]));
+              }
+            } catch (_) {
+              // Cache güncelleme hatası - önemli değil
+            }
             
-            if (cachedJson != null) {
-              final cached = jsonDecode(cachedJson) as List;
-              // Backend'den yeni denemeyi al ve cache'e ekle
-              final newAttempt = response.data as Map<String, dynamic>;
-              cached.add(newAttempt);
-              await prefs.setString(cacheKey, jsonEncode(cached));
-            } else {
-              // Cache yoksa, yeni denemeyi tek başına kaydet
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Deneme başarıyla kaydedildi!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              Navigator.pop(context, true);
+            }
+          } catch (e) {
+            // Deneme sayısını alırken hata
+            debugPrint('Error getting attempt count: $e');
+            // Devam et - attempt_number = 1 olarak ayarla
+            final attemptNumber = 1;
+            
+            // Deneme kaydet (retry mekanizması ile)
+            final response = await _apiService.createExamAttempt({
+              'student_id': studentId,
+              'attempt_number': attemptNumber,
+              'exam_name': _examNameController.text.trim().isEmpty 
+                  ? 'Deneme $attemptNumber' 
+                  : _examNameController.text.trim(),
+              'exam_date': DateTime.now().toIso8601String(),
+              ...nets,
+            });
+            
+            // Cache'e ekle
+            try {
+              final prefs = await SharedPreferences.getInstance();
+              final cacheKey = 'exam_attempts_cache_$studentId';
               final newAttempt = response.data as Map<String, dynamic>;
               await prefs.setString(cacheKey, jsonEncode([newAttempt]));
+            } catch (_) {}
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Deneme başarıyla kaydedildi!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+              Navigator.pop(context, true);
             }
-          } catch (_) {
-            // Cache güncelleme hatası - önemli değil
-          }
-          
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Deneme başarıyla kaydedildi!'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            Navigator.pop(context, true);
           }
         } else {
           throw Exception('Student ID bulunamadı');
@@ -562,10 +598,21 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
       } catch (e) {
         debugPrint('Save exam attempt error: $e');
         if (mounted) {
+          String errorMessage = 'Deneme kaydedilemedi. ';
+          if (e.toString().contains('Connection closed') || 
+              e.toString().contains('unknown')) {
+            errorMessage += 'Sunucuya bağlanılamadı. Lütfen internet bağlantınızı kontrol edin ve tekrar deneyin.';
+          } else if (e.toString().contains('timeout')) {
+            errorMessage += 'İstek zaman aşımına uğradı. Lütfen tekrar deneyin.';
+          } else {
+            errorMessage += 'Hata: ${e.toString()}';
+          }
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Hata: ${e.toString()}'),
+              content: Text(errorMessage),
               backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
             ),
           );
         }

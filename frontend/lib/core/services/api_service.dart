@@ -40,17 +40,17 @@ class ApiService {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
       connectTimeout:
-          const Duration(seconds: 30), // Backend'e bağlanma için 30 saniye
+          const Duration(seconds: 90), // Backend'e bağlanma için 90 saniye (yavaş network için)
       receiveTimeout: const Duration(
-          seconds: 60), // Default: 60 saniye (normal endpoint'ler için)
-      sendTimeout: const Duration(seconds: 30), // Veri göndermek için 30 saniye
+          seconds: 180), // Default: 180 saniye (normal endpoint'ler için)
+      sendTimeout: const Duration(seconds: 90), // Veri göndermek için 90 saniye
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Accept-Encoding': 'gzip, deflate', // Gzip desteği
       },
       // Android için connection ayarları
-      persistentConnection: false, // Android'de bazen sorun yaratabilir
+      persistentConnection: true, // ✅ True yaparak bağlantıyı yeniden kullan (daha hızlı)
       // Tüm status kodlarını kabul et (400-499 hataları da response olarak gelsin)
       validateStatus: (status) => status != null && status < 600,
       // Chrome için özel ayarlar
@@ -94,10 +94,10 @@ class ApiService {
           // Her request için timeout'lar - Android için makul timeout'lar
           // NOT: Endpoint'lerde özel timeout varsa onlar kullanılır
           // Kritik endpoint'ler için özel timeout'lar tanımlanmıştır
-          options.connectTimeout = const Duration(seconds: 30);
+          // NOT: connectTimeout sadece BaseOptions'ta ayarlanabilir, Options'ta yok
           options.receiveTimeout =
-              const Duration(seconds: 60); // Default: 60 saniye
-          options.sendTimeout = const Duration(seconds: 30);
+              const Duration(seconds: 180); // Default: 180 saniye
+          options.sendTimeout = const Duration(seconds: 90);
           if (kDebugMode) {
             debugPrint('[Android] Request: ${options.method} ${options.uri}');
             debugPrint('[Android] Headers: ${options.headers}');
@@ -255,8 +255,7 @@ class ApiService {
 
   Future<Response> getDepartments({
     int skip = 0,
-    int limit =
-        500, // ✅ Pagination - default 500 kayıt (optimize edilmiş limit)
+    int limit = 2000, // ✅ Pagination - daha yüksek limit (tüm bölümler için)
   }) async {
     // Bölümler çok sayıda olabilir - pagination kullanın
     return await _dio.get(
@@ -368,8 +367,8 @@ class ApiService {
       },
       options: Options(
         receiveTimeout: const Duration(
-            seconds: 120), // 2 dakika (filtreli sorgu - daha hızlı olmalı)
-        sendTimeout: const Duration(seconds: 30),
+            seconds: 180), // 3 dakika (filtreli sorgu - yavaş network için)
+        sendTimeout: const Duration(seconds: 60),
       ),
     );
   }
@@ -414,17 +413,6 @@ class ApiService {
         sendTimeout: const Duration(seconds: 60),
         validateStatus: (status) =>
             status != null && status < 500, // ✅ 4xx hatalarını da handle et
-      ),
-    );
-  }
-
-  // Health check (not under /api prefix)
-  Future<Response> healthCheck() async {
-    return await _dio.get(
-      'http://${kIsWeb ? 'localhost' : '172.31.88.134'}:8002/health',
-      options: Options(
-        sendTimeout: const Duration(seconds: 3),
-        receiveTimeout: const Duration(seconds: 3),
       ),
     );
   }
@@ -503,27 +491,88 @@ class ApiService {
   }
 
   // Exam Attempt endpoints
-  Future<Response> createExamAttempt(Map<String, dynamic> data) async {
+  Future<Response> createExamAttempt(Map<String, dynamic> data,
+      {int maxRetries = 3}) async {
     // ⚠️ Deneme kaydetme - backend optimize edilmeli (index'ler eklendi)
-    return await _dio.post(
-      '/exam-attempts/',
-      data: data,
-      options: Options(
-        receiveTimeout:
-            const Duration(seconds: 120), // 2 dakika (backend optimize edildi)
-        sendTimeout: const Duration(seconds: 60),
-      ),
+    // ✅ Retry mekanizması eklendi - connection hataları için
+    int retryCount = 0;
+    while (retryCount < maxRetries) {
+      try {
+        return await _dio.post(
+          '/exam-attempts/',
+          data: data,
+          options: Options(
+            receiveTimeout: const Duration(
+                seconds: 120), // 2 dakika (backend optimize edildi)
+            sendTimeout: const Duration(seconds: 60),
+          ),
+        );
+      } on DioException catch (e) {
+        retryCount++;
+        // Connection hataları için retry yap
+        if (e.type == DioExceptionType.unknown ||
+            e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout) {
+          if (retryCount < maxRetries) {
+            if (kDebugMode) {
+              debugPrint(
+                  '[Retry] Attempt $retryCount/$maxRetries for createExamAttempt');
+            }
+            // Exponential backoff: 2s, 4s, 8s
+            await Future.delayed(Duration(seconds: 2 * retryCount));
+            continue;
+          }
+        }
+        // Diğer hatalar için retry yapma
+        rethrow;
+      }
+    }
+    throw DioException(
+      requestOptions: RequestOptions(path: '/exam-attempts/'),
+      type: DioExceptionType.unknown,
+      message: 'Max retries ($maxRetries) exceeded',
     );
   }
 
-  Future<Response> getStudentAttempts(int studentId) async {
+  Future<Response> getStudentAttempts(int studentId,
+      {int maxRetries = 3}) async {
     // ⚠️ Deneme listesi - backend optimize edilmeli (index'ler eklendi)
-    return await _dio.get(
-      '/exam-attempts/student/$studentId',
-      options: Options(
-        receiveTimeout: const Duration(
-            seconds: 60), // 1 dakika (index'li sorgu - hızlı olmalı)
-      ),
+    // ✅ Retry mekanizması eklendi - connection hataları için
+    int retryCount = 0;
+    while (retryCount < maxRetries) {
+      try {
+        return await _dio.get(
+          '/exam-attempts/student/$studentId',
+          options: Options(
+            receiveTimeout: const Duration(
+                seconds: 120), // 2 dakika (index'li sorgu - yavaş network için)
+            sendTimeout: const Duration(seconds: 60),
+          ),
+        );
+      } on DioException catch (e) {
+        retryCount++;
+        // Connection hataları için retry yap
+        if (e.type == DioExceptionType.unknown ||
+            e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout) {
+          if (retryCount < maxRetries) {
+            if (kDebugMode) {
+              debugPrint(
+                  '[Retry] Attempt $retryCount/$maxRetries for getStudentAttempts');
+            }
+            // Exponential backoff: 2s, 4s, 8s
+            await Future.delayed(Duration(seconds: 2 * retryCount));
+            continue;
+          }
+        }
+        // Diğer hatalar için retry yapma
+        rethrow;
+      }
+    }
+    throw DioException(
+      requestOptions: RequestOptions(path: '/exam-attempts/student/$studentId'),
+      type: DioExceptionType.unknown,
+      message: 'Max retries ($maxRetries) exceeded',
     );
   }
 

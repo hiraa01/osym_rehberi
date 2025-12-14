@@ -144,7 +144,7 @@ class _DashboardPageState extends State<DashboardPage> {
           _recommendations = recsRaw
               .map((e) => Map<String, dynamic>.from(e as Map))
               .toList(growable: false);
-          
+
           // ✅ Story'leri önerilerden oluştur (en yüksek skorlu 3-5 üniversite)
           _targetHighlights = _recommendations.take(5).map((rec) {
             final university = rec['department']?['university'] ?? {};
@@ -152,33 +152,36 @@ class _DashboardPageState extends State<DashboardPage> {
             return {
               'name': university['name'] ?? department['name'] ?? 'Üniversite',
               'city': university['city'] ?? '',
-              'image': university['logo_url'] ?? 
+              'image': university['logo_url'] ??
                   'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=1200&q=80',
               'university_id': university['id'],
               'department_id': department['id'],
               'compatibility': rec['compatibility_score'] ?? 0.0,
             };
           }).toList();
-          
+
           // Eğer öneri yoksa, varsayılan story'leri göster
           if (_targetHighlights.isEmpty) {
             _targetHighlights = [
               {
                 'name': 'Boğaziçi Üniversitesi',
                 'city': 'İstanbul',
-                'image': 'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=1200&q=80',
+                'image':
+                    'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=1200&q=80',
                 'university_id': null,
               },
               {
                 'name': 'ODTÜ',
                 'city': 'Ankara',
-                'image': 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1200&q=80',
+                'image':
+                    'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1200&q=80',
                 'university_id': null,
               },
               {
                 'name': 'İTÜ',
                 'city': 'İstanbul',
-                'image': 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80',
+                'image':
+                    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80',
                 'university_id': null,
               },
             ];
@@ -191,7 +194,8 @@ class _DashboardPageState extends State<DashboardPage> {
             {
               'name': 'Boğaziçi Üniversitesi',
               'city': 'İstanbul',
-              'image': 'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=1200&q=80',
+              'image':
+                  'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=1200&q=80',
               'university_id': null,
             },
           ];
@@ -728,7 +732,11 @@ class _DashboardPageState extends State<DashboardPage> {
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             onPressed: () {
-              // TODO: Ayarlar sayfasına yönlendir
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const MyPreferencesPage(),
+                ),
+              );
             },
           ),
         ],
@@ -779,8 +787,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-
-
   // ✅ Story'ler - Görseldeki gibi yuvarlak, renkli, üniversite logoları
   Widget _buildHighlightStories(BuildContext context) {
     // Varsayılan story'ler (backend'den gelmezse)
@@ -821,7 +827,7 @@ class _DashboardPageState extends State<DashboardPage> {
         itemBuilder: (context, index) {
           final item = storiesToShow[index];
           final name = item['name'] as String? ?? '';
-          
+
           // Renk belirleme (backend'den geliyorsa varsayılan, yoksa item'dan)
           Color circleColor;
           if (_targetHighlights.isNotEmpty) {
@@ -841,7 +847,6 @@ class _DashboardPageState extends State<DashboardPage> {
             onTap: () {
               final universityId = item['university_id'];
               if (universityId != null) {
-                // TODO: Üniversite detay sayfasına yönlendir
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('$name detayları yakında eklenecek'),
@@ -875,7 +880,10 @@ class _DashboardPageState extends State<DashboardPage> {
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
                                 return Text(
-                                  name.substring(0, name.length > 3 ? 3 : name.length).toUpperCase(),
+                                  name
+                                      .substring(
+                                          0, name.length > 3 ? 3 : name.length)
+                                      .toUpperCase(),
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 20,
@@ -883,23 +891,29 @@ class _DashboardPageState extends State<DashboardPage> {
                                   ),
                                 );
                               },
-                              loadingBuilder: (context, child, loadingProgress) {
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
                                 if (loadingProgress == null) return child;
                                 return Center(
                                   child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes != null
-                                        ? loadingProgress.cumulativeBytesLoaded /
+                                    value: loadingProgress.expectedTotalBytes !=
+                                            null
+                                        ? loadingProgress
+                                                .cumulativeBytesLoaded /
                                             loadingProgress.expectedTotalBytes!
                                         : null,
                                     strokeWidth: 2,
-                                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor:
+                                        const AlwaysStoppedAnimation<Color>(
+                                            Colors.white),
                                   ),
                                 );
                               },
                             ),
                           )
                         : Text(
-                            item['logo'] as String? ?? name.substring(0, 1).toUpperCase(),
+                            item['logo'] as String? ??
+                                name.substring(0, 1).toUpperCase(),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 20,
@@ -927,60 +941,6 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     );
   }
-
-  Widget _buildStatsGrid(BuildContext context) {
-    final stats = [
-      {
-        'title': 'TYT Net',
-        'value': _tytAverage > 0 ? _tytAverage.toStringAsFixed(1) : '-',
-        'icon': Icons.assignment_outlined,
-        'color': Colors.blue,
-      },
-      {
-        'title': 'AYT Net',
-        'value': _aytAverage > 0 ? _aytAverage.toStringAsFixed(1) : '-',
-        'icon': Icons.assignment_outlined,
-        'color': Colors.purple,
-      },
-      {
-        'title': 'Toplam Net',
-        'value':
-            _totalNetAverage > 0 ? _totalNetAverage.toStringAsFixed(1) : '-',
-        'icon': Icons.star_outline,
-        'color': Colors.green,
-      },
-      {
-        'title': 'Hedef Net',
-        'value': _targetTotalNet.toStringAsFixed(0),
-        'icon': Icons.flag_outlined,
-        'color': Colors.orange,
-      },
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1.2, // Daha geniş yaparak overflow'u önle
-      ),
-      itemCount: stats.length,
-      itemBuilder: (context, index) {
-        final item = stats[index];
-        return _buildStatCard(
-          context,
-          item['title'] as String,
-          item['value'] as String,
-          item['icon'] as IconData,
-          item['color'] as Color,
-        );
-      },
-    );
-  }
-
-
 
   // ✅ Hızlı İşlemler - 2x2 Grid (Görseldeki gibi)
   Widget _buildQuickActionsSection(BuildContext context) {
@@ -1239,6 +1199,21 @@ class _DashboardPageState extends State<DashboardPage> {
         (attempt['ayt_physics_net'] ?? 0.0) +
         (attempt['ayt_chemistry_net'] ?? 0.0) +
         (attempt['ayt_biology_net'] ?? 0.0);
+    final examDate = attempt['exam_date'] != null
+        ? DateTime.tryParse(attempt['exam_date'].toString())
+        : null;
+    String lastAttemptText = '';
+    if (examDate != null) {
+      final now = DateTime.now();
+      final diff = now.difference(examDate);
+      if (diff.inDays >= 1) {
+        lastAttemptText = 'Son denemen ${diff.inDays} gün önce eklendi.';
+      } else if (diff.inHours >= 1) {
+        lastAttemptText = 'Son denemen ${diff.inHours} saat önce eklendi.';
+      } else {
+        lastAttemptText = 'Son denemen az önce eklendi.';
+      }
+    }
 
     return Card(
       elevation: 0,
@@ -1267,7 +1242,9 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Son denemen 2 gün önce eklendi.',
+              lastAttemptText.isNotEmpty
+                  ? lastAttemptText
+                  : 'Son denemen eklendi.',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey[600],
@@ -1292,7 +1269,6 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     );
   }
-
 
   Widget _buildStatCard(
     BuildContext context,

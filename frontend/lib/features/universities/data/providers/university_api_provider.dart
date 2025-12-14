@@ -13,11 +13,12 @@ final universityListProvider =
       .toList();
 });
 
-// Department list provider - Map dönüşü için
+// Department list provider - Map dönüşü için (tüm bölümler için yüksek limit)
 final departmentListProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final apiService = ref.read(apiServiceProvider);
-  final response = await apiService.getDepartments();
+  // Tüm bölümleri almak için yüksek limit kullan
+  final response = await apiService.getDepartments(limit: 5000);
 
   return (response.data as List)
       .map((department) => department as Map<String, dynamic>)
@@ -114,11 +115,14 @@ final filteredDepartmentListProvider =
     // Search filter
     if (params.searchQuery != null && params.searchQuery!.isNotEmpty) {
       final query = params.searchQuery!.toLowerCase();
-      final name = (department['program_name'] as String? ?? '').toLowerCase();
+      final programName =
+          (department['program_name'] as String? ?? '').toLowerCase();
+      final name = (department['name'] as String? ?? '').toLowerCase();
       final universityName =
           (department['university_name'] as String? ?? '').toLowerCase();
       final city = (department['city'] as String? ?? '').toLowerCase();
-      if (!name.contains(query) &&
+      if (!programName.contains(query) &&
+          !name.contains(query) &&
           !universityName.contains(query) &&
           !city.contains(query)) {
         return false;

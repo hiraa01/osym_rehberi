@@ -28,20 +28,27 @@ async def create_exam_attempt(
 ):
     """Yeni deneme sonucu ekle ve puanları otomatik hesapla"""
     try:
+        api_logger.info(f"Creating exam attempt for student_id={attempt.student_id}")
+        
         # Öğrenci kontrolü
+        api_logger.debug(f"Checking student existence: student_id={attempt.student_id}")
         student = db.query(Student).filter(Student.id == attempt.student_id).first()
         if not student:
+            api_logger.warning(f"Student not found: student_id={attempt.student_id}")
             raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
         
         # Puanları hesapla (öğrencinin field_type'ını kullan)
+        api_logger.debug(f"Calculating scores for student_id={attempt.student_id}")
         attempt_data = attempt.dict()
         attempt_data['field_type'] = student.field_type  # ✅ field_type eklendi!
         scores = ScoreCalculator.calculate_all_scores(attempt_data)
+        api_logger.debug(f"Scores calculated: total_score={scores.get('total_score')}")
         
         # Deneme kaydet - obp_score'u dict'ten çıkarıp ayrı ver
         attempt_dict = attempt.dict()
         obp_score = attempt_dict.pop('obp_score', 0.0)  # ✅ obp_score'u çıkar
         
+        api_logger.debug(f"Creating ExamAttempt object for student_id={attempt.student_id}")
         db_attempt = ExamAttempt(
             **attempt_dict,
             tyt_score=scores['tyt_total_score'],
@@ -51,8 +58,10 @@ async def create_exam_attempt(
         )
         
         db.add(db_attempt)
+        api_logger.debug(f"ExamAttempt added to session")
         
         # ✅ Öğrencinin son skorlarını güncelle
+        api_logger.debug(f"Updating student scores for student_id={attempt.student_id}")
         student.tyt_turkish_net = attempt_data.get('tyt_turkish_net', 0.0)
         student.tyt_math_net = attempt_data.get('tyt_math_net', 0.0)
         student.tyt_social_net = attempt_data.get('tyt_social_net', 0.0)
@@ -75,43 +84,98 @@ async def create_exam_attempt(
         student.rank = scores['rank']
         student.percentile = scores['percentile']
         
-        db.commit()
-        db.refresh(db_attempt)
+        # ✅ Güvenli commit işlemi
+        api_logger.debug(f"Committing transaction for student_id={attempt.student_id}")
+        try:
+            db.commit()
+            api_logger.debug(f"Transaction committed successfully")
+        except Exception as commit_error:
+            api_logger.error(f"Commit failed: {str(commit_error)}")
+            db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail="Veritabanına kayıt yapılamadı. Lütfen tekrar deneyin."
+            )
+        
+        # ✅ Güvenli refresh işlemi
+        try:
+            db.refresh(db_attempt)
+            api_logger.debug(f"ExamAttempt refreshed successfully")
+        except Exception as refresh_error:
+            api_logger.warning(f"Refresh failed (non-critical): {str(refresh_error)}")
+            # Refresh hatası kritik değil, response'u gönderebiliriz
 
-        # Arka planda önerileri ve ML eğitimini tetikle
+        # Arka planda önerileri ve ML eğitimini tetikle (non-blocking)
         try:
             student_id = attempt.student_id
 
             def _regenerate_recommendations_task(student_id_inner: int):
-                engine = RecommendationEngine(db)
-                # Eski önerileri temizlemek recommendations endpoint'inde yapılıyordu;
-                # burada direkt yeniden hesaplıyoruz (engine kendi ekler)
+                # Yeni DB session oluştur (background task için)
+                from database import SessionLocal
+                bg_db = SessionLocal()
                 try:
-                    engine.generate_recommendations(student_id_inner, limit=50)
-                except Exception as e:
-                    api_logger.error("Recommendation regen failed", user_id=student_id_inner, error=str(e))
+                    engine = RecommendationEngine(bg_db)
+                    try:
+                        engine.generate_recommendations(student_id_inner, limit=50)
+                    except Exception as e:
+                        api_logger.error("Recommendation regen failed", user_id=student_id_inner, error=str(e))
+                finally:
+                    bg_db.close()
 
             background_tasks.add_task(_regenerate_recommendations_task, student_id)
             background_tasks.add_task(train_models_background, db)
         except Exception as bt_err:
             api_logger.warning("Background tasks scheduling failed", error=str(bt_err))
+            # Background task hatası kritik değil, response'u gönderebiliriz
         
         api_logger.info(
-            "Exam attempt created and student scores updated", 
+            "Exam attempt created and student scores updated successfully", 
             student_id=attempt.student_id, 
             attempt_number=attempt.attempt_number,
             total_score=scores['total_score'],
-            rank=scores['rank']
+            rank=scores['rank'],
+            attempt_id=db_attempt.id if hasattr(db_attempt, 'id') else None
         )
         
-        return db_attempt
+        # ✅ Response'u güvenli şekilde döndür
+        try:
+            return db_attempt
+        except Exception as response_error:
+            api_logger.error(f"Error serializing response: {str(response_error)}")
+            # Response serialize edilemezse bile başarılı olduğunu belirt
+            raise HTTPException(
+                status_code=500,
+                detail="Deneme kaydedildi ancak yanıt oluşturulamadı. Lütfen sayfayı yenileyin."
+            )
         
-    except HTTPException:
+    except HTTPException as he:
+        api_logger.error(
+            f"HTTPException in create_exam_attempt: {he.detail}",
+            student_id=attempt.student_id if hasattr(attempt, 'student_id') else None,
+            status_code=he.status_code
+        )
+        try:
+            db.rollback()
+        except Exception:
+            pass
         raise
     except Exception as e:
-        api_logger.error(f"Error creating exam attempt: {str(e)}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Deneme kaydedilirken hata oluştu: {str(e)}")
+        api_logger.error(
+            f"Error creating exam attempt: {str(e)}",
+            student_id=attempt.student_id if hasattr(attempt, 'student_id') else None,
+            error_type=type(e).__name__,
+            error_traceback=str(e.__traceback__) if hasattr(e, '__traceback__') else None
+        )
+        try:
+            db.rollback()
+        except Exception as rollback_error:
+            api_logger.error(f"Rollback failed: {str(rollback_error)}")
+        
+        # Güvenli hata mesajı döndür
+        raise HTTPException(
+            status_code=500,
+            detail="Deneme kaydedilirken bir hata oluştu. Lütfen tekrar deneyin."
+        )
 
 
 @router.get("/student/{student_id}", response_model=ExamAttemptListResponse)
@@ -120,24 +184,71 @@ async def get_student_attempts(
     db: Session = Depends(get_db)
 ):
     """Öğrencinin tüm denemelerini getir"""
-    student = db.query(Student).filter(Student.id == student_id).first()
-    if not student:
-        raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
-    
-    # ✅ OPTIMIZED: Index kullanarak hızlı sorgu
-    attempts = db.query(ExamAttempt)\
-        .filter(ExamAttempt.student_id == student_id)\
-        .order_by(ExamAttempt.attempt_number.desc())\
-        .all()
-    
-    total = len(attempts)
-    average_score = sum(a.total_score for a in attempts) / total if total > 0 else 0.0
-    
-    return ExamAttemptListResponse(
-        attempts=attempts,
-        total=total,
-        average_score=average_score
-    )
+    try:
+        api_logger.info(f"Getting attempts for student_id={student_id}")
+        
+        # Öğrenci kontrolü
+        student = db.query(Student).filter(Student.id == student_id).first()
+        if not student:
+            api_logger.warning(f"Student not found: student_id={student_id}")
+            raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
+        
+        # ✅ OPTIMIZED: Index kullanarak hızlı sorgu + composite index ile sıralama
+        api_logger.debug(f"Querying attempts for student_id={student_id}")
+        # Composite index (student_id, attempt_number) kullanarak hızlı sorgu
+        # Limit ekle - performans için
+        attempts = db.query(ExamAttempt)\
+            .filter(ExamAttempt.student_id == student_id)\
+            .order_by(ExamAttempt.attempt_number.desc())\
+            .limit(100)\
+            .all()
+        
+        api_logger.debug(f"Found {len(attempts)} attempts for student_id={student_id}")
+        
+        total = len(attempts)
+        average_score = sum(a.total_score for a in attempts) / total if total > 0 else 0.0
+        
+        # Response oluşturma
+        api_logger.debug(f"Creating response for student_id={student_id}")
+        response = ExamAttemptListResponse(
+            attempts=attempts,
+            total=total,
+            average_score=average_score
+        )
+        
+        api_logger.info(
+            "Student attempts retrieved successfully",
+            student_id=student_id,
+            total_attempts=total,
+            average_score=average_score
+        )
+        
+        return response
+        
+    except HTTPException as he:
+        api_logger.error(
+            f"HTTPException in get_student_attempts: {he.detail}",
+            student_id=student_id,
+            status_code=he.status_code
+        )
+        raise
+    except Exception as e:
+        api_logger.error(
+            f"Error retrieving student attempts: {str(e)}",
+            student_id=student_id,
+            error_type=type(e).__name__,
+            error_traceback=str(e.__traceback__) if hasattr(e, '__traceback__') else None
+        )
+        try:
+            db.rollback()
+        except Exception as rollback_error:
+            api_logger.error(f"Rollback failed: {str(rollback_error)}")
+        
+        # Güvenli hata mesajı döndür
+        raise HTTPException(
+            status_code=500,
+            detail="Denemeler getirilirken bir hata oluştu. Lütfen tekrar deneyin."
+        )
 
 
 @router.get("/{attempt_id}", response_model=ExamAttemptResponse)
