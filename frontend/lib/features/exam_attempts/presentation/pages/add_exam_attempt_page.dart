@@ -522,6 +522,8 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
           try {
             // ✅ attempt_number backend tarafında otomatik hesaplanıyor - göndermeye gerek yok
             // Deneme kaydet (retry mekanizması ile)
+            // ✅ attempt_number backend'de otomatik hesaplanıyor - göndermeye gerek yok
+            // ✅ field_type backend'de öğrenciden alınıyor - göndermeye gerek yok
             final response = await _apiService.createExamAttempt({
               'student_id': studentId,
               'exam_name': _examNameController.text.trim().isEmpty
@@ -562,39 +564,17 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
               Navigator.pop(context, true);
             }
           } catch (e) {
-            // Deneme sayısını alırken hata
-            debugPrint('Error getting attempt count: $e');
-            // Devam et - attempt_number = 1 olarak ayarla
-            final attemptNumber = 1;
-
-            // Deneme kaydet (retry mekanizması ile)
-            final response = await _apiService.createExamAttempt({
-              'student_id': studentId,
-              'attempt_number': attemptNumber,
-              'exam_name': _examNameController.text.trim().isEmpty
-                  ? 'Deneme $attemptNumber'
-                  : _examNameController.text.trim(),
-              'exam_date': DateTime.now().toIso8601String(),
-              ...nets,
-            });
-
-            // Cache'e ekle
-            try {
-              final prefs = await SharedPreferences.getInstance();
-              final cacheKey = 'exam_attempts_cache_$studentId';
-              final newAttempt = response.data as Map<String, dynamic>;
-              await prefs.setString(cacheKey, jsonEncode([newAttempt]));
-            } catch (_) {}
-
+            // Deneme kaydetme hatası
+            debugPrint('Error creating exam attempt: $e');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Deneme başarıyla kaydedildi!'),
-                  backgroundColor: Colors.green,
+                SnackBar(
+                  content: Text('Deneme kaydedilirken hata oluştu: ${e.toString()}'),
+                  backgroundColor: Colors.red,
                 ),
               );
-              Navigator.pop(context, true);
             }
+            return;
           }
         } else {
           throw Exception('Student ID bulunamadı');

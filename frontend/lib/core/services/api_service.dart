@@ -258,7 +258,7 @@ class ApiService {
 
   Future<Response> getDepartments({
     int skip = 0,
-    int limit = 100, // ✅ Pagination - default 100 kayıt (performans için)
+    int limit = 2000, // ✅ Default 2000 - tüm bölümler gelsin (max 5000)
   }) async {
     // Bölümler çok sayıda olabilir - pagination kullanın
     return await _dio.get(
@@ -307,10 +307,10 @@ class ApiService {
     double? maxScore,
     bool? hasScholarship,
     int skip = 0,
-    int limit = 100,
+    int limit = 2000, // ✅ Default 2000 - tüm bölümler gelsin
   }) async {
     return await _dio.get(
-      '/universities/departments',
+      '/universities/departments/',
       queryParameters: {
         if (fieldType != null) 'field_type': fieldType,
         if (city != null) 'city': city,

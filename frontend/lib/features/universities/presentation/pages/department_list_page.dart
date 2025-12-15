@@ -188,7 +188,7 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage> {
               (firstDept['has_scholarship'] as bool? ?? false);
           final finalName =
               hasScholarship ? '$displayName (Burslu)' : displayName;
-          return _DepartmentGroup(name: finalName, items: e.value);
+          return DepartmentGroup(name: finalName, items: e.value);
         }).toList()
           ..sort(
               (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
@@ -329,15 +329,15 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage> {
   }
 }
 
-class _DepartmentGroup {
+class DepartmentGroup {
   final String name;
   final List<Map<String, dynamic>> items;
 
-  _DepartmentGroup({required this.name, required this.items});
+  DepartmentGroup({required this.name, required this.items});
 }
 
 class DepartmentGroupPage extends StatelessWidget {
-  final _DepartmentGroup group;
+  final DepartmentGroup group;
   final VoidCallback onFavorite;
 
   const DepartmentGroupPage({

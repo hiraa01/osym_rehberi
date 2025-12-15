@@ -6,7 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/widgets/searchable_dropdown.dart';
 import '../../../auth/data/providers/auth_service.dart';
-import '../../../universities/data/providers/university_api_provider.dart';
+import '../../../universities/data/providers/university_api_provider.dart'
+    as university_providers;
 
 class PreferencesSelectionStep extends ConsumerStatefulWidget {
   final Function(Map<String, dynamic>) onPreferencesCompleted;
@@ -32,6 +33,7 @@ class _PreferencesSelectionStepState
   final List<String> _selectedCities = [];
   final List<String> _selectedDepartments = [];
   String? _selectedFieldType; // 'SAY', 'EA', 'SÖZ', 'DİL'
+  String? _selectedUniversityType; // 'devlet', 'vakıf', 'açıköğretim'
 
   bool _isLoading = false;
   final ApiService _apiService = ApiService();
@@ -78,6 +80,7 @@ class _PreferencesSelectionStepState
             : <String, double>{};
 
         // Öğrenci profili oluştur - Backend şemasına uygun format
+        debugPrint('🟢 Creating student profile...');
         final studentResponse = await _apiService.createStudent({
           'name': userName,
           'email': null,
@@ -112,8 +115,39 @@ class _PreferencesSelectionStepState
           'interest_areas': null,
         });
 
-        // Student ID'yi kaydet
-        final studentId = studentResponse.data['id'] as int;
+        // ✅ Response formatını kontrol et ve Student ID'yi kaydet
+        debugPrint('🟢 Student response status: ${studentResponse.statusCode}');
+        debugPrint(
+            '🟢 Student response data type: ${studentResponse.data.runtimeType}');
+        debugPrint('🟢 Student response data: ${studentResponse.data}');
+
+        if (studentResponse.statusCode != 200 &&
+            studentResponse.statusCode != 201) {
+          throw Exception(
+              'Öğrenci profili oluşturulamadı: Status ${studentResponse.statusCode}');
+        }
+
+        if (studentResponse.data == null) {
+          throw Exception('Öğrenci profili oluşturulamadı: Response data null');
+        }
+
+        // Response Map veya direkt Student objesi olabilir
+        final responseData = studentResponse.data;
+        int? studentId;
+
+        if (responseData is Map<String, dynamic>) {
+          studentId = responseData['id'] as int?;
+        } else {
+          // Direkt Student objesi ise (backend'den dönen format)
+          studentId = (responseData as dynamic).id as int?;
+        }
+
+        if (studentId == null) {
+          debugPrint('🔴 Student ID is null! Response: $responseData');
+          throw Exception('Öğrenci ID alınamadı');
+        }
+
+        debugPrint('🟢 Student ID saved: $studentId');
         await prefs.setInt('student_id', studentId);
 
         // preferred_departments'ı SharedPreferences'ta sakla (backend'de yok)
@@ -185,8 +219,13 @@ class _PreferencesSelectionStepState
 
   @override
   Widget build(BuildContext context) {
-    final citiesAsync = ref.watch(cityListProvider);
-    final departmentsAsync = ref.watch(departmentListProvider);
+    final citiesAsync = ref.watch(university_providers.cityListProvider);
+    // ✅ Field type'a göre filtreli bölümler çek
+    final departmentsAsync =
+        _selectedFieldType != null && _selectedFieldType!.isNotEmpty
+            ? ref.watch(university_providers
+                .filteredDepartmentListByFieldProvider(_selectedFieldType))
+            : ref.watch(university_providers.departmentListProvider);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
@@ -233,7 +272,8 @@ class _PreferencesSelectionStepState
                   const SizedBox(height: 8),
                   Text('Şehirler yüklenemedi: $error'),
                   TextButton(
-                    onPressed: () => ref.refresh(cityListProvider),
+                    onPressed: () =>
+                        ref.refresh(university_providers.cityListProvider),
                     child: const Text('Tekrar Dene'),
                   ),
                 ],
@@ -308,12 +348,48 @@ class _PreferencesSelectionStepState
                   setState(() {
                     _selectedFieldType = selected ? field : null;
                     _selectedDepartments.clear(); // Bölümleri temizle
+                    _selectedUniversityType =
+                        null; // Üniversite türünü de temizle
                   });
                 },
               );
             }).toList(),
           ),
           const SizedBox(height: 16),
+
+          // ✅ Üniversite türü seçimi (Alan türü seçildikten sonra)
+          if (_selectedFieldType != null && _selectedFieldType!.isNotEmpty) ...[
+            const Text(
+              'Üniversite Türü',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                {'label': 'Devlet', 'value': 'devlet'},
+                {'label': 'Vakıf', 'value': 'vakıf'},
+                {'label': 'Açıköğretim', 'value': 'açıköğretim'},
+              ].map((type) {
+                final isSelected = _selectedUniversityType == type['value'];
+                return ChoiceChip(
+                  label: Text(type['label']!),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    setState(() {
+                      _selectedUniversityType = selected ? type['value'] : null;
+                      _selectedDepartments.clear(); // Bölümleri temizle
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+          ],
 
           departmentsAsync.when(
             loading: () => const Center(
@@ -329,34 +405,246 @@ class _PreferencesSelectionStepState
                   const SizedBox(height: 8),
                   Text('Bölümler yüklenemedi: $error'),
                   TextButton(
-                    onPressed: () => ref.refresh(departmentListProvider),
+                    onPressed: () {
+                      if (_selectedFieldType != null &&
+                          _selectedFieldType!.isNotEmpty) {
+                        ref.invalidate(university_providers
+                            .filteredDepartmentListByFieldProvider(
+                                _selectedFieldType));
+                      } else {
+                        ref.invalidate(
+                            university_providers.departmentListProvider);
+                      }
+                    },
                     child: const Text('Tekrar Dene'),
                   ),
                 ],
               ),
             ),
             data: (departments) {
-              // Sadece alan türüne göre filtrele
+              // ✅ Backend'den zaten field_type'a göre filtrelenmiş geliyor
+              // Sadece bölüm adlarını çıkar ve unique yap
+              debugPrint('🟢 Departments loaded: ${departments.length}');
+
+              // ✅ Sadece bölüm adlarını çıkar (üniversite adı olmadan)
               final filteredDepartments = departments
-                  .where((dept) {
-                    // Alan türü filtresi - hem 'field_type' hem 'program_name' kontrolü
-                    if (_selectedFieldType != null) {
-                      final deptFieldType = dept['field_type'] as String?;
-                      if (deptFieldType != _selectedFieldType) {
-                        return false;
+                  .map((dept) {
+                    final name = dept['name'] as String? ??
+                        dept['program_name'] as String? ??
+                        '';
+
+                    // ✅ Bölüm adını temizle - sadece bölüm adını göster
+                    // Backend'den gelen name zaten sadece bölüm adını içeriyor
+                    // Ama bazı bölümler "Adana Tıp Fakültesi" gibi şehir adı içerebilir
+                    String cleanName = name;
+
+                    // Şehir adlarını çıkar (81 il listesi)
+                    final turkishCities = [
+                      'Adana',
+                      'Adıyaman',
+                      'Afyonkarahisar',
+                      'Ağrı',
+                      'Aksaray',
+                      'Amasya',
+                      'Ankara',
+                      'Antalya',
+                      'Ardahan',
+                      'Artvin',
+                      'Aydın',
+                      'Balıkesir',
+                      'Bartın',
+                      'Batman',
+                      'Bayburt',
+                      'Bilecik',
+                      'Bingöl',
+                      'Bitlis',
+                      'Bolu',
+                      'Burdur',
+                      'Bursa',
+                      'Çanakkale',
+                      'Çankırı',
+                      'Çorum',
+                      'Denizli',
+                      'Diyarbakır',
+                      'Düzce',
+                      'Edirne',
+                      'Elazığ',
+                      'Erzincan',
+                      'Erzurum',
+                      'Eskişehir',
+                      'Gaziantep',
+                      'Giresun',
+                      'Gümüşhane',
+                      'Hakkari',
+                      'Hatay',
+                      'Iğdır',
+                      'Isparta',
+                      'İstanbul',
+                      'İzmir',
+                      'Kahramanmaraş',
+                      'Karabük',
+                      'Karaman',
+                      'Kars',
+                      'Kastamonu',
+                      'Kayseri',
+                      'Kırıkkale',
+                      'Kırklareli',
+                      'Kırşehir',
+                      'Kilis',
+                      'Kocaeli',
+                      'Konya',
+                      'Kütahya',
+                      'Malatya',
+                      'Manisa',
+                      'Mardin',
+                      'Mersin',
+                      'Muğla',
+                      'Muş',
+                      'Nevşehir',
+                      'Niğde',
+                      'Ordu',
+                      'Osmaniye',
+                      'Rize',
+                      'Sakarya',
+                      'Samsun',
+                      'Siirt',
+                      'Sinop',
+                      'Sivas',
+                      'Şanlıurfa',
+                      'Şırnak',
+                      'Tekirdağ',
+                      'Tokat',
+                      'Trabzon',
+                      'Tunceli',
+                      'Uşak',
+                      'Van',
+                      'Yalova',
+                      'Yozgat',
+                      'Zonguldak'
+                    ];
+
+                    // ✅ Şehir adlarını ve ilçe adlarını çıkar
+                    // Önce şehir adlarını kontrol et
+                    for (final city in turkishCities) {
+                      // Case-insensitive kontrol
+                      if (cleanName
+                          .toLowerCase()
+                          .startsWith(city.toLowerCase())) {
+                        cleanName = cleanName.substring(city.length).trim();
+                        break;
                       }
                     }
 
-                    return true;
+                    // İlçe adlarını da temizle (örnek: "Kadıköy", "Beşiktaş", "Çankaya" vb.)
+                    final districts = [
+                      'Kadıköy',
+                      'Beşiktaş',
+                      'Çankaya',
+                      'Şişli',
+                      'Beyoğlu',
+                      'Üsküdar',
+                      'Bakırköy',
+                      'Maltepe',
+                      'Pendik',
+                      'Kartal',
+                      'Ataşehir',
+                      'Sarıyer',
+                      'Beylikdüzü',
+                      'Başakşehir',
+                      'Esenyurt',
+                      'Sultangazi',
+                      'Gaziosmanpaşa',
+                      'Kağıthane',
+                      'Zeytinburnu',
+                      'Fatih',
+                      'Eminönü',
+                      'Taksim',
+                      'Levent',
+                      'Maslak',
+                      'Etiler',
+                      'Nişantaşı',
+                      'Ortaköy',
+                      'Bebek',
+                      'Arnavutköy',
+                      'Sarıgöl',
+                      'Yenimahalle',
+                      'Mamak',
+                      'Keçiören',
+                      'Altındağ',
+                      'Sincan',
+                      'Polatlı',
+                      'Beypazarı',
+                      'Ayaş',
+                      'Gölbaşı',
+                      'Haymana',
+                      'Nallıhan',
+                      'Kızılcahamam',
+                      'Çubuk',
+                      'Elmadağ',
+                      'Kalecik',
+                      'Bala',
+                      'Şereflikoçhisar',
+                      'Akyurt',
+                      'Güdül',
+                      'Evren',
+                      'Kazan',
+                      'Pursaklar',
+                      'Aksaray',
+                      'Ereğli',
+                      'Karapınar',
+                      'Bor',
+                      'Ulukışla',
+                      'Çiftlik',
+                      'Gülağaç',
+                      'Ortaköy',
+                      'Güzelyurt',
+                      'Sarıyahşi',
+                      'Ağaçören',
+                      'Göksun',
+                      'Andırın',
+                      'Çağlayancerit',
+                      'Ekinözü',
+                      'Elbistan',
+                      'Nurhak',
+                      'Pazarcık',
+                      'Türkoğlu',
+                      'Afşin',
+                      'Dulkadiroğlu',
+                      'Onikişubat',
+                      'Merkez',
+                      'İlçe',
+                      'Mahalle'
+                    ];
+
+                    for (final district in districts) {
+                      if (cleanName
+                          .toLowerCase()
+                          .contains(district.toLowerCase())) {
+                        cleanName = cleanName
+                            .replaceAll(
+                                RegExp(district, caseSensitive: false), '')
+                            .trim();
+                      }
+                    }
+
+                    // "Fakültesi", "Üniversitesi", "Üniversite", "Yüksekokulu" gibi kelimeleri temizle
+                    cleanName = cleanName
+                        .replaceAll(
+                            RegExp(
+                                r'\s*(Fakültesi|Üniversitesi|Üniversite|Yüksekokulu|Yüksek Okulu|Meslek Yüksekokulu|MYO)\s*',
+                                caseSensitive: false),
+                            '')
+                        .trim();
+
+                    // Eğer temizlenmiş ad boşsa orijinal adı kullan
+                    return cleanName.isNotEmpty ? cleanName : name;
                   })
-                  .map((dept) =>
-                      dept['name'] as String? ??
-                      dept['program_name'] as String? ??
-                      '')
                   .where((name) => name.isNotEmpty)
-                  .toSet()
-                  .toList()
+                  .toList() // ✅ Tüm bölümleri göster (unique yapma - backend'den gelen tüm bölümler)
                 ..sort(); // ✅ Alfabetik sırala
+
+              debugPrint(
+                  '🟢 Filtered departments: ${filteredDepartments.length}');
 
               final availableDepartments = filteredDepartments
                   .where((d) => !_selectedDepartments.contains(d))

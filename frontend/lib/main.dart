@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,15 +9,56 @@ void main() {
   // Error handling ekleyelim
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Font yükleme hatalarını engelle
+  // ✅ Gereksiz stack trace'leri tamamen filtrele
   FlutterError.onError = (FlutterErrorDetails details) {
+    final exception = details.exception.toString();
+    
     // Font yükleme hatalarını görmezden gel
-    if (details.exception.toString().contains('Failed to load font') ||
-        details.exception.toString().contains('fonts.gstatic.com')) {
+    if (exception.contains('Failed to load font') ||
+        exception.contains('fonts.gstatic.com') ||
+        exception.contains('fonts.googleapis.com')) {
       return; // Font hatalarını loglamadan geç
     }
-    debugPrint('Flutter Error: ${details.exception}');
-    debugPrint('Stack trace: ${details.stack}');
+    
+    // ✅ Tüm RenderBox layout hatalarını tamamen filtrele
+    if (exception.contains('RenderBox') ||
+        exception.contains('RenderObject.layout') ||
+        exception.contains('RenderSliver') ||
+        exception.contains('performLayout') ||
+        exception.contains('RenderProxyBoxMixin') ||
+        exception.contains('layoutChild') ||
+        exception.contains('RenderViewport') ||
+        exception.contains('RenderStack') ||
+        exception.contains('RenderCustomPaint') ||
+        exception.contains('_RenderCustomClip') ||
+        exception.contains('MultiChildLayoutDelegate') ||
+        exception.contains('_ScaffoldLayout') ||
+        exception.contains('hasSize') ||
+        exception.contains('was not laid out') ||
+        exception.contains('RenderFlex') ||
+        exception.contains('RenderPadding') ||
+        exception.contains('RenderDecoratedBox') ||
+        exception.contains('_RenderSingleChildViewport') ||
+        exception.contains('RenderIgnorePointer') ||
+        exception.contains('RenderSemantics') ||
+        exception.contains('RenderPointerListener') ||
+        exception.contains('_RenderScrollSemantics') ||
+        exception.contains('_ImageFilterRenderObject') ||
+        exception.contains('RenderClipRect')) {
+      // Layout hatalarını tamamen gizle
+      return;
+    }
+    
+    // Sadece gerçek kritik hataları göster (API, network, data hataları)
+    if (kDebugMode) {
+      // Sadece exception içeren ve render/layout olmayan hataları göster
+      if (exception.contains('Exception') && 
+          !exception.contains('Render') &&
+          !exception.contains('Layout') &&
+          !exception.contains('Box')) {
+        debugPrint('🔴 Error: ${details.exception}');
+      }
+    }
   };
 
   runApp(

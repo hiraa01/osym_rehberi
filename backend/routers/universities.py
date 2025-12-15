@@ -19,12 +19,13 @@ router = APIRouter()
 @router.get("/cities/", response_model=List[str])
 async def get_cities(db: Session = Depends(get_db)):
     """81 il + KKTC şehirlerini getir (81 il öncelikli) - OPTIMIZED with CACHE"""
-    # ✅ Cache'den kontrol et
+    # ✅ Cache'den kontrol et (ama her zaman 81 il + KKTC döndürmeli)
     from core.cache import get_cache, set_cache
     from datetime import timedelta
-    cached_cities = get_cache("cities", ttl=timedelta(hours=24))
-    if cached_cities is not None:
-        return cached_cities
+    # ✅ Cache'i kullan ama her zaman 81 il listesini ekle
+    # cached_cities = get_cache("cities", ttl=timedelta(hours=24))
+    # if cached_cities is not None:
+    #     return cached_cities
     
     # 81 il listesi (seed_yok_data.py'den)
     TURKISH_81_CITIES = [
@@ -61,36 +62,55 @@ async def get_cities(db: Session = Depends(get_db)):
     # Sıralama: 81 il + KKTC + diğerleri
     result = []
     
-    # Türkçe karakterler için özel sıralama
-    def turkish_sort_key(text):
-        # Türkçe karakterleri İngilizce karşılıklarına çevir
+    # Türkçe karakterler için özel sıralama ve normalize fonksiyonu
+    def normalize_city_name(text):
+        """Şehir adını normalize et (Türkçe karakterleri İngilizce karşılıklarına çevir)"""
         replacements = {
             'ç': 'c', 'ğ': 'g', 'ı': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u',
-            'Ç': 'C', 'Ğ': 'G', 'İ': 'I', 'Ö': 'O', 'Ş': 'S', 'Ü': 'U'
+            'Ç': 'c', 'Ğ': 'g', 'İ': 'i', 'Ö': 'o', 'Ş': 's', 'Ü': 'u'
         }
-        result = text
+        result = text.lower().strip()
         for tr, en in replacements.items():
             result = result.replace(tr, en)
-        return result.lower()
+        return result
     
+    def turkish_sort_key(text):
+        """Sıralama için normalize edilmiş key"""
+        return normalize_city_name(text)
+    
+    # ✅ 81 il listesini normalize et (karşılaştırma için)
+    normalized_81_cities = {normalize_city_name(city): city for city in TURKISH_81_CITIES}
+    normalized_kktc_cities = {normalize_city_name(city): city for city in kktc_cities}
+    
+    # ✅ Sadece 81 il + KKTC şehirlerini döndür (DB'deki yanlış yazılmış şehirleri ekleme)
     # 1. 81 il (Türkçe alfabetik sıralı)
     result.extend(sorted(TURKISH_81_CITIES, key=turkish_sort_key))
     
     # 2. KKTC şehirleri (Türkçe alfabetik sıralı)
     result.extend(sorted(kktc_cities, key=turkish_sort_key))
     
-    # 3. Diğer şehirler (yabancı ülkeler hariç)
-    other_cities = [city for city in db_cities 
-                   if city not in TURKISH_81_CITIES 
-                   and city not in kktc_cities 
-                   and city not in foreign_cities 
-                   and city not in unknown_cities]
-    result.extend(sorted(other_cities, key=turkish_sort_key))
+    # ✅ DB'deki diğer şehirleri EKLEME (yanlış yazılmış versiyonlar olabilir)
+    # Sadece 81 il + KKTC = 86 şehir döndür
+    
+    # ✅ Duplicate temizleme - normalize edilmiş karşılaştırma ile
+    seen = set()
+    unique_result = []
+    for city in result:
+        city_normalized = normalize_city_name(city)
+        
+        # Eğer normalize edilmiş versiyonu daha önce görülmüşse, ekleme
+        if city_normalized not in seen:
+            seen.add(city_normalized)
+            unique_result.append(city)
     
     # ✅ Cache'e kaydet
-    set_cache("cities", result, ttl=timedelta(hours=24))
+    set_cache("cities", unique_result, ttl=timedelta(hours=24))
     
-    return result
+    # ✅ Debug: Kaç şehir döndürüldü?
+    from core.logging_config import api_logger
+    api_logger.info(f"Cities endpoint: {len(unique_result)} unique cities returned (81 il + KKTC + others)")
+    
+    return unique_result
 
 
 @router.get("/field-types/", response_model=List[str])
@@ -252,7 +272,7 @@ async def create_department(department: DepartmentCreate, db: Session = Depends(
 @router.get("/departments/", response_model=List[DepartmentWithUniversityResponse])
 async def get_departments(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),  # ✅ Limit 100'e düşürüldü - performans için (pagination kullanın)
+    limit: int = Query(2000, ge=1, le=5000),  # ✅ Default 2000, max 5000 - tüm veriler gelsin
     field_type: Optional[str] = Query(None),
     university_id: Optional[int] = Query(None),
     city: Optional[str] = Query(None),

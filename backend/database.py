@@ -2,6 +2,10 @@ from sqlalchemy import create_engine, MetaData, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
+import logging
+
+# Logger setup
+api_logger = logging.getLogger("api")
 
 # Database URL - PostgreSQL for production, SQLite for development
 # ✅ PostgreSQL'e geçiş yapıldı - performans için kritik
@@ -46,8 +50,8 @@ else:
     # ✅ PostgreSQL için optimize edilmiş connection pool
     engine = create_engine(
         DATABASE_URL,
-        pool_size=30,        # Connection pool size (20 -> 30)
-        max_overflow=50,     # Additional connections beyond pool_size (30 -> 50)
+        pool_size=20,        # Connection pool size (optimal for most cases)
+        max_overflow=30,     # Additional connections beyond pool_size
         pool_pre_ping=True,  # Connection health check
         pool_recycle=1800,   # Recycle connections after 30 minutes
         pool_timeout=30,     # Wait time for connection from pool (seconds)
@@ -81,4 +85,17 @@ def get_db():
 
 def create_tables():
     """Create all tables in the database"""
-    Base.metadata.create_all(bind=engine)
+    # ✅ Tüm modelleri import et (Base.metadata'ya kayıt olmaları için)
+    # Modeller zaten import edilmiş olmalı, ama emin olmak için:
+    from models.student import Student
+    from models.exam_attempt import ExamAttempt
+    from models.university import University, Department, Recommendation
+    from models.user import User
+    
+    # ✅ PostgreSQL için tabloları oluştur
+    try:
+        Base.metadata.create_all(bind=engine)
+        api_logger.info("✅ Database tables created successfully")
+    except Exception as e:
+        api_logger.error(f"❌ Error creating tables: {e}")
+        raise

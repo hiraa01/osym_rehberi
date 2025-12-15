@@ -113,6 +113,11 @@ async def create_exam_attempt(
         try:
             db.refresh(db_attempt)
             api_logger.debug(f"ExamAttempt refreshed successfully")
+            # ✅ Debug: Response'un tüm alanlarını kontrol et
+            api_logger.debug(f"Response exam_name: {db_attempt.exam_name}")
+            api_logger.debug(f"Response exam_date: {db_attempt.exam_date}")
+            api_logger.debug(f"Response attempt_number: {db_attempt.attempt_number}")
+            api_logger.debug(f"Response id: {db_attempt.id}")
         except Exception as refresh_error:
             api_logger.warning(f"Refresh failed (non-critical): {str(refresh_error)}")
             # Refresh hatası kritik değil, response'u gönderebiliriz
@@ -208,20 +213,32 @@ async def get_student_attempts(
         # ✅ OPTIMIZED: Index kullanarak hızlı sorgu + composite index ile sıralama
         api_logger.debug(f"Querying attempts for student_id={student_id}")
         # Composite index (student_id, attempt_number) kullanarak hızlı sorgu
-        # Limit ekle - performans için
+        # ✅ Önce total count'u al (limit olmadan, sadece count için hızlı)
+        total = db.query(ExamAttempt).filter(ExamAttempt.student_id == student_id).count()
+        
+        # ✅ Tüm denemeleri getir (limit kaldırıldı - tüm veriler gelsin)
+        # Composite index kullanarak hızlı sorgu
         attempts = db.query(ExamAttempt)\
             .filter(ExamAttempt.student_id == student_id)\
             .order_by(ExamAttempt.attempt_number.desc())\
-            .limit(100)\
             .all()
         
-        api_logger.debug(f"Found {len(attempts)} attempts for student_id={student_id}")
+        api_logger.debug(f"Found {len(attempts)} attempts (total: {total}) for student_id={student_id}")
         
-        total = len(attempts)
+        # ✅ Average score hesapla (tüm denemeler üzerinden)
         average_score = sum(a.total_score for a in attempts) / total if total > 0 else 0.0
         
         # Response oluşturma
         api_logger.debug(f"Creating response for student_id={student_id}")
+        
+        # ✅ Debug: İlk denemenin alanlarını kontrol et
+        if attempts:
+            first_attempt = attempts[0]
+            api_logger.debug(f"First attempt exam_name: {first_attempt.exam_name}")
+            api_logger.debug(f"First attempt exam_date: {first_attempt.exam_date}")
+            api_logger.debug(f"First attempt attempt_number: {first_attempt.attempt_number}")
+            api_logger.debug(f"First attempt id: {first_attempt.id}")
+        
         response = ExamAttemptListResponse(
             attempts=attempts,
             total=total,
