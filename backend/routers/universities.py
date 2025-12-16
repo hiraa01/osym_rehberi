@@ -269,6 +269,74 @@ async def create_department(department: DepartmentCreate, db: Session = Depends(
     return db_department
 
 
+@router.get("/departments/unique/", response_model=List[dict])
+async def get_unique_departments(
+    university_type: Optional[str] = Query(None, description="Üniversite türü: devlet, vakif"),
+    field_type: Optional[str] = Query(None, description="Alan türü: SAY, EA, SÖZ, DİL"),
+    db: Session = Depends(get_db)
+):
+    """
+    ✅ Normalize edilmiş bölüm isimlerini TEKİL olarak listele
+    
+    Kullanım Senaryosu:
+    1. Üniversite türü seçilir (devlet/vakif)
+    2. Bu endpoint çağrılır -> unique bölüm isimleri döner
+    3. Kullanıcı bir bölüm seçer (örn: "Psikoloji")
+    4. /departments/ endpoint'i normalized_name filtresi ile çağrılır -> tüm varyasyonları döner
+    """
+    from sqlalchemy import distinct, func
+    from sqlalchemy.orm import selectinload
+    
+    # ✅ Normalize edilmiş isimlere göre unique bölümleri getir
+    query = db.query(
+        Department.normalized_name,
+        func.count(Department.id).label('variation_count'),
+        func.min(Department.id).label('representative_id')
+    ).filter(
+        Department.normalized_name.isnot(None)
+    )
+    
+    # Üniversite türü filtresi için join
+    if university_type:
+        query = query.join(University, Department.university_id == University.id)
+        query = query.filter(University.university_type == university_type)
+    
+    # Alan türü filtresi
+    if field_type:
+        query = query.filter(Department.field_type == field_type)
+    
+    # Grupla ve sırala
+    query = query.group_by(Department.normalized_name)
+    query = query.order_by(Department.normalized_name)
+    
+    results = query.all()
+    
+    # Response formatı
+    unique_departments = []
+    for result in results:
+        normalized_name = result.normalized_name
+        variation_count = result.variation_count
+        representative_id = result.representative_id
+        
+        # Representative department'ı al (attributes için)
+        rep_dept = db.query(Department).filter(Department.id == representative_id).first()
+        attributes = []
+        if rep_dept and rep_dept.attributes:
+            import json
+            try:
+                attributes = json.loads(rep_dept.attributes)
+            except:
+                attributes = []
+        
+        unique_departments.append({
+            'normalized_name': normalized_name,
+            'variation_count': variation_count,
+            'attributes_examples': attributes[:3] if attributes else [],  # İlk 3 attribute örneği
+        })
+    
+    return unique_departments
+
+
 @router.get("/departments/", response_model=List[DepartmentWithUniversityResponse])
 async def get_departments(
     skip: int = Query(0, ge=0),
@@ -277,6 +345,7 @@ async def get_departments(
     university_id: Optional[int] = Query(None),
     city: Optional[str] = Query(None),
     university_type: Optional[str] = Query(None),
+    normalized_name: Optional[str] = Query(None, description="✅ Normalize edilmiş bölüm ismi (unique endpoint'ten alınır)"),
     min_score: Optional[float] = Query(None),
     max_score: Optional[float] = Query(None),
     has_scholarship: Optional[bool] = Query(None),
@@ -304,6 +373,8 @@ async def get_departments(
         query = query.filter(University.city.ilike(f"%{city}%"))
     if university_type:
         query = query.filter(University.university_type == university_type)
+    if normalized_name:  # ✅ Normalize edilmiş isme göre filtrele (tüm varyasyonları getir)
+        query = query.filter(Department.normalized_name == normalized_name)
     if min_score:
         query = query.filter(Department.min_score >= min_score)
     if max_score:
@@ -339,10 +410,21 @@ async def get_departments(
             logo_url=get_university_logo_url(university)
         )
         
+        # ✅ Attributes'ı parse et
+        import json
+        attributes = []
+        if dept.attributes:
+            try:
+                attributes = json.loads(dept.attributes)
+            except:
+                attributes = []
+        
         dept_response = DepartmentWithUniversityResponse(
             id=dept.id,
             university_id=dept.university_id,
-            name=dept.name,
+            name=dept.name,  # Orijinal isim
+            normalized_name=dept.normalized_name,  # ✅ Normalize edilmiş isim
+            attributes=attributes,  # ✅ Attributes listesi
             field_type=dept.field_type,
             language=dept.language,
             faculty=dept.faculty,

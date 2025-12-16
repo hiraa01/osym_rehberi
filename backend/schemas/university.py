@@ -46,7 +46,9 @@ class UniversityResponse(UniversityBase):
 
 class DepartmentBase(BaseModel):
     university_id: int
-    name: str
+    name: str  # Orijinal isim (tam isim)
+    normalized_name: Optional[str] = None  # ✅ Normalize edilmiş isim
+    attributes: Optional[List[str]] = None  # ✅ ["İngilizce", "%50 İndirimli"] gibi
     field_type: str
     language: str = "Turkish"
     faculty: Optional[str] = None
@@ -79,6 +81,8 @@ class DepartmentCreate(DepartmentBase):
 class DepartmentUpdate(BaseModel):
     university_id: Optional[int] = None
     name: Optional[str] = None
+    normalized_name: Optional[str] = None  # ✅
+    attributes: Optional[List[str]] = None  # ✅
     field_type: Optional[str] = None
     language: Optional[str] = None
     faculty: Optional[str] = None
@@ -101,6 +105,19 @@ class DepartmentResponse(DepartmentBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+    @validator('attributes', pre=True)
+    def parse_attributes(cls, v):
+        """Database'den gelen JSON string'i parse et"""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                import json
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return v
 
     class Config:
         from_attributes = True

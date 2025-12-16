@@ -46,6 +46,7 @@ class Student(Base):
     # Preferences
     preferred_cities = Column(Text, nullable=True)  # JSON string
     preferred_university_types = Column(Text, nullable=True)  # JSON string
+    preferred_departments = Column(Text, nullable=True)  # JSON string
     budget_preference = Column(String(20), nullable=True)  # low, medium, high
     scholarship_preference = Column(Boolean, default=False)
     

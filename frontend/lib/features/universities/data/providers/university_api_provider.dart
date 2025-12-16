@@ -7,11 +7,29 @@ import '../../../../core/services/api_service.dart';
 final universityListProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final apiService = ref.read(apiServiceProvider);
-  final response = await apiService.getUniversities();
-
-  return (response.data as List)
-      .map((university) => university as Map<String, dynamic>)
-      .toList();
+  
+  try {
+    // ✅ Tüm üniversiteleri çek (limit 1000)
+    final response = await apiService.getUniversities(limit: 1000);
+    
+    if (response.data == null) {
+      throw Exception('Üniversiteler yüklenemedi: Response data null');
+    }
+    
+    if (response.data is! List) {
+      throw Exception('Üniversiteler yüklenemedi: Beklenmeyen format');
+    }
+    
+    final universities = (response.data as List)
+        .map((university) => university as Map<String, dynamic>)
+        .toList();
+    
+    debugPrint('🟢 Universities loaded: ${universities.length}');
+    return universities;
+  } catch (e) {
+    debugPrint('🔴 University loading error: $e');
+    rethrow;
+  }
 });
 
 // Department list provider - Map dönüşü için (pagination ile)
@@ -175,6 +193,36 @@ final cityListProvider = FutureProvider<List<String>>((ref) async {
   return cities;
 });
 
+// ✅ Unique (normalize edilmiş) bölüm listesi provider'ı
+final uniqueDepartmentListProvider = FutureProvider.family<List<Map<String, dynamic>>, UniqueDepartmentParams>((ref, params) async {
+  final apiService = ref.read(apiServiceProvider);
+  
+  try {
+    final response = await apiService.getUniqueDepartments(
+      universityType: params.universityType,
+      fieldType: params.fieldType,
+    );
+    
+    if (response.data == null) {
+      throw Exception('Unique bölümler yüklenemedi: Response data null');
+    }
+    
+    if (response.data is! List) {
+      throw Exception('Unique bölümler yüklenemedi: Beklenmeyen format');
+    }
+    
+    final uniqueDepartments = (response.data as List)
+        .map((dept) => dept as Map<String, dynamic>)
+        .toList();
+    
+    debugPrint('🟢 Unique departments loaded: ${uniqueDepartments.length}');
+    return uniqueDepartments;
+  } catch (e) {
+    debugPrint('🔴 Unique department loading error: $e');
+    rethrow;
+  }
+});
+
 // Field type list provider
 final fieldTypeListProvider = FutureProvider<List<String>>((ref) async {
   final apiService = ref.read(apiServiceProvider);
@@ -204,7 +252,19 @@ final filteredUniversityListProvider =
   final universities = await ref.watch(universityListProvider.future);
 
   return universities.where((university) {
-    // City filter
+    // ✅ Öncelik: Tercih edilen şehirler filtresi
+    // Eğer tercih edilen şehirler varsa ve kullanıcı özel bir şehir seçmemişse,
+    // sadece tercih edilen şehirlerdeki üniversiteleri göster
+    if (params.preferredCities != null && 
+        params.preferredCities!.isNotEmpty && 
+        params.city == null) {
+      final universityCity = university['city'] as String? ?? '';
+      if (!params.preferredCities!.contains(universityCity)) {
+        return false;
+      }
+    }
+    
+    // City filter (kullanıcı özel bir şehir seçmişse)
     if (params.city != null &&
         params.city!.isNotEmpty &&
         university['city'] != params.city) {
@@ -279,11 +339,13 @@ class UniversityFilterParams {
   final String? city;
   final String? type;
   final String? searchQuery;
+  final List<String>? preferredCities; // ✅ Öğrencinin tercih ettiği şehirler
 
   UniversityFilterParams({
     this.city,
     this.type,
     this.searchQuery,
+    this.preferredCities,
   });
 }
 
@@ -298,5 +360,16 @@ class DepartmentFilterParams {
     this.city,
     this.universityType,
     this.searchQuery,
+  });
+}
+
+// ✅ Unique departments için parametreler
+class UniqueDepartmentParams {
+  final String? universityType; // devlet, vakif
+  final String? fieldType; // SAY, EA, SÖZ, DİL
+
+  UniqueDepartmentParams({
+    this.universityType,
+    this.fieldType,
   });
 }

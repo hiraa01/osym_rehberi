@@ -28,6 +28,7 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_db)):
         # JSON alanları için dönüşüm
         preferred_cities = json.dumps(student.preferred_cities) if student.preferred_cities else None
         preferred_university_types = json.dumps(student.preferred_university_types) if student.preferred_university_types else None
+        preferred_departments = json.dumps(student.preferred_departments) if student.preferred_departments else None
         interest_areas = json.dumps(student.interest_areas) if student.interest_areas else None
         
         # Veritabanı nesnesi oluştur
@@ -56,6 +57,7 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_db)):
             ayt_foreign_language_net=student.ayt_foreign_language_net,
             preferred_cities=preferred_cities,
             preferred_university_types=preferred_university_types,
+            preferred_departments=preferred_departments,
             budget_preference=student.budget_preference,
             scholarship_preference=student.scholarship_preference,
             interest_areas=interest_areas,
@@ -139,6 +141,8 @@ async def update_student(
         update_data['preferred_cities'] = json.dumps(update_data['preferred_cities'])
     if 'preferred_university_types' in update_data and update_data['preferred_university_types']:
         update_data['preferred_university_types'] = json.dumps(update_data['preferred_university_types'])
+    if 'preferred_departments' in update_data and update_data['preferred_departments']:
+        update_data['preferred_departments'] = json.dumps(update_data['preferred_departments'])
     if 'interest_areas' in update_data and update_data['interest_areas']:
         update_data['interest_areas'] = json.dumps(update_data['interest_areas'])
     

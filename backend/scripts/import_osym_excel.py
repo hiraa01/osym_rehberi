@@ -1,8 +1,9 @@
 """
 ÖSYM Excel Dosyalarından Yerleştirme Verilerini İçe Aktar
+✅ GÜNCELLENMİŞ: Normalize edilmiş bölüm isimleri ve yıllara göre veri saklama
 
 KULLANIM:
-1. ÖSYM'den Excel dosyalarını indir (örn: 2024_yerlestirme.xlsx)
+1. ÖSYM'den Excel dosyalarını indir (örn: 2024_yerlestirme_l.xlsx, 2025_yerlestirme_l.xlsx)
 2. backend/data/ klasörüne koy
 3. Bu scripti çalıştır: python scripts/import_osym_excel.py
 
@@ -11,13 +12,15 @@ kolonları kontrol edip gerekirse ayarla.
 """
 import sys
 import os
+import re
+import json
 sys.path.append('/app')
 
 import pandas as pd
 from pathlib import Path
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models.university import University, Department
+from models.university import University, Department, DepartmentYearlyStats
 
 # Excel dosyalarının bulunduğu klasör
 DATA_DIR = Path('/app/data')
@@ -35,6 +38,43 @@ COLUMN_MAPPING = {
     'En Küçük Puan': 'min_score',
     'En Büyük Puan': 'max_score',
 }
+
+
+def normalize_department_name(dept_name: str) -> tuple[str, list[str]]:
+    """
+    ✅ Bölüm ismini normalize et ve parantez içi detayları ayır
+    
+    Örnek:
+    - "Bilgisayar Mühendisliği (İngilizce) (%50 İndirimli)" 
+      -> ("Bilgisayar Mühendisliği", ["İngilizce", "%50 İndirimli"])
+    - "Tıp (Burslu)"
+      -> ("Tıp", ["Burslu"])
+    - "Psikoloji"
+      -> ("Psikoloji", [])
+    
+    Returns:
+        tuple: (normalized_name, attributes_list)
+    """
+    if not dept_name or pd.isna(dept_name):
+        return ("", [])
+    
+    dept_str = str(dept_name).strip()
+    
+    # Parantez içindeki tüm ifadeleri bul
+    # Regex: (.*?) ile tüm parantez içi içerikleri yakala
+    pattern = r'\(([^)]+)\)'
+    matches = re.findall(pattern, dept_str)
+    
+    # Parantez içi içerikleri attributes olarak topla
+    attributes = [match.strip() for match in matches if match.strip()]
+    
+    # Normalize edilmiş isim: Tüm parantezleri ve içeriklerini kaldır
+    normalized = re.sub(pattern, '', dept_str).strip()
+    
+    # Fazla boşlukları temizle
+    normalized = re.sub(r'\s+', ' ', normalized).strip()
+    
+    return (normalized, attributes)
 
 
 def extract_city_from_university(uni_name):
@@ -100,7 +140,7 @@ def clean_numeric_value(value):
 
 
 def import_excel_file(file_path: Path, year: int, db: Session):
-    """Tek bir Excel dosyasını import et"""
+    """✅ GÜNCELLENMİŞ: Tek bir Excel dosyasını import et - normalize edilmiş isimler ve yıllara göre veri saklama"""
     print(f"\n📁 {file_path.name} işleniyor (Yıl: {year})...")
     
     try:
@@ -123,11 +163,12 @@ def import_excel_file(file_path: Path, year: int, db: Session):
             print(f"   ⚠️  Eksik kolonlar: {missing_cols}")
             print(f"   💡 Mevcut kolonlar: {df.columns.tolist()}")
             print(f"   ℹ️  Script'teki COLUMN_MAPPING'i güncelleyin!")
-            return 0, 0
+            return 0, 0, 0
         
-        # Üniversite ve Bölüm sayaçları
+        # Üniversite, Bölüm ve Yıllık İstatistik sayaçları
         new_universities = 0
         new_departments = 0
+        new_yearly_stats = 0
         
         # Her satırı işle
         for idx, row in df.iterrows():
@@ -165,44 +206,63 @@ def import_excel_file(file_path: Path, year: int, db: Session):
                     db.flush()  # ID almak için
                     new_universities += 1
                 
-                # Bölüm bilgilerini al
-                dept_name = str(row.get('Program Adı', '')).strip()
+                # ✅ Bölüm bilgilerini al ve normalize et
+                dept_name_raw = str(row.get('Program Adı', '')).strip()
+                if not dept_name_raw or dept_name_raw == 'nan':
+                    continue
+                
+                # Normalize et
+                normalized_name, attributes = normalize_department_name(dept_name_raw)
+                if not normalized_name:
+                    continue
+                
                 field_type = normalize_field_type(row.get('Puan Türü', 'SAY'))
                 
                 # Dil bilgisini program adından çıkar (İngilizce, %30 İngilizce vs.)
                 language = 'Turkish'
-                if 'İngilizce' in dept_name or 'English' in dept_name:
+                if 'İngilizce' in dept_name_raw or 'English' in dept_name_raw:
                     language = 'English'
-                elif '%' in dept_name and ('İngilizce' in dept_name or 'English' in dept_name):
+                elif '%' in dept_name_raw and ('İngilizce' in dept_name_raw or 'English' in dept_name_raw):
                     language = 'Partial English'
                 
                 duration = 4  # Varsayılan (Excel'de yok, lisans genelde 4 yıl)
                 quota = int(clean_numeric_value(row.get('Kontenjan', 0)))
                 placed_students = int(clean_numeric_value(row.get('Yerleşen', 0)))
                 min_score = clean_numeric_value(row.get('En Küçük Puan', 0))
-                # En Büyük Puan'ı da kullanabiliriz ama şimdilik min_rank için  0 kullanıyoruz
-                min_rank = 0  # Excel'de yok
+                max_score = clean_numeric_value(row.get('En Büyük Puan', 0))
+                min_rank = 0  # Excel'de yok (genelde)
+                max_rank = 0  # Excel'de yok (genelde)
                 
-                if not dept_name or dept_name == 'nan':
-                    continue
-                
-                # Bölüm var mı kontrol et (aynı üniversite, aynı bölüm adı)
+                # ✅ Bölüm var mı kontrol et (aynı üniversite, normalize edilmiş isim, aynı field_type)
+                # NOT: Orijinal isim farklı olabilir (örn: "Tıp (Burslu)" vs "Tıp (%50 İndirimli)")
+                # ama normalize edilmiş isim aynı olacak ("Tıp")
                 existing_dept = db.query(Department).filter(
                     Department.university_id == university.id,
-                    Department.name == dept_name,
+                    Department.normalized_name == normalized_name,
                     Department.field_type == field_type
                 ).first()
                 
                 if existing_dept:
-                    # Güncelle (yeni yılın verileri daha güncel olabilir)
-                    existing_dept.min_score = min_score if min_score > 0 else existing_dept.min_score
-                    existing_dept.min_rank = min_rank if min_rank > 0 else existing_dept.min_rank
-                    existing_dept.quota = quota if quota > 0 else existing_dept.quota
+                    # ✅ Mevcut bölümü güncelle (en güncel yılın verileri)
+                    # Attributes'ı birleştir (yeni attributes varsa ekle)
+                    existing_attrs = json.loads(existing_dept.attributes) if existing_dept.attributes else []
+                    combined_attrs = list(set(existing_attrs + attributes))  # Unique attributes
+                    existing_dept.attributes = json.dumps(combined_attrs, ensure_ascii=False) if combined_attrs else None
+                    
+                    # En güncel yılın verilerini güncelle (sadece daha yeni yıl ise)
+                    if year >= (existing_dept.updated_at.year if existing_dept.updated_at else 0):
+                        existing_dept.min_score = min_score if min_score > 0 else existing_dept.min_score
+                        existing_dept.min_rank = min_rank if min_rank > 0 else existing_dept.min_rank
+                        existing_dept.quota = quota if quota > 0 else existing_dept.quota
+                    
+                    department = existing_dept
                 else:
-                    # Yeni bölüm ekle
+                    # ✅ Yeni bölüm ekle (normalize edilmiş isim ile)
                     department = Department(
                         university_id=university.id,
-                        name=dept_name,
+                        name=dept_name_raw,  # Orijinal isim
+                        normalized_name=normalized_name,  # ✅ Normalize edilmiş isim
+                        attributes=json.dumps(attributes, ensure_ascii=False) if attributes else None,  # ✅ JSON string
                         field_type=field_type,
                         language=language,
                         duration=duration,
@@ -212,33 +272,131 @@ def import_excel_file(file_path: Path, year: int, db: Session):
                         min_rank=min_rank if min_rank > 0 else None,
                     )
                     db.add(department)
+                    db.flush()  # ID almak için
                     new_departments += 1
                 
-                # Her 1000 satırda bir commit (performans için)
-                if (idx + 1) % 1000 == 0:
-                    db.commit()
-                    print(f"   ⏳ {idx + 1} satır işlendi...")
+                # ✅ Yıllık istatistikleri kaydet (DepartmentYearlyStats)
+                # Aynı bölüm için aynı yıl zaten varsa güncelle, yoksa yeni ekle
+                # NOT: Aynı bölümün farklı varyasyonları (Burslu, %50 İndirimli) aynı Department'ı kullanır
+                # Bu yüzden her varyasyon için ayrı YearlyStats eklenmemeli
+                try:
+                    # Önce mevcut kaydı kontrol et
+                    existing_stats = db.query(DepartmentYearlyStats).filter(
+                        DepartmentYearlyStats.department_id == department.id,
+                        DepartmentYearlyStats.year == year
+                    ).first()
+                    
+                    if existing_stats:
+                        # Güncelle (daha iyi veriler varsa - min_score için en düşük, max_score için en yüksek)
+                        if min_score > 0 and (existing_stats.min_score is None or min_score < existing_stats.min_score):
+                            existing_stats.min_score = min_score
+                        if max_score > 0 and (existing_stats.max_score is None or max_score > existing_stats.max_score):
+                            existing_stats.max_score = max_score
+                        if min_rank > 0 and (existing_stats.min_rank is None or min_rank < existing_stats.min_rank):
+                            existing_stats.min_rank = min_rank
+                        if max_rank > 0 and (existing_stats.max_rank is None or max_rank > existing_stats.max_rank):
+                            existing_stats.max_rank = max_rank
+                        if quota > 0:
+                            existing_stats.quota = quota
+                        if placed_students > 0:
+                            existing_stats.placed_students = placed_students
+                    else:
+                        # Yeni yıllık istatistik ekle
+                        yearly_stats = DepartmentYearlyStats(
+                            department_id=department.id,
+                            year=year,
+                            min_score=min_score if min_score > 0 else None,
+                            max_score=max_score if max_score > 0 else None,
+                            min_rank=min_rank if min_rank > 0 else None,
+                            max_rank=max_rank if max_rank > 0 else None,
+                            quota=quota if quota > 0 else None,
+                            placed_students=placed_students if placed_students > 0 else None,
+                        )
+                        db.add(yearly_stats)
+                        db.flush()  # Flush yap ve hata varsa yakala
+                        new_yearly_stats += 1
+                except Exception as stats_error:
+                    # ✅ Duplicate key hatası olabilir (aynı yıl için birden fazla kayıt eklendi)
+                    # Bu durumda rollback yap ve mevcut kaydı güncelle
+                    error_msg = str(stats_error)
+                    if "UniqueViolation" in error_msg or "uq_department_year" in error_msg:
+                        try:
+                            db.rollback()  # Rollback yap
+                            # Tekrar mevcut kaydı bul ve güncelle
+                            existing_stats = db.query(DepartmentYearlyStats).filter(
+                                DepartmentYearlyStats.department_id == department.id,
+                                DepartmentYearlyStats.year == year
+                            ).first()
+                            if existing_stats:
+                                # Mevcut kaydı güncelle
+                                if min_score > 0 and (existing_stats.min_score is None or min_score < existing_stats.min_score):
+                                    existing_stats.min_score = min_score
+                                if max_score > 0 and (existing_stats.max_score is None or max_score > existing_stats.max_score):
+                                    existing_stats.max_score = max_score
+                                if quota > 0:
+                                    existing_stats.quota = quota
+                                if placed_students > 0:
+                                    existing_stats.placed_students = placed_students
+                        except Exception as retry_error:
+                            # Eğer hala hata varsa, bu satırı atla (zaten kayıt var)
+                            pass
+                    else:
+                        # Diğer hatalar için rollback yap
+                        try:
+                            db.rollback()
+                        except:
+                            pass
+                
+                # Her 500 satırda bir commit ve progress göster (daha sık feedback için)
+                if (idx + 1) % 500 == 0:
+                    try:
+                        db.commit()
+                        print(f"   ⏳ {idx + 1}/{len(df)} satır işlendi... (Uni: {new_universities}, Dept: {new_departments}, Stats: {new_yearly_stats})", flush=True)
+                    except Exception as commit_error:
+                        db.rollback()
+                        print(f"   ⚠️  Commit hatası (satır {idx + 1}): {str(commit_error)[:100]}", flush=True)
+                        # Devam et, bir sonraki commit'te düzelir
             
             except Exception as e:
-                print(f"   ⚠️  Satır {idx} hatası: {e}")
-                continue
+                # ✅ Hata durumunda rollback yap ve devam et
+                try:
+                    db.rollback()
+                except:
+                    pass
+                
+                error_msg = str(e)
+                if "UniqueViolation" in error_msg or "uq_department_year" in error_msg or "PendingRollbackError" in error_msg:
+                    # Duplicate key hatası veya rollback hatası - normal, atla
+                    continue
+                else:
+                    print(f"   ⚠️  Satır {idx} hatası: {error_msg[:100]}")
+                    # Sadece önemli hataları göster
+                    if "Traceback" not in error_msg:  # Traceback zaten print edilmiş
+                        import traceback
+                        traceback.print_exc()
+                    continue
         
         # Son commit
         db.commit()
-        print(f"   ✅ {new_universities} yeni üniversite, {new_departments} yeni bölüm eklendi!")
-        return new_universities, new_departments
+        print(f"   ✅ {new_universities} yeni üniversite, {new_departments} yeni bölüm, {new_yearly_stats} yıllık istatistik eklendi!")
+        return new_universities, new_departments, new_yearly_stats
         
     except Exception as e:
         print(f"   ❌ Dosya işleme hatası: {e}")
+        import traceback
+        traceback.print_exc()
         db.rollback()
-        return 0, 0
+        return 0, 0, 0
 
 
 def main():
     """Ana import fonksiyonu"""
-    print("=" * 70)
-    print("ÖSYM EXCEL DOSYALARINI İÇE AKTAR")
-    print("=" * 70)
+    import sys
+    sys.stdout.flush()  # ✅ Buffer'ı temizle
+    print("=" * 70, flush=True)
+    print("ÖSYM EXCEL DOSYALARINI İÇE AKTAR", flush=True)
+    print("✅ Normalize edilmiş bölüm isimleri ve yıllara göre veri saklama", flush=True)
+    print("=" * 70, flush=True)
     
     # Data klasörünü kontrol et
     if not DATA_DIR.exists():
@@ -252,7 +410,7 @@ def main():
     if not excel_files:
         print(f"❌ {DATA_DIR} klasöründe Excel dosyası bulunamadı!")
         print(f"💡 ÖSYM'den indirdiğiniz Excel dosyalarını backend/data/ klasörüne koyun")
-        print(f"   Örnek: 2024_yerlestirme.xlsx")
+        print(f"   Örnek: 2024_yerlestirme_l.xlsx, 2025_yerlestirme_l.xlsx")
         return
     
     print(f"📂 {len(excel_files)} Excel dosyası bulundu:")
@@ -264,6 +422,7 @@ def main():
     
     total_universities = 0
     total_departments = 0
+    total_yearly_stats = 0
     
     try:
         # Her dosyayı işle
@@ -277,23 +436,31 @@ def main():
             except:
                 pass
             
-            unis, depts = import_excel_file(file_path, year, db)
+            unis, depts, stats = import_excel_file(file_path, year, db)
             total_universities += unis
             total_departments += depts
+            total_yearly_stats += stats
         
         print("\n" + "=" * 70)
         print("✅ İMPORT TAMAMLANDI!")
         print("=" * 70)
-        print(f"📊 Toplam: {total_universities} üniversite, {total_departments} bölüm eklendi")
+        print(f"📊 Toplam: {total_universities} üniversite, {total_departments} bölüm, {total_yearly_stats} yıllık istatistik eklendi")
         
         # Database istatistikleri
         uni_count = db.query(University).count()
         dept_count = db.query(Department).count()
-        print(f"💾 Database'de: {uni_count} üniversite, {dept_count} bölüm")
+        stats_count = db.query(DepartmentYearlyStats).count()
+        print(f"💾 Database'de: {uni_count} üniversite, {dept_count} bölüm, {stats_count} yıllık istatistik")
+        
+        # ✅ Normalize edilmiş bölüm sayısı (unique)
+        unique_normalized = db.query(Department.normalized_name).distinct().count()
+        print(f"🔍 Normalize edilmiş unique bölüm sayısı: {unique_normalized}")
         print("=" * 70)
         
     except Exception as e:
         print(f"\n❌ HATA: {e}")
+        import traceback
+        traceback.print_exc()
         db.rollback()
     finally:
         db.close()
@@ -301,4 +468,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

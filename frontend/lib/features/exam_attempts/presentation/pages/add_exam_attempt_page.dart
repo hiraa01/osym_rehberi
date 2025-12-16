@@ -555,13 +555,42 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
             }
 
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Deneme başarıyla kaydedildi!'),
-                  backgroundColor: Colors.green,
-                ),
+              // ✅ Backend'den dönen response'u al
+              final attemptData = response.data as Map<String, dynamic>;
+              
+              // ✅ TYT ve AYT netlerini hesapla
+              final tytTotalNet = (attemptData['tyt_turkish_net'] ?? 0.0) +
+                  (attemptData['tyt_math_net'] ?? 0.0) +
+                  (attemptData['tyt_social_net'] ?? 0.0) +
+                  (attemptData['tyt_science_net'] ?? 0.0);
+              
+              final aytTotalNet = (attemptData['ayt_math_net'] ?? 0.0) +
+                  (attemptData['ayt_physics_net'] ?? 0.0) +
+                  (attemptData['ayt_chemistry_net'] ?? 0.0) +
+                  (attemptData['ayt_biology_net'] ?? 0.0) +
+                  (attemptData['ayt_literature_net'] ?? 0.0) +
+                  (attemptData['ayt_history1_net'] ?? 0.0) +
+                  (attemptData['ayt_geography1_net'] ?? 0.0) +
+                  (attemptData['ayt_philosophy_net'] ?? 0.0) +
+                  (attemptData['ayt_history2_net'] ?? 0.0) +
+                  (attemptData['ayt_geography2_net'] ?? 0.0) +
+                  (attemptData['ayt_religion_net'] ?? 0.0) +
+                  (attemptData['ayt_foreign_language_net'] ?? 0.0);
+              
+              // ✅ Puanları al
+              final tytScore = (attemptData['tyt_score'] ?? 0.0).toDouble();
+              final aytScore = (attemptData['ayt_score'] ?? 0.0).toDouble();
+              final totalScore = (attemptData['total_score'] ?? 0.0).toDouble();
+              
+              // ✅ Sonuç dialogunu göster
+              _showResultDialog(
+                context,
+                tytTotalNet: tytTotalNet,
+                aytTotalNet: aytTotalNet,
+                tytScore: tytScore,
+                aytScore: aytScore,
+                totalScore: totalScore,
               );
-              Navigator.pop(context, true);
             }
           } catch (e) {
             // Deneme kaydetme hatası
@@ -608,5 +637,191 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
         }
       }
     }
+  }
+
+  void _showResultDialog(
+    BuildContext context, {
+    required double tytTotalNet,
+    required double aytTotalNet,
+    required double tytScore,
+    required double aytScore,
+    required double totalScore,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 28),
+            SizedBox(width: 8),
+            Text('Deneme Başarıyla Kaydedildi!'),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // TYT Bilgileri
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.blue.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'TYT Sonuçları',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('TYT Toplam Net:'),
+                        Text(
+                          tytTotalNet.toStringAsFixed(2),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('TYT Puanı:'),
+                        Text(
+                          tytScore.toStringAsFixed(2),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // AYT Bilgileri
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.green.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'AYT Sonuçları',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('AYT Toplam Net:'),
+                        Text(
+                          aytTotalNet.toStringAsFixed(2),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('AYT Puanı:'),
+                        Text(
+                          aytScore.toStringAsFixed(2),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Toplam Puan
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.orange.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Toplam Puan:',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      totalScore.toStringAsFixed(2),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Dialog'u kapat
+              Navigator.of(context).pop(true); // Sayfayı kapat
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Tamam'),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -330,9 +330,19 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage>
         final aytNet = (attempt['ayt_math_net'] ?? 0.0) +
             (attempt['ayt_physics_net'] ?? 0.0) +
             (attempt['ayt_chemistry_net'] ?? 0.0) +
-            (attempt['ayt_biology_net'] ?? 0.0);
+            (attempt['ayt_biology_net'] ?? 0.0) +
+            (attempt['ayt_literature_net'] ?? 0.0) +
+            (attempt['ayt_history1_net'] ?? 0.0) +
+            (attempt['ayt_geography1_net'] ?? 0.0) +
+            (attempt['ayt_philosophy_net'] ?? 0.0) +
+            (attempt['ayt_history2_net'] ?? 0.0) +
+            (attempt['ayt_geography2_net'] ?? 0.0) +
+            (attempt['ayt_religion_net'] ?? 0.0) +
+            (attempt['ayt_foreign_language_net'] ?? 0.0);
         final tytScore = attempt['tyt_score']?.toDouble() ?? 0.0;
         final aytScore = attempt['ayt_score']?.toDouble() ?? 0.0;
+        final totalScore = attempt['total_score']?.toDouble() ?? 0.0;
+        final totalNet = tytNet + aytNet;
         final examDate = attempt['exam_date'] != null
             ? DateTime.tryParse(attempt['exam_date'].toString())
             : null;
@@ -416,6 +426,17 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage>
                               color: Colors.grey[700],
                             ),
                           ),
+                        if (hasTyt || hasAyt) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'Toplam Net: ${totalNet.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                        ],
                         if (dateStr.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
@@ -448,6 +469,18 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage>
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                      if (totalScore > 0) ...[
+                        if ((hasTyt && tytScore > 0) || (hasAyt && aytScore > 0))
+                          const SizedBox(height: 4),
+                        Text(
+                          'Toplam Puan: ${totalScore.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.purple[700],
                           ),
                         ),
                       ],

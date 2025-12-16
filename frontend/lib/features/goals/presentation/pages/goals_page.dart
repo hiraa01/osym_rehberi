@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../universities/data/providers/university_api_provider.dart';
-import 'university_swipe_page.dart';
+import '../../../universities/presentation/pages/university_discover_page.dart';
 
 class GoalsPage extends ConsumerStatefulWidget {
   const GoalsPage({super.key});
@@ -115,9 +115,10 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
+                      // ✅ UniversityDiscoverPage zaten tercih edilen şehirleri otomatik yüklüyor
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => const UniversitySwipePage(),
+                          builder: (_) => const UniversityDiscoverPage(),
                         ),
                       );
                     },

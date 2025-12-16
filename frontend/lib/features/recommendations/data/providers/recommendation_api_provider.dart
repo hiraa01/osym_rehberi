@@ -9,9 +9,22 @@ import '../../presentation/providers/recommendation_settings_provider.dart';
 final recommendationListProvider = FutureProvider.family<List<RecommendationModel>, int>((ref, studentId) async {
   final apiService = ref.read(apiServiceProvider);
   final response = await apiService.getStudentRecommendations(studentId);
-  return (response.data as List)
-      .map((rec) => RecommendationModel.fromJson(rec))
-      .toList();
+  
+  // ✅ Backend formatı: {"recommendations": [...]}
+  if (response.data is Map && response.data['recommendations'] != null) {
+    return (response.data['recommendations'] as List)
+        .map((rec) => RecommendationModel.fromJson(rec))
+        .toList();
+  }
+  
+  // ✅ Fallback: Eğer direkt liste gelirse (eski format)
+  if (response.data is List) {
+    return (response.data as List)
+        .map((rec) => RecommendationModel.fromJson(rec))
+        .toList();
+  }
+  
+  return [];
 });
 
 // Generate Recommendations Provider

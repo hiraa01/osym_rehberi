@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -109,7 +108,10 @@ class _PreferencesSelectionStepState
               latestScores['ayt_foreign_language_net'] ?? 0.0,
           // Tercihler
           'preferred_cities': _selectedCities,
-          'preferred_university_types': null,
+          'preferred_university_types': _selectedUniversityType != null
+              ? [_selectedUniversityType]
+              : null,
+          'preferred_departments': _selectedDepartments,
           'budget_preference': null,
           'scholarship_preference': false,
           'interest_areas': null,
@@ -150,11 +152,8 @@ class _PreferencesSelectionStepState
         debugPrint('🟢 Student ID saved: $studentId');
         await prefs.setInt('student_id', studentId);
 
-        // preferred_departments'ı SharedPreferences'ta sakla (backend'de yok)
-        await prefs.setString(
-          'preferred_departments_$studentId',
-          jsonEncode(_selectedDepartments),
-        );
+        debugPrint(
+            '🟢 Preferred departments saved to database: $_selectedDepartments');
 
         // Tüm denemeleri kaydet
         for (int i = 0; i < widget.examScores.length; i++) {

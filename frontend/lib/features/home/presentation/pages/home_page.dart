@@ -1,16 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/utils/responsive_utils.dart';
 import '../../../student_profile/presentation/pages/student_create_page.dart';
 import '../../../universities/presentation/pages/university_list_page.dart';
+import '../../../universities/presentation/pages/university_discover_page.dart';
 import '../../../universities/presentation/pages/department_list_page.dart';
+import '../../../recommendations/data/providers/recommendation_api_provider.dart';
+import '../../../exam_attempts/data/providers/exam_attempt_api_provider.dart';
+import '../../../recommendations/presentation/pages/recommendations_page.dart';
+import '../../../exam_attempts/presentation/pages/exam_attempts_page.dart';
 
-class HomePage extends ConsumerWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  int? _studentId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStudentId();
+  }
+
+  Future<void> _loadStudentId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final studentId = prefs.getInt('student_id');
+    if (mounted) {
+      setState(() {
+        _studentId = studentId;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('ÖSYM Rehberi'),
@@ -67,6 +97,18 @@ class HomePage extends ConsumerWidget {
             
                     SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 24)),
                     
+                    // ✅ Son Deneme Sonuçları (eğer student_id varsa)
+                    if (_studentId != null) ...[
+                      _buildLastExamAttemptCard(context, ref),
+                      SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+                    ],
+                    
+                    // ✅ Öneriler (eğer student_id varsa)
+                    if (_studentId != null) ...[
+                      _buildRecommendationsCard(context, ref),
+                      SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+                    ],
+                    
                     // Quick Actions
                     Text(
                       'Hızlı İşlemler',
@@ -122,6 +164,19 @@ class HomePage extends ConsumerWidget {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (_) => const UniversityListPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                            _buildActionButton(
+                              context,
+                              icon: Icons.explore,
+                              title: 'Üniversiteleri Keşfet',
+                              subtitle: 'Tinder tarzı üniversite keşfi',
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const UniversityDiscoverPage(),
                                   ),
                                 );
                               },
@@ -247,6 +302,274 @@ class HomePage extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+
+  // ✅ Son Deneme Sonuçları Card
+  Widget _buildLastExamAttemptCard(BuildContext context, WidgetRef ref) {
+    if (_studentId == null) return const SizedBox.shrink();
+
+    final attemptsAsync = ref.watch(examAttemptsListProvider(_studentId!));
+
+    return attemptsAsync.when(
+      data: (attempts) {
+        if (attempts.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        // En son denemeyi al
+        final lastAttempt = attempts.first;
+        final tytNet = (lastAttempt['tyt_turkish_net'] ?? 0.0) +
+            (lastAttempt['tyt_math_net'] ?? 0.0) +
+            (lastAttempt['tyt_social_net'] ?? 0.0) +
+            (lastAttempt['tyt_science_net'] ?? 0.0);
+        final aytNet = (lastAttempt['ayt_math_net'] ?? 0.0) +
+            (lastAttempt['ayt_physics_net'] ?? 0.0) +
+            (lastAttempt['ayt_chemistry_net'] ?? 0.0) +
+            (lastAttempt['ayt_biology_net'] ?? 0.0) +
+            (lastAttempt['ayt_literature_net'] ?? 0.0) +
+            (lastAttempt['ayt_history1_net'] ?? 0.0) +
+            (lastAttempt['ayt_geography1_net'] ?? 0.0) +
+            (lastAttempt['ayt_philosophy_net'] ?? 0.0) +
+            (lastAttempt['ayt_history2_net'] ?? 0.0) +
+            (lastAttempt['ayt_geography2_net'] ?? 0.0) +
+            (lastAttempt['ayt_religion_net'] ?? 0.0) +
+            (lastAttempt['ayt_foreign_language_net'] ?? 0.0);
+
+        final examDate = lastAttempt['exam_date'] != null
+            ? DateTime.parse(lastAttempt['exam_date'])
+            : null;
+        final examName = lastAttempt['exam_name'] ?? 'Deneme';
+
+        return Card(
+          child: InkWell(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const ExamAttemptsPage(),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: ResponsiveUtils.getResponsivePadding(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Son Deneme Netlerin',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const ExamAttemptsPage(),
+                            ),
+                          );
+                        },
+                        child: const Text('Tümünü Gör'),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'TYT Net',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            Text(
+                              tytNet.toStringAsFixed(2),
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'AYT Net',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            Text(
+                              aytNet.toStringAsFixed(2),
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (examDate != null) ...[
+                    SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+                    Text(
+                      '$examName - ${DateFormat('dd MMMM yyyy', 'tr_TR').format(examDate)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => Card(
+        child: Padding(
+          padding: ResponsiveUtils.getResponsivePadding(context),
+          child: const Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      error: (error, stack) => const SizedBox.shrink(),
+    );
+  }
+
+  // ✅ Öneriler Card
+  Widget _buildRecommendationsCard(BuildContext context, WidgetRef ref) {
+    if (_studentId == null) return const SizedBox.shrink();
+
+    final recommendationsAsync = ref.watch(recommendationListProvider(_studentId!));
+
+    return recommendationsAsync.when(
+      data: (recommendations) {
+        if (recommendations.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        // İlk 3 öneriyi göster
+        final topRecommendations = recommendations.take(3).toList();
+
+        return Card(
+          child: InkWell(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const RecommendationsPage(),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: ResponsiveUtils.getResponsivePadding(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Tercih Önerileri',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const RecommendationsPage(),
+                            ),
+                          );
+                        },
+                        child: const Text('Tümünü Gör'),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+                  ...topRecommendations.map((rec) => Padding(
+                    padding: EdgeInsets.only(
+                      bottom: ResponsiveUtils.getResponsiveSpacing(context, 8),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: rec.recommendationTypeColor,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        SizedBox(width: ResponsiveUtils.getResponsiveSpacing(context, 12)),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                rec.departmentName ?? 'Bölüm Adı Yok',
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (rec.universityName != null)
+                                Text(
+                                  '${rec.universityName} - ${rec.city ?? ""}',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '${rec.finalScore.toStringAsFixed(1)}%',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: rec.recommendationTypeColor,
+                              ),
+                            ),
+                            Text(
+                              rec.recommendationType,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  )),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => Card(
+        child: Padding(
+          padding: ResponsiveUtils.getResponsivePadding(context),
+          child: const Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      error: (error, stack) => const SizedBox.shrink(),
     );
   }
 }

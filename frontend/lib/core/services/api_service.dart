@@ -239,7 +239,7 @@ class ApiService {
   // University endpoints
   Future<Response> getUniversities({
     int skip = 0,
-    int limit = 100, // ✅ Pagination - default 100 kayıt
+    int limit = 1000, // ✅ Tüm üniversiteleri çek - default 1000 kayıt
   }) async {
     // Üniversiteler çok sayıda olabilir - pagination kullanın
     return await _dio.get(
@@ -259,18 +259,47 @@ class ApiService {
   Future<Response> getDepartments({
     int skip = 0,
     int limit = 2000, // ✅ Default 2000 - tüm bölümler gelsin (max 5000)
+    String? normalizedName, // ✅ Normalize edilmiş isme göre filtrele
   }) async {
     // Bölümler çok sayıda olabilir - pagination kullanın
+    final queryParams = <String, dynamic>{
+      'skip': skip,
+      'limit': limit,
+    };
+    if (normalizedName != null && normalizedName.isNotEmpty) {
+      queryParams['normalized_name'] = normalizedName;
+    }
+    
     return await _dio.get(
       '/universities/departments/',
-      queryParameters: {
-        'skip': skip,
-        'limit': limit,
-      },
+      queryParameters: queryParams,
       options: Options(
         receiveTimeout: const Duration(
             seconds: 180), // 3 dakika (pagination ile daha hızlı olmalı)
         sendTimeout: const Duration(seconds: 60),
+      ),
+    );
+  }
+
+  // ✅ Unique (normalize edilmiş) bölüm listesi
+  Future<Response> getUniqueDepartments({
+    String? universityType, // devlet, vakif
+    String? fieldType, // SAY, EA, SÖZ, DİL
+  }) async {
+    final queryParams = <String, dynamic>{};
+    if (universityType != null && universityType.isNotEmpty) {
+      queryParams['university_type'] = universityType;
+    }
+    if (fieldType != null && fieldType.isNotEmpty) {
+      queryParams['field_type'] = fieldType;
+    }
+    
+    return await _dio.get(
+      '/universities/departments/unique/',
+      queryParameters: queryParams,
+      options: Options(
+        receiveTimeout: const Duration(seconds: 60), // Unique listesi küçük olmalı
+        sendTimeout: const Duration(seconds: 30),
       ),
     );
   }

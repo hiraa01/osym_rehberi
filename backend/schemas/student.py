@@ -35,6 +35,7 @@ class StudentBase(BaseModel):
     # Preferences
     preferred_cities: Optional[List[str]] = None
     preferred_university_types: Optional[List[str]] = None
+    preferred_departments: Optional[List[str]] = None
     budget_preference: Optional[str] = None
     scholarship_preference: bool = False
     interest_areas: Optional[List[str]] = None
@@ -89,6 +90,7 @@ class StudentUpdate(BaseModel):
     # Preferences
     preferred_cities: Optional[List[str]] = None
     preferred_university_types: Optional[List[str]] = None
+    preferred_departments: Optional[List[str]] = None
     budget_preference: Optional[str] = None
     scholarship_preference: Optional[bool] = None
     interest_areas: Optional[List[str]] = None
@@ -105,7 +107,7 @@ class StudentResponse(StudentBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    @validator('preferred_cities', 'preferred_university_types', 'interest_areas', pre=True)
+    @validator('preferred_cities', 'preferred_university_types', 'preferred_departments', 'interest_areas', pre=True)
     def parse_json_fields(cls, v):
         """Database'den gelen JSON string'leri parse et"""
         if v is None:

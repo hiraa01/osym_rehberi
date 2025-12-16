@@ -219,13 +219,18 @@ async def coach_chat(payload: ChatRequest, db: Session = Depends(get_db)):
                 detail="Kullanılabilir Gemini modeli bulunamadı. API anahtarınızı kontrol edin."
             )
 
-        # Persona ve sistem yönlendirmesi
+        # ✅ Persona ve sistem yönlendirmesi - GÜNCELLENMİŞ: Analitik yetenekler eklendi
         system_prompt = (
-            "ROL: Türkiye'de YKS hazırlık koçusun. \n"
+            "ROL: Türkiye'de YKS hazırlık koçusun ve üniversite tercih danışmanısın. \n"
             "STIL: Empatik, net, motive edici; kısa paragraflar, gerektiğinde madde işaretleri kullan. \n"
             "VERI: Öğrenci ve öneri bağlamı aşağıda. Gizli/özel verileri ifşa etme. \n"
             "KAPSAM: Haftalık/aylık çalışma planları, ders dağılımı, kaynak önerileri, zaman yönetimi, sınav kaygısı yönetimi, \n"
             "deneme analizi ve sonuçlara göre aksiyonlar. Tıbbi/klinik iddialardan kaçın; destek telkinleri ver. \n"
+            "ANALİTİK YETENEKLER: \n"
+            "- Bölümlerin yıllara göre puan trendlerini analiz et (2022-2025 verileri mevcut) \n"
+            "- 'Bu bölümün puanı 2022'den 2025'e düzenli artış göstermiş, kazanması zorlaşıyor' gibi çıkarımlar yap \n"
+            "- Sıralama değişimlerini yorumla ve öğrenciye stratejik tavsiyeler ver \n"
+            "- Puan artış/azalış trendlerini tespit et ve bunları öğrenciye açıkla \n"
             "ÇIKTI: 1) Kısa özet, 2) Adım adım plan, 3) Bu hafta görev listesi, 4) İsteğe bağlı motivasyon cümlesi. \n"
             "DIL: Türkçe yanıt ver."
         )
@@ -237,6 +242,72 @@ async def coach_chat(payload: ChatRequest, db: Session = Depends(get_db)):
 
         weight_context = f"Ağırlıklar: uyumluluk={weights[0]:.2f}, başarı={weights[1]:.2f}, tercih={weights[2]:.2f}."
 
+        # ✅ Tarihsel veri context injection - Bölüm isimlerini mesajdan çıkar ve trend analizi yap
+        historical_context = ""
+        try:
+            from models.university import Department, DepartmentYearlyStats
+            import json
+            
+            # Kullanıcı mesajından bölüm isimlerini çıkarmaya çalış (basit keyword matching)
+            user_message_lower = payload.message.lower()
+            department_keywords = []
+            
+            # Önerilerden bölüm isimlerini al
+            for rec in recs[:10]:  # İlk 10 öneri
+                try:
+                    dept = rec.get('department') if isinstance(rec, dict) else getattr(rec, 'department', None)
+                    if dept:
+                        dept_name = getattr(dept, 'normalized_name', None) or getattr(dept, 'name', '')
+                        if dept_name and dept_name.lower() not in [k.lower() for k in department_keywords]:
+                            department_keywords.append(dept_name)
+                except:
+                    continue
+            
+            # Her bölüm için yıllara göre trend analizi yap
+            if department_keywords:
+                historical_data = []
+                for dept_name in department_keywords[:5]:  # İlk 5 bölüm
+                    # Normalize edilmiş isme göre bölümleri bul
+                    depts = db.query(Department).filter(
+                        Department.normalized_name == dept_name
+                    ).limit(1).all()
+                    
+                    if depts:
+                        dept = depts[0]
+                        # Yıllık istatistikleri getir
+                        yearly_stats = db.query(DepartmentYearlyStats).filter(
+                            DepartmentYearlyStats.department_id == dept.id
+                        ).order_by(DepartmentYearlyStats.year).all()
+                        
+                        if yearly_stats:
+                            stats_summary = []
+                            for stat in yearly_stats:
+                                stats_summary.append(
+                                    f"{stat.year}: min_score={stat.min_score or 'N/A'}, "
+                                    f"min_rank={stat.min_rank or 'N/A'}, quota={stat.quota or 'N/A'}"
+                                )
+                            
+                            # Trend analizi
+                            scores = [s.min_score for s in yearly_stats if s.min_score]
+                            if len(scores) >= 2:
+                                trend = "artış" if scores[-1] > scores[0] else "azalış" if scores[-1] < scores[0] else "stabil"
+                                trend_pct = abs((scores[-1] - scores[0]) / scores[0] * 100) if scores[0] > 0 else 0
+                                historical_data.append(
+                                    f"Bölüm: {dept_name}\n"
+                                    f"Yıllık Veriler: {' | '.join(stats_summary)}\n"
+                                    f"Trend: {trend} (%{trend_pct:.1f} değişim)\n"
+                                )
+                
+                if historical_data:
+                    historical_context = (
+                        f"\n\n📊 TARİHSEL VERİ ANALİZİ (2022-2025):\n"
+                        f"{''.join(historical_data)}\n"
+                        f"Bu verileri kullanarak trend analizi yap ve öğrenciye stratejik tavsiyeler ver.\n"
+                    )
+        except Exception as e:
+            api_logger.warning(f"Historical context extraction failed: {str(e)[:100]}", user_id=payload.student_id)
+            historical_context = ""
+
         user_message = payload.message.strip()
 
         prompt = (
@@ -245,8 +316,9 @@ async def coach_chat(payload: ChatRequest, db: Session = Depends(get_db)):
             f"Öneriler (ilk {payload.limit}):\n{rec_text if rec_text else '- (öneri bulunamadı)'}\n\n"
             f"{categorized_text}\n\n"
             f"{proximity_text}"
+            f"{historical_context}"  # ✅ Tarihsel veri context'i eklendi
             f"Kullanıcı mesajı: {user_message}\n"
-            f"İstenilenler: 1) Kısa ama net yanıt, 2) Haftalık/aylık plan, 3) Psikolojik destek önerileri, 4) Somut aksiyonlar."
+            f"İstenilenler: 1) Kısa ama net yanıt, 2) Haftalık/aylık plan, 3) Psikolojik destek önerileri, 4) Somut aksiyonlar, 5) Trend analizi (varsa)."
         )
 
         # ✅ Model deneme ve timeout handling
