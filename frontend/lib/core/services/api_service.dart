@@ -43,7 +43,7 @@ class ApiService {
           seconds:
               120), // Backend'e bağlanma için 120 saniye (yavaş network için)
       receiveTimeout: const Duration(
-          seconds: 300), // Default: 300 saniye (normal endpoint'ler için)
+          minutes: 20), // ✅ CRITICAL FIX: AI işlemleri için 20 dakika (5 dakikadan uzun olmalı)
       sendTimeout:
           const Duration(seconds: 120), // Veri göndermek için 120 saniye
       headers: {
@@ -240,14 +240,27 @@ class ApiService {
   Future<Response> getUniversities({
     int skip = 0,
     int limit = 1000, // ✅ Tüm üniversiteleri çek - default 1000 kayıt
+    String? city, // ✅ Şehir filtresi için
+    List<String>? preferredCities, // ✅ Öğrencinin tercih ettiği şehirler
   }) async {
     // Üniversiteler çok sayıda olabilir - pagination kullanın
+    final queryParams = <String, dynamic>{
+      'skip': skip,
+      'limit': limit,
+    };
+
+    // ✅ Şehir filtresi varsa ekle
+    if (city != null && city.isNotEmpty) {
+      queryParams['city'] = city;
+    }
+    // ✅ Preferred cities filtresi - backend'e query parametresi olarak gönder
+    if (preferredCities != null && preferredCities.isNotEmpty) {
+      queryParams['preferred_cities'] = preferredCities.join(',');
+    }
+
     return await _dio.get(
       '/universities/',
-      queryParameters: {
-        'skip': skip,
-        'limit': limit,
-      },
+      queryParameters: queryParams,
       options: Options(
         receiveTimeout: const Duration(
             seconds: 180), // 3 dakika (pagination ile daha hızlı olmalı)
@@ -260,6 +273,8 @@ class ApiService {
     int skip = 0,
     int limit = 2000, // ✅ Default 2000 - tüm bölümler gelsin (max 5000)
     String? normalizedName, // ✅ Normalize edilmiş isme göre filtrele
+    String? fieldType, // ✅ Alan türü (TYT, SAY, EA, SÖZ, DİL)
+    String? degreeType, // ✅ Derece türü (Associate, Bachelor)
   }) async {
     // Bölümler çok sayıda olabilir - pagination kullanın
     final queryParams = <String, dynamic>{
@@ -270,6 +285,30 @@ class ApiService {
       queryParams['normalized_name'] = normalizedName;
     }
     
+    // ✅ KRİTİK: fieldType'a göre degreeType'ı otomatik belirle
+    String? effectiveDegreeType = degreeType;
+    if (fieldType != null) {
+      final fieldTypeUpper = fieldType.toUpperCase();
+      if (fieldTypeUpper == 'TYT') {
+        // TYT seçildiyse zorla Associate gönder
+        effectiveDegreeType = 'Associate';
+      } else if (fieldTypeUpper == 'SAY' || 
+                  fieldTypeUpper == 'EA' || 
+                  fieldTypeUpper == 'SÖZ' || 
+                  fieldTypeUpper == 'DİL') {
+        // SAY/EA/SÖZ/DİL seçildiyse zorla Bachelor gönder
+        effectiveDegreeType = 'Bachelor';
+      }
+    }
+    
+    // ✅ fieldType ve degreeType parametrelerini ekle (null kontrolü ile)
+    if (fieldType != null && fieldType.isNotEmpty) {
+      queryParams['field_type'] = fieldType;
+    }
+    if (effectiveDegreeType != null && effectiveDegreeType.isNotEmpty) {
+      queryParams['degree_type'] = effectiveDegreeType;
+    }
+
     return await _dio.get(
       '/universities/departments/',
       queryParameters: queryParams,
@@ -293,12 +332,13 @@ class ApiService {
     if (fieldType != null && fieldType.isNotEmpty) {
       queryParams['field_type'] = fieldType;
     }
-    
+
     return await _dio.get(
       '/universities/departments/unique/',
       queryParameters: queryParams,
       options: Options(
-        receiveTimeout: const Duration(seconds: 60), // Unique listesi küçük olmalı
+        receiveTimeout:
+            const Duration(seconds: 60), // Unique listesi küçük olmalı
         sendTimeout: const Duration(seconds: 30),
       ),
     );
@@ -332,18 +372,36 @@ class ApiService {
     String? fieldType,
     String? city,
     String? universityType,
+    String? degreeType, // ✅ ÖNEMLİ: degree_type parametresi eklendi (Associate, Bachelor)
     double? minScore,
     double? maxScore,
     bool? hasScholarship,
     int skip = 0,
     int limit = 2000, // ✅ Default 2000 - tüm bölümler gelsin
   }) async {
+    // ✅ KRİTİK: fieldType'a göre degreeType'ı otomatik belirle
+    String? effectiveDegreeType = degreeType;
+    if (fieldType != null) {
+      final fieldTypeUpper = fieldType.toUpperCase();
+      if (fieldTypeUpper == 'TYT') {
+        // TYT seçildiyse zorla Associate gönder
+        effectiveDegreeType = 'Associate';
+      } else if (fieldTypeUpper == 'SAY' || 
+                  fieldTypeUpper == 'EA' || 
+                  fieldTypeUpper == 'SÖZ' || 
+                  fieldTypeUpper == 'DİL') {
+        // SAY/EA/SÖZ/DİL seçildiyse zorla Bachelor gönder
+        effectiveDegreeType = 'Bachelor';
+      }
+    }
+    
     return await _dio.get(
       '/universities/departments/',
       queryParameters: {
         if (fieldType != null) 'field_type': fieldType,
         if (city != null) 'city': city,
         if (universityType != null) 'university_type': universityType,
+        if (effectiveDegreeType != null) 'degree_type': effectiveDegreeType, // ✅ Otomatik belirlenen degree_type
         if (minScore != null) 'min_score': minScore,
         if (maxScore != null) 'max_score': maxScore,
         if (hasScholarship != null) 'has_scholarship': hasScholarship,
@@ -405,15 +463,45 @@ class ApiService {
     );
   }
 
-  Future<Response> getStudentRecommendations(int studentId) async {
-    return await _dio.get(
-      '/recommendations/student/$studentId',
-      options: Options(
-        receiveTimeout: const Duration(seconds: 120),
-        sendTimeout: const Duration(seconds: 60),
-        validateStatus: (status) =>
-            status != null && status < 500, // 4xx hatalarını da handle et
-      ),
+  Future<Response> getStudentRecommendations(int studentId, {int maxRetries = 3}) async {
+    // ✅ Retry mekanizması eklendi - timeout ve connection hataları için
+    int retryCount = 0;
+    while (retryCount < maxRetries) {
+      try {
+        return await _dio.get(
+          '/recommendations/student/$studentId',
+          options: Options(
+            receiveTimeout: const Duration(seconds: 180), // ✅ 3 dakika (120s -> 180s)
+            sendTimeout: const Duration(seconds: 60),
+            validateStatus: (status) =>
+                status != null && status < 500, // 4xx hatalarını da handle et
+          ),
+        );
+      } on DioException catch (e) {
+        retryCount++;
+        // Connection ve timeout hataları için retry yap
+        if (e.type == DioExceptionType.unknown ||
+            e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout ||
+            e.type == DioExceptionType.connectionError) {
+          if (retryCount < maxRetries) {
+            if (kDebugMode) {
+              debugPrint(
+                  '[Retry] Attempt $retryCount/$maxRetries for getStudentRecommendations');
+            }
+            // Exponential backoff: 2s, 4s, 8s
+            await Future.delayed(Duration(seconds: 2 * retryCount));
+            continue;
+          }
+        }
+        // Diğer hatalar için retry yapma
+        rethrow;
+      }
+    }
+    throw DioException(
+      requestOptions: RequestOptions(path: '/recommendations/student/$studentId'),
+      type: DioExceptionType.unknown,
+      message: 'Max retries ($maxRetries) exceeded',
     );
   }
 
@@ -449,8 +537,8 @@ class ApiService {
       },
       options: Options(
         receiveTimeout: const Duration(
-            seconds: 240), // ✅ 4 dakika - LLM yanıtları için yeterli timeout
-        sendTimeout: const Duration(seconds: 120),
+            minutes: 20), // ✅ CRITICAL FIX: AI işlemleri için 20 dakika (5 dakikadan uzun olmalı)
+        sendTimeout: const Duration(minutes: 20),
         validateStatus: (status) =>
             status != null && status < 500, // ✅ 4xx hatalarını da handle et
       ),

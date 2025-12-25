@@ -68,7 +68,7 @@ class DepartmentBase(BaseModel):
 
     @validator('field_type')
     def validate_field_type(cls, v):
-        allowed_types = ['EA', 'SAY', 'SÖZ', 'DİL']
+        allowed_types = ['EA', 'SAY', 'SÖZ', 'DİL', 'TYT']  # ✅ TYT eklendi - Önlisans için
         if v not in allowed_types:
             raise ValueError(f'field_type must be one of {allowed_types}')
         return v

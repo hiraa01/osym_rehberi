@@ -15,14 +15,39 @@ class DepartmentListPage extends ConsumerStatefulWidget {
   ConsumerState<DepartmentListPage> createState() => _DepartmentListPageState();
 }
 
-class _DepartmentListPageState extends ConsumerState<DepartmentListPage> {
+class _DepartmentListPageState extends ConsumerState<DepartmentListPage>
+    with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
   String _selectedField = 'Tümü';
   String _selectedCity = 'Tümü';
   String _selectedType = 'Tümü';
   String _searchQuery = '';
+  late TabController _tabController;
+
+  @override
+  bool get wantKeepAlive => true; // ✅ Tab değiştiğinde state'i koru
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    
+    // ✅ CRITICAL FIX: Sayfa ilk açıldığında veriyi bir kere iste
+    // Build içinde fetch YAPMA, sadece initState'te tetikle
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Provider'ı tetiklemek için ref.read ile oku (FutureProvider otomatik tetiklenir)
+      ref.read(departmentListProvider);
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // ✅ AutomaticKeepAliveClientMixin için gerekli
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bölümler'),
@@ -33,6 +58,13 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage> {
             onPressed: () => _showFilterBottomSheet(context),
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'LİSANS BÖLÜMLERİ'),
+            Tab(text: 'ÖNLİSANS BÖLÜMLERİ'),
+          ],
+        ),
       ),
       body: Column(
         children: [
@@ -108,7 +140,7 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage> {
               ),
             ),
 
-          // Department List
+          // Department List with Tabs
           Expanded(
             child: _buildDepartmentList(),
           ),
@@ -132,10 +164,16 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage> {
         ),
       ),
     );
-
+    
+    // ✅ CRITICAL FIX: Build içinde fetch YAPMA, sadece watch ile dinle
+    // Loading durumunda sadece loading göster, tekrar tetikleme YOK
+    if (departmentsAsync.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
     return departmentsAsync.when(
-      data: (departments) {
-        if (departments.isEmpty) {
+      data: (allDepartments) {
+        if (allDepartments.isEmpty) {
           return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -163,99 +201,230 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage> {
           );
         }
 
-        // Aynı bölüm isimlerini grupla (burslu olanlar ayrı, normal olanlar tek kartta)
-        final Map<String, List<Map<String, dynamic>>> grouped = {};
-        for (final dept in departments) {
-          final name =
-              (dept['program_name'] as String? ?? dept['name'] as String? ?? '')
-                  .trim();
-          if (name.isEmpty) continue;
-          final hasScholarship = (dept['has_scholarship'] as bool? ?? false);
-          // Burslu olanlar ayrı grup, normal olanlar tek grup
-          final key = hasScholarship
-              ? '${name.toLowerCase()}|burslu'
-              : name.toLowerCase();
-          grouped.putIfAbsent(key, () => []);
-          grouped[key]!.add(dept);
+        // ✅ 1. VERİ İŞLEME VE GRUPLAMA: Benzersiz bölüm listesi oluştur
+        final Map<String, List<Map<String, dynamic>>> uniqueDepartments = {};
+        
+        for (final dept in allDepartments) {
+          // Bölüm adını al (normalized_name varsa onu kullan, yoksa name veya program_name)
+          final deptName = (dept['normalized_name'] as String? ?? 
+                           dept['name'] as String? ?? 
+                           dept['program_name'] as String? ?? '').trim();
+          
+          if (deptName.isEmpty) continue;
+          
+          // Benzersiz key oluştur (büyük/küçük harf duyarsız)
+          final key = deptName.toLowerCase();
+          
+          // Eğer bu bölüm daha önce eklenmemişse, ekle
+          if (!uniqueDepartments.containsKey(key)) {
+            uniqueDepartments[key] = [];
+          }
+          
+          // Bu bölümün tüm üniversitelerini ekle
+          uniqueDepartments[key]!.add(dept);
         }
 
-        final groupList = grouped.entries.map((e) {
-          final firstDept = e.value.first;
-          final displayName = firstDept['program_name'] as String? ??
-              firstDept['name'] as String? ??
-              '';
-          final hasScholarship =
-              (firstDept['has_scholarship'] as bool? ?? false);
-          final finalName =
-              hasScholarship ? '$displayName (Burslu)' : displayName;
-          return DepartmentGroup(name: finalName, items: e.value);
-        }).toList()
-          ..sort(
-              (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        // ✅ 2. LİSANS VE ÖNLİSANS AYIRIMI
+        final List<DepartmentGroup> lisansDepartments = [];
+        final List<DepartmentGroup> onlisansDepartments = [];
+        
+        for (final entry in uniqueDepartments.entries) {
+          final firstDept = entry.value.first;
+          final deptName = entry.key;
+          
+          // Degree type veya duration'a göre ayır
+          final degreeType = firstDept['degree_type'] as String?;
+          final duration = firstDept['duration'] as int?;
+          
+          // Lisans kontrolü: degree_type == 'Bachelor' veya duration == 4
+          final isLisans = (degreeType?.toLowerCase() == 'bachelor' || 
+                           degreeType?.toLowerCase() == 'lisans' ||
+                           duration == 4);
+          
+          // Önlisans kontrolü: degree_type == 'Associate' veya duration == 2
+          final isOnlisans = (degreeType?.toLowerCase() == 'associate' || 
+                             degreeType?.toLowerCase() == 'önlisans' ||
+                             duration == 2);
+          
+          // Display name oluştur
+          final displayName = (firstDept['program_name'] as String? ?? 
+                              firstDept['name'] as String? ?? 
+                              deptName).trim();
+          
+          final group = DepartmentGroup(
+            name: displayName,
+            items: entry.value,
+          );
+          
+          if (isLisans) {
+            lisansDepartments.add(group);
+          } else if (isOnlisans) {
+            onlisansDepartments.add(group);
+          } else {
+            // Belirsizse varsayılan olarak Lisans'a ekle
+            lisansDepartments.add(group);
+          }
+        }
+        
+        // Alfabetik sırala
+        lisansDepartments.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        onlisansDepartments.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: groupList.length,
-          cacheExtent: 500,
-          itemBuilder: (context, index) {
-            final group = groupList[index];
-            return Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 12),
-              color: Colors.grey[900],
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.grey[800]!, width: 1),
-              ),
-              child: ListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                leading: CircleAvatar(
-                  backgroundColor: Colors.pink.withValues(alpha: 0.2),
-                  child: Text(
-                    group.name.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.pink,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                title: Text(
-                  group.name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  '${group.items.length} üniversitede bulunuyor',
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 12,
-                  ),
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.star_border, color: Colors.pink),
-                  onPressed: () => _addDepartmentToPreferences(group.name),
-                ),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => DepartmentGroupPage(
-                      group: group,
-                      onFavorite: () => _addDepartmentToPreferences(group.name),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
+        // ✅ 3. TAB BAR VIEW İLE LİSTELEME
+        return TabBarView(
+          controller: _tabController,
+          children: [
+            // LİSANS BÖLÜMLERİ
+            _buildDepartmentListView(lisansDepartments, 'Lisans'),
+            
+            // ÖNLİSANS BÖLÜMLERİ
+            _buildDepartmentListView(onlisansDepartments, 'Önlisans'),
+          ],
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => const Center(child: Text('Bölümler yüklenemedi')),
+      loading: () {
+        return const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Bölümler yükleniyor...'),
+            ],
+          ),
+        );
+      },
+      error: (error, stack) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 64),
+              const SizedBox(height: 16),
+              const Text(
+                'Bölümler yüklenemedi',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                error.toString().replaceAll('Exception: ', ''),
+                style: const TextStyle(color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () {
+                  ref.invalidate(filteredDepartmentListProvider(
+                    DepartmentFilterParams(
+                      fieldType: _selectedField == 'Tümü' ? null : _selectedField,
+                      city: _selectedCity == 'Tümü' ? null : _selectedCity,
+                      universityType: _selectedType == 'Tümü' ? null : _selectedType,
+                      searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
+                    ),
+                  ));
+                },
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Tekrar Dene'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDepartmentListView(List<DepartmentGroup> departments, String type) {
+    if (departments.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.school_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '$type bölüm bulunamadı',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey[400],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Filtreleri değiştirerek tekrar deneyin',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: departments.length,
+      cacheExtent: 500,
+      itemBuilder: (context, index) {
+        final group = departments[index];
+        return Card(
+          elevation: 0,
+          margin: const EdgeInsets.only(bottom: 12),
+          color: Colors.grey[900],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: Colors.grey[800]!, width: 1),
+          ),
+          child: ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            leading: CircleAvatar(
+              backgroundColor: Colors.pink.withValues(alpha: 0.2),
+              child: Text(
+                group.name.substring(0, 1).toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.pink,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            title: Text(
+              group.name,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              '${group.items.length} üniversitede bulunuyor',
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 12,
+              ),
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.star_border, color: Colors.pink),
+              onPressed: () => _addDepartmentToPreferences(group.name),
+            ),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => DepartmentGroupPage(
+                  group: group,
+                  onFavorite: () => _addDepartmentToPreferences(group.name),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

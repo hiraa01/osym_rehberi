@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from typing import List, Dict, Any, Tuple, Optional
 from sqlalchemy.orm import Session
 from models.student import Student
@@ -46,9 +47,48 @@ class RecommendationEngine:
                 raise StudentNotFoundError(f"Student with ID {student_id} not found")
             
             # Öğrencinin alan türüne uygun bölümleri getir
+            # ✅ min_score None olan bölümleri de dahil et (filtreleme yapma)
             departments = self.db.query(Department).filter(
                 Department.field_type == student.field_type
             ).all()
+            
+            # ✅ min_score None olan bölümleri listenin sonuna taşı (öncelik verme)
+            departments_with_score = []
+            departments_without_score = []
+            for dept in departments:
+                if dept.min_score is not None and dept.min_score > 0:
+                    departments_with_score.append(dept)
+                else:
+                    departments_without_score.append(dept)
+            departments = departments_with_score + departments_without_score
+            
+            # ✅ ŞEHİR ÖNCELİĞİ: Öğrencinin tercih ettiği şehirleri al
+            preferred_cities = []
+            if student.preferred_cities:
+                try:
+                    import json
+                    preferred_cities = json.loads(student.preferred_cities) if isinstance(student.preferred_cities, str) else student.preferred_cities
+                except:
+                    preferred_cities = []
+            
+            # ✅ Şehir önceliğine göre bölümleri sırala
+            # Önce tercih edilen şehirlerdeki üniversiteler, sonra diğerleri
+            from models.university import University
+            departments_with_priority = []
+            other_departments = []
+            
+            for department in departments:
+                university = self.db.query(University).filter(University.id == department.university_id).first()
+                if university and preferred_cities:
+                    # Şehir ismini normalize et (büyük/küçük harf duyarsız)
+                    city_normalized = university.city.lower().strip() if university.city else ""
+                    if any(pref_city.lower().strip() == city_normalized for pref_city in preferred_cities):
+                        departments_with_priority.append(department)
+                        continue
+                other_departments.append(department)
+            
+            # Tercih edilen şehirlerdeki bölümler önce, sonra diğerleri
+            departments = departments_with_priority + other_departments
             
             # Ağırlıklar (compatibility, success, preference)
             if not weights:
@@ -60,14 +100,47 @@ class RecommendationEngine:
             recommendations = []
             
             for department in departments:
-                # Uyumluluk skorunu hesapla
-                compatibility_score = self._calculate_compatibility_score(student, department)
+                # ✅ NULL/None KONTROLÜ: Eğer kritik veriler eksikse atla veya varsayılan değer kullan
+                # Field type kontrolü (kritik - None olamaz)
+                if not department.field_type or department.field_type.strip() == '':
+                    continue  # Field type yoksa bölümü atla
                 
-                # Başarı olasılığını hesapla
-                success_probability = self._calculate_success_probability(student, department)
+                # Öğrencinin alan türü ile eşleşmeyen bölümleri atla
+                if student.field_type and department.field_type != student.field_type:
+                    continue
                 
-                # Tercih skorunu hesapla
-                preference_score = self._calculate_preference_score(student, department)
+                # ✅ NULL PUAN KORUMASI: min_score veya min_rank None olan bölümleri hesaplamaya katma
+                if department.min_score is None or department.min_score <= 0:
+                    recommendation_logger.debug(
+                        f"Skipping department {department.id} (name: {department.name}) - min_score is None or <= 0",
+                        department_id=department.id
+                    )
+                    continue  # min_score None ise bu bölümü atla (hesaplamaya katma)
+                
+                # ✅ min_rank kontrolü (opsiyonel ama güvenlik için)
+                if department.min_rank is None or department.min_rank <= 0:
+                    # min_rank None ise de devam et, ama logla
+                    recommendation_logger.debug(
+                        f"Department {department.id} has None min_rank, continuing with min_score only",
+                        department_id=department.id
+                    )
+                
+                try:
+                    # Uyumluluk skorunu hesapla
+                    compatibility_score = self._calculate_compatibility_score(student, department)
+                    
+                    # Başarı olasılığını hesapla
+                    success_probability = self._calculate_success_probability(student, department)
+                    
+                    # Tercih skorunu hesapla
+                    preference_score = self._calculate_preference_score(student, department)
+                except Exception as e:
+                    # Hesaplama hatası durumunda bu bölümü atla
+                    recommendation_logger.warning(
+                        f"Error calculating scores for department {department.id}: {str(e)}",
+                        department_id=department.id
+                    )
+                    continue
                 
                 # Final skorunu hesapla (ağırlıklı ortalama)
                 final_score = (
@@ -109,6 +182,56 @@ class RecommendationEngine:
             # Final skora göre sırala ve limit uygula
             recommendations.sort(key=lambda x: x.final_score, reverse=True)
             recommendations = recommendations[:limit]
+            
+            # ✅ FALLBACK: Eğer hiç öneri yoksa popüler bölümleri döndür
+            if not recommendations or len(recommendations) == 0:
+                recommendation_logger.warning(
+                    "No recommendations generated, falling back to popular departments",
+                    user_id=student_id
+                )
+                
+                # ✅ YEDEK MEKANİZMA: En yüksek puanlı 10 bölümü rastgele döndür
+                # Öğrencinin alan türüne uygun popüler bölümleri getir (min_score None olanları filtrele)
+                fallback_query = self.db.query(Department).filter(
+                    Department.min_score.isnot(None),
+                    Department.min_score > 0
+                )
+                
+                if student.field_type:
+                    fallback_query = fallback_query.filter(Department.field_type == student.field_type)
+                
+                fallback_departments = fallback_query.order_by(
+                    Department.min_score.desc()  # En yüksek puanlılar önce
+                ).limit(min(limit, 10)).all()  # Maksimum 10 bölüm
+                
+                if not fallback_departments:
+                    # Eğer alan türüne uygun yoksa, tüm popüler bölümleri getir (min_score None olanları filtrele)
+                    fallback_departments = self.db.query(Department).filter(
+                        Department.min_score.isnot(None),
+                        Department.min_score > 0
+                    ).order_by(
+                        Department.min_score.desc()
+                    ).limit(min(limit, 10)).all()
+                
+                # Fallback önerileri oluştur
+                for dept in fallback_departments:
+                    # Varsayılan skorlarla öneri oluştur
+                    fallback_rec = Recommendation(
+                        student_id=student_id,
+                        department_id=dept.id,
+                        compatibility_score=50.0,
+                        success_probability=50.0,
+                        preference_score=50.0,
+                        final_score=50.0,
+                        recommendation_reason="Popüler bölüm önerisi",
+                        is_safe_choice=False,
+                        is_dream_choice=False,
+                        is_realistic_choice=True
+                    )
+                    self.db.add(fallback_rec)
+                    recommendations.append(fallback_rec)
+                
+                self.db.commit()
             
             # ✅ N+1 problemini çöz: Tüm department ve university'leri tek seferde çek
             department_ids = {rec.department_id for rec in recommendations}
@@ -214,12 +337,26 @@ class RecommendationEngine:
             raise RecommendationError(f"Tercih önerileri oluşturulurken bir hata oluştu: {str(e)}")
     
     def _calculate_compatibility_score(self, student: Student, department: Department) -> float:
-        """Uyumluluk skorunu hesapla (0-100)"""
+        """Uyumluluk skorunu hesapla (0-100) - NULL SAFE + TYT DESTEĞİ"""
         score = 50.0  # Base score
         
-        # Puan uyumluluğu
-        if department.min_score and student.total_score:
-            score_diff = student.total_score - department.min_score
+        # ✅ TYT DESTEĞİ: Eğer bölüm TYT ise, öğrencinin TYT puanını kullan
+        is_tyt_department = department.field_type and department.field_type.upper() == 'TYT'
+        student_score = None
+        
+        if is_tyt_department:
+            # TYT bölümü için sadece TYT puanını kullan (AYT puanı gerekmez)
+            student_score = student.tyt_total_score if hasattr(student, 'tyt_total_score') else None
+        else:
+            # Lisans bölümü için total_score kullan (TYT + AYT)
+            student_score = student.total_score if hasattr(student, 'total_score') else None
+        
+        # ✅ Puan uyumluluğu (NULL SAFE + TYT DESTEĞİ)
+        if department.min_score and department.min_score > 0 and student_score and student_score > 0:
+            try:
+                score_diff = float(student_score) - float(department.min_score)
+            except (ValueError, TypeError):
+                score_diff = 0  # Hata durumunda fark 0 kabul et
             if score_diff > 50:
                 score += 20
             elif score_diff > 20:
@@ -231,9 +368,12 @@ class RecommendationEngine:
             else:
                 score -= 10
         
-        # Sıralama uyumluluğu
-        if department.min_rank and student.rank:
-            rank_diff = department.min_rank - student.rank
+        # ✅ Sıralama uyumluluğu (NULL SAFE)
+        if department.min_rank and department.min_rank > 0 and student.rank and student.rank > 0:
+            try:
+                rank_diff = int(department.min_rank) - int(student.rank)
+            except (ValueError, TypeError):
+                rank_diff = 0  # Hata durumunda fark 0 kabul et
             if rank_diff > 10000:
                 score += 15
             elif rank_diff > 5000:
@@ -250,11 +390,28 @@ class RecommendationEngine:
         return max(0, min(100, score))
     
     def _calculate_success_probability(self, student: Student, department: Department) -> float:
-        """Başarı olasılığını hesapla (0-100)"""
-        if not department.min_score or not student.total_score:
+        """Başarı olasılığını hesapla (0-100) - NULL SAFE + TYT DESTEĞİ"""
+        # ✅ TYT DESTEĞİ: Eğer bölüm TYT ise, öğrencinin TYT puanını kullan
+        is_tyt_department = department.field_type and department.field_type.upper() == 'TYT'
+        student_score = None
+        
+        if is_tyt_department:
+            # TYT bölümü için sadece TYT puanını kullan (AYT puanı gerekmez)
+            student_score = student.tyt_total_score if hasattr(student, 'tyt_total_score') else None
+        else:
+            # Lisans bölümü için total_score kullan (TYT + AYT)
+            student_score = student.total_score if hasattr(student, 'total_score') else None
+        
+        # ✅ NULL/None kontrolü - Eksik veriler için varsayılan değer
+        if not department.min_score or department.min_score == 0 or not student_score or student_score == 0:
+            # Eğer min_score yoksa, varsayılan olarak orta seviye başarı olasılığı döndür
             return 50.0
         
-        score_diff = student.total_score - department.min_score
+        try:
+            score_diff = float(student_score) - float(department.min_score)
+        except (ValueError, TypeError):
+            # Dönüşüm hatası durumunda varsayılan değer
+            return 50.0
         
         if score_diff > 50:
             return 95.0
@@ -341,9 +498,12 @@ class RecommendationEngine:
         elif preference >= 60:
             reasons.append("Kısmen tercihlerinize uygun")
         
-        # Puan farkı
-        if department.min_score and student.total_score:
-            score_diff = student.total_score - department.min_score
+        # ✅ Puan farkı (NULL SAFE)
+        if department.min_score and department.min_score > 0 and student.total_score and student.total_score > 0:
+            try:
+                score_diff = float(student.total_score) - float(department.min_score)
+            except (ValueError, TypeError):
+                score_diff = 0  # Hata durumunda fark 0 kabul et
             if score_diff > 20:
                 reasons.append("Puanınız bölümün taban puanından yüksek")
             elif score_diff > 0:
@@ -352,3 +512,4 @@ class RecommendationEngine:
                 reasons.append("Puanınız bölümün taban puanından düşük")
         
         return ", ".join(reasons) if reasons else "Genel uyumluluk"
+

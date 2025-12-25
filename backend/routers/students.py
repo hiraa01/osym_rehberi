@@ -170,6 +170,49 @@ async def update_student(
     return student
 
 
+@router.post("/{student_id}/add-preferred-department/{department_id}")
+async def add_preferred_department(
+    student_id: int,
+    department_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    ✅ SWIPE MANTIĞI: Kullanıcı bir bölümü beğendiğinde (sağa kaydırdığında)
+    bu bölümü tercih listesine ekler
+    """
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
+    
+    # Bölüm var mı kontrol et
+    from models.university import Department
+    department = db.query(Department).filter(Department.id == department_id).first()
+    if not department:
+        raise HTTPException(status_code=404, detail="Bölüm bulunamadı")
+    
+    # Mevcut tercih listesini al
+    import json
+    preferred_departments = []
+    if student.preferred_departments:
+        try:
+            preferred_departments = json.loads(student.preferred_departments) if isinstance(student.preferred_departments, str) else student.preferred_departments
+        except:
+            preferred_departments = []
+    
+    # Bölüm adını ekle (normalize edilmiş isim)
+    dept_name = department.normalized_name or department.name
+    if dept_name and dept_name not in preferred_departments:
+        preferred_departments.append(dept_name)
+        student.preferred_departments = json.dumps(preferred_departments)
+        db.commit()
+        db.refresh(student)
+        
+        api_logger.info("Preferred department added", student_id=student_id, department_id=department_id, department_name=dept_name)
+        return {"message": "Bölüm tercih listesine eklendi", "department_name": dept_name}
+    else:
+        return {"message": "Bölüm zaten tercih listesinde", "department_name": dept_name}
+
+
 @router.delete("/{student_id}")
 async def delete_student(student_id: int, db: Session = Depends(get_db)):
     """Öğrenciyi sil"""

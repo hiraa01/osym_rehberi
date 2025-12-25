@@ -61,7 +61,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   void _skip() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_seen_onboarding', true);
-    
+
     if (mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const AuthPage()),
@@ -91,27 +91,28 @@ class _OnboardingPageState extends State<OnboardingPage> {
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Align(
-              alignment: Alignment.topRight,
-              child: TextButton(
-                onPressed: _skip,
+                alignment: Alignment.topRight,
+                child: TextButton(
+                  onPressed: _skip,
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
                   child: Text(
-                  'Atla',
-                  style: TextStyle(
+                    'Atla',
+                    style: TextStyle(
                       fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w600,
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                 ),
               ),
             ),
-            
+
             // Page view
             Expanded(
               child: PageView.builder(
@@ -123,10 +124,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 },
               ),
             ),
-            
+
             // Page indicator and next button - Stitch Style
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
               child: Column(
                 children: [
                   SmoothPageIndicator(
@@ -134,7 +136,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                     count: _pages.length,
                     effect: ExpandingDotsEffect(
                       activeDotColor: theme.colorScheme.primary,
-                      dotColor: theme.colorScheme.primary.withValues(alpha: 0.3),
+                      dotColor:
+                          theme.colorScheme.primary.withValues(alpha: 0.3),
                       dotHeight: 10,
                       dotWidth: 10,
                       spacing: 8,
@@ -183,32 +186,33 @@ class _OnboardingPageState extends State<OnboardingPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Icon with gradient background - Stitch Style
-          Container(
-            width: 240,
-            height: 240,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: content.gradient,
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: content.gradient[0].withValues(alpha: 0.3),
-                  blurRadius: 30,
-                  spreadRadius: 5,
+          // ✅ Fixed aspect ratio: Layout kaymasını önler
+          AspectRatio(
+            aspectRatio: 1.0,
+            child: Container(
+              width: 240,
+              height: 240,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: content.gradient,
                 ),
-              ],
-            ),
-            child: Icon(
-              content.icon,
-              size: 120,
-              color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: content.gradient[0].withValues(alpha: 0.3),
+                    blurRadius: 30,
+                    spreadRadius: 5,
+                  ),
+                ],
+              ),
+              child: Icon(
+                content.icon,
+                size: 120,
+                color: Colors.white,
+              ),
             ),
           ),
           const SizedBox(height: 64),
-          
           // Title - Stitch Style
           Text(
             content.title,
@@ -219,7 +223,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
             ),
           ),
           const SizedBox(height: 24),
-          
           // Description - Stitch Style
           Text(
             content.description,

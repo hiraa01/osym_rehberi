@@ -45,12 +45,15 @@ def _normalize_weights(w_c: Optional[float], w_s: Optional[float], w_p: Optional
 @router.post("/coach", response_model=ChatResponse)
 async def coach_chat(payload: ChatRequest, db: Session = Depends(get_db)):
     try:
+        print("🚀 AI İsteği Başladı - student_id:", payload.student_id)
         api_logger.info("Coach chat requested", user_id=payload.student_id)
 
         # Öğrenciyi getir
+        print("📊 Veritabanından öğrenci bilgileri çekiliyor...")
         student = db.query(Student).filter(Student.id == payload.student_id).first()
         if not student:
             raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
+        print("✅ Öğrenci bilgileri çekildi")
 
         weights = _normalize_weights(payload.w_c, payload.w_s, payload.w_p)
 
@@ -63,7 +66,9 @@ async def coach_chat(payload: ChatRequest, db: Session = Depends(get_db)):
         recs: List[Dict[str, Any]] = []
         
         # Eğer öneriler varsa, cache'den kullan; yoksa yeni oluştur
+        print(f"📋 Mevcut öneriler kontrol ediliyor... (limit: {payload.limit})")
         if existing_recs and len(existing_recs) >= payload.limit:
+            print(f"✅ Cache'den {len(existing_recs)} öneri bulundu, kullanılıyor")
             api_logger.info("Using cached recommendations for coach chat", user_id=payload.student_id)
             # Cache'den gelen önerileri dict formatına çevir
             for rec in existing_recs:
@@ -80,12 +85,17 @@ async def coach_chat(payload: ChatRequest, db: Session = Depends(get_db)):
                 recs.append(rec_dict)
         else:
             # Önerileri hazırla (ML tercihiyle)
+            print(f"🔄 Yeni öneriler oluşturuluyor... (use_ml: {payload.use_ml})")
             if payload.use_ml:
+                print("🤖 ML Engine kullanılıyor...")
                 ml_engine = MLRecommendationEngine(db)
                 recs = ml_engine.generate_recommendations(student_id=payload.student_id, limit=payload.limit, weights=weights)
+                print(f"✅ ML Engine {len(recs)} öneri oluşturdu")
             else:
+                print("📐 Rule Engine kullanılıyor...")
                 rule_engine = RecommendationEngine(db)
                 rule_recs = rule_engine.generate_recommendations(student_id=payload.student_id, limit=payload.limit, weights=weights)
+                print(f"✅ Rule Engine {len(rule_recs)} öneri oluşturdu")
                 # ✅ RecommendationResponse'ları Dict'e çevir
                 recs = []
                 for rec in rule_recs:
@@ -175,10 +185,12 @@ async def coach_chat(payload: ChatRequest, db: Session = Depends(get_db)):
                 proximity_text = ""
 
         # Gemini yapılandırması
+        print("🔑 Gemini API anahtarı kontrol ediliyor...")
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
             raise HTTPException(status_code=500, detail="LLM API anahtarı tanımlı değil (GOOGLE_API_KEY)")
         genai.configure(api_key=api_key)
+        print("✅ Gemini API yapılandırıldı")
         
         # ✅ Önce mevcut modelleri listeleyelim
         try:
@@ -322,25 +334,30 @@ async def coach_chat(payload: ChatRequest, db: Session = Depends(get_db)):
         )
 
         # ✅ Model deneme ve timeout handling
+        print("🤖 Model yükleniyor ve tahmin başlatılıyor...")
         import asyncio
         reply = None
         last_error = None
         
         for model_name in model_names:
             try:
+                print(f"🔄 Model deneniyor: {model_name}")
                 api_logger.info(f"Trying Gemini model: {model_name}", user_id=payload.student_id)
                 model = genai.GenerativeModel(model_name)
                 
                 # generate_content çağrısını dene
+                print("⏳ Gemini API'ye istek gönderiliyor (bu işlem 1-2 dakika sürebilir)...")
                 completion = await asyncio.wait_for(
                     asyncio.to_thread(model.generate_content, prompt),
-                    timeout=120.0  # 2 dakika timeout
+                    timeout=300.0  # ✅ CRITICAL FIX: 5 dakika timeout (2 dakikadan uzun)
                 )
                 reply = completion.text or ""  # type: ignore
+                print(f"✅ Model tahmini bitti, cevap hazırlanıyor... (Uzunluk: {len(reply)} karakter)")
                 api_logger.info(f"Successfully used model: {model_name}", user_id=payload.student_id)
                 break  # Başarılı oldu, döngüden çık
                 
             except asyncio.TimeoutError:
+                print(f"⏱️ Model {model_name} timeout (5 dakika aşıldı)")
                 api_logger.warning(f"Model {model_name} timeout", user_id=payload.student_id)
                 last_error = "LLM yanıtı çok uzun sürdü"
                 continue  # Bir sonraki modeli dene
@@ -353,12 +370,14 @@ async def coach_chat(payload: ChatRequest, db: Session = Depends(get_db)):
         
         if reply is None:
             # Hiçbir model çalışmadı
+            print(f"🔴 Tüm modeller başarısız oldu. Son hata: {last_error}")
             api_logger.error("All Gemini models failed", user_id=payload.student_id, last_error=last_error)
             raise HTTPException(
                 status_code=500,
                 detail=f"AI servisinde hata: Tüm modeller denenmiş ama başarısız oldu. Lütfen API anahtarınızı kontrol edin."
             )
 
+        print("✅ AI cevabı hazır, response döndürülüyor...")
         return ChatResponse(reply=reply.strip(), used_weights=weights, used_ml=payload.use_ml)
 
     except HTTPException:

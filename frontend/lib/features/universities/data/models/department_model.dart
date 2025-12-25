@@ -12,6 +12,8 @@ class DepartmentModel {
   final bool hasScholarship;
   final String? language;
   final String? description;
+  final String? universityType; // ✅ Backend'den gelen university_type (state, foundation, private)
+  final String? degreeType; // ✅ Backend'den gelen degree_type (Associate, Bachelor)
 
   const DepartmentModel({
     this.id,
@@ -27,24 +29,83 @@ class DepartmentModel {
     this.hasScholarship = false,
     this.language,
     this.description,
+    this.universityType,
+    this.degreeType,
   });
 
   factory DepartmentModel.fromJson(Map<String, dynamic> json) {
+    // ✅ Güvenli null kontrolleri ile parse et
     return DepartmentModel(
-      id: json['id'],
-      name: json['name'],
-      fieldType: json['field_type'],
-      universityId: json['university_id'],
-      universityName: json['university_name'],
-      city: json['city'],
-      minScore: json['min_score']?.toDouble(),
-      minRank: json['min_rank'],
-      quota: json['quota'],
-      tuitionFee: json['tuition_fee']?.toDouble(),
-      hasScholarship: json['has_scholarship'] ?? false,
-      language: json['language'],
-      description: json['description'],
+      id: json['id'] as int?,
+      name: json['name'] as String? ?? '', // ✅ 'name' alanını kullan (original_name değil)
+      fieldType: json['field_type'] as String? ?? 'SAY',
+      universityId: json['university_id'] as int? ?? 0,
+      universityName: json['university_name'] as String?,
+      city: json['city'] as String?,
+      // ✅ min_score null kontrolü: Eğer null ise null döndür, değilse double'a çevir
+      minScore: json['min_score'] != null 
+          ? (json['min_score'] is num 
+              ? (json['min_score'] as num).toDouble() 
+              : double.tryParse(json['min_score'].toString()))
+          : null,
+      // ✅ min_rank null kontrolü
+      minRank: json['min_rank'] != null 
+          ? (json['min_rank'] is int 
+              ? json['min_rank'] as int 
+              : int.tryParse(json['min_rank'].toString()))
+          : null,
+      // ✅ quota null kontrolü
+      quota: json['quota'] != null 
+          ? (json['quota'] is int 
+              ? json['quota'] as int 
+              : int.tryParse(json['quota'].toString()))
+          : null,
+      // ✅ tuition_fee null kontrolü
+      tuitionFee: json['tuition_fee'] != null 
+          ? (json['tuition_fee'] is num 
+              ? (json['tuition_fee'] as num).toDouble() 
+              : double.tryParse(json['tuition_fee'].toString()))
+          : null,
+      hasScholarship: json['has_scholarship'] as bool? ?? false,
+      language: json['language'] as String?,
+      description: json['description'] as String?,
+      // ✅ university_type: Backend'den gelen university objesi içinden veya direkt
+      universityType: () {
+        if (json['university'] != null) {
+          final university = json['university'] as Map<String, dynamic>?;
+          return university?['university_type'] as String?;
+        }
+        return json['university_type'] as String?;
+      }(),
+      // ✅ degree_type: Backend'den gelen degree_type
+      degreeType: json['degree_type'] as String?,
     );
+  }
+  
+  // ✅ university_type için Türkçe label getter
+  String get universityTypeLabel {
+    switch (universityType?.toLowerCase()) {
+      case 'state':
+        return 'Devlet';
+      case 'foundation':
+        return 'Vakıf';
+      case 'private':
+        return 'Özel';
+      default:
+        return 'Belirtilmemiş';
+    }
+  }
+  
+  // ✅ degree_type için Türkçe label getter
+  String get degreeTypeLabel {
+    switch (degreeType?.toLowerCase()) {
+      case 'associate':
+        return 'Önlisans';
+      case 'bachelor':
+        return 'Lisans';
+      default:
+        return 'Belirtilmemiş';
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -59,6 +120,8 @@ class DepartmentModel {
       'has_scholarship': hasScholarship,
       'language': language,
       'description': description,
+      'university_type': universityType,
+      'degree_type': degreeType,
     };
   }
 
@@ -76,6 +139,8 @@ class DepartmentModel {
     bool? hasScholarship,
     String? language,
     String? description,
+    String? universityType,
+    String? degreeType,
   }) {
     return DepartmentModel(
       id: id ?? this.id,
@@ -91,6 +156,8 @@ class DepartmentModel {
       hasScholarship: hasScholarship ?? this.hasScholarship,
       language: language ?? this.language,
       description: description ?? this.description,
+      universityType: universityType ?? this.universityType,
+      degreeType: degreeType ?? this.degreeType,
     );
   }
 }

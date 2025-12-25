@@ -106,20 +106,23 @@ def normalize_university_type(value):
 
 
 def normalize_field_type(value):
-    """Alan türünü normalize et (SAY/EA/SÖZ/DİL)"""
+    """Alan türünü normalize et (SAY/EA/SÖZ/DİL/TYT)"""
     if pd.isna(value):
         return 'SAY'
     
     value = str(value).upper().strip()
     # ÖSYM'de farklı yazılışlar olabilir
-    if 'SAY' in value or 'TM' in value:
-        return 'SAY'
+    # ✅ CRITICAL: TYT kontrolü önce yapılmalı (çünkü TYT önlisans demektir)
+    if 'TYT' in value:
+        return 'TYT'
     elif 'EA' in value:
         return 'EA'
     elif 'SÖZ' in value or 'TS' in value:
         return 'SÖZ'
     elif 'DİL' in value or 'YDİL' in value:
         return 'DİL'
+    elif 'SAY' in value or 'TM' in value:
+        return 'SAY'
     return 'SAY'
 
 
@@ -225,7 +228,52 @@ def import_excel_file(file_path: Path, year: int, db: Session):
                 elif '%' in dept_name_raw and ('İngilizce' in dept_name_raw or 'English' in dept_name_raw):
                     language = 'Partial English'
                 
-                duration = 4  # Varsayılan (Excel'de yok, lisans genelde 4 yıl)
+                # ✅ CRITICAL FIX: Duration ve degree_type mantığı
+                # Bölüm adından veya field_type'dan önlisans/lisans ayrımı yap
+                dept_name_upper = dept_name_raw.upper()
+                is_onlisans = False
+                
+                # 1. Field type kontrolü: TYT = Önlisans
+                if field_type == 'TYT':
+                    is_onlisans = True
+                
+                # 2. Bölüm adı kontrolü: "Önlisans", "2 Yıllık", "MYO" gibi kelimeler
+                onlisans_keywords = ['ÖNLİSANS', 'ÖN LİSANS', '2 YILLIK', '2 YIL', 'MYO', 
+                                     'MESLEK YÜKSEKOKULU', 'MESLEK YÜKSEK OKULU', 'AÖF', 'AÇIKÖĞRETİM']
+                if any(keyword in dept_name_upper for keyword in onlisans_keywords):
+                    is_onlisans = True
+                    # Eğer field_type TYT değilse, TYT yap
+                    if field_type != 'TYT':
+                        field_type = 'TYT'
+                
+                # 3. Lisans bölümleri kontrolü: "Tıp", "Mühendislik", "Hukuk" gibi
+                # Bu bölümler kesinlikle lisans olmalı
+                lisans_keywords = ['TIP', 'MÜHENDİSLİK', 'HUKUK', 'MİMARLIK', 'DİŞ HEKİMLİĞİ',
+                                   'ECZACILIK', 'VETERİNER', 'ZİRAAT', 'ORMAN']
+                if any(keyword in dept_name_upper for keyword in lisans_keywords):
+                    is_onlisans = False
+                    # Eğer field_type TYT ise, SAY yap (çünkü lisans bölümü)
+                    if field_type == 'TYT':
+                        field_type = 'SAY'
+                
+                # Duration ve degree_type belirleme
+                if is_onlisans:
+                    duration = 2
+                    degree_type = 'Associate'
+                else:
+                    # Lisans bölümleri: genelde 4 yıl, bazıları 5-6 yıl
+                    # Tıp: 6 yıl, Diş Hekimliği: 5 yıl, Veteriner: 5 yıl
+                    if 'TIP' in dept_name_upper:
+                        duration = 6
+                    elif 'DİŞ HEKİMLİĞİ' in dept_name_upper or 'DİŞHEKİMLİĞİ' in dept_name_upper:
+                        duration = 5
+                    elif 'VETERİNER' in dept_name_upper:
+                        duration = 5
+                    elif 'MİMARLIK' in dept_name_upper:
+                        duration = 5
+                    else:
+                        duration = 4  # Varsayılan lisans süresi
+                    degree_type = 'Bachelor'
                 quota = int(clean_numeric_value(row.get('Kontenjan', 0)))
                 placed_students = int(clean_numeric_value(row.get('Yerleşen', 0)))
                 min_score = clean_numeric_value(row.get('En Küçük Puan', 0))
@@ -265,8 +313,8 @@ def import_excel_file(file_path: Path, year: int, db: Session):
                         attributes=json.dumps(attributes, ensure_ascii=False) if attributes else None,  # ✅ JSON string
                         field_type=field_type,
                         language=language,
-                        duration=duration,
-                        degree_type='Bachelor',  # Excel'de belirtilmiyorsa varsayılan
+                        duration=duration,  # ✅ Artık doğru hesaplanıyor (2 veya 4+)
+                        degree_type=degree_type,  # ✅ Associate veya Bachelor
                         quota=quota,
                         min_score=min_score if min_score > 0 else None,
                         min_rank=min_rank if min_rank > 0 else None,

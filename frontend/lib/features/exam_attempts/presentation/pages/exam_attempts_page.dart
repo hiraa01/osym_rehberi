@@ -159,7 +159,29 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage>
 
       // Backend'den güncel verileri yükle (retry mekanizması ile)
       final response = await _apiService.getStudentAttempts(_studentId!);
-      final attempts = response.data['attempts'] ?? [];
+
+      // ✅ GÜVENLİ PARSING: Backend {"attempts": [...], "total": 1} veya direkt List dönebilir
+      List<dynamic> attempts = [];
+      try {
+        final data = response.data;
+
+        if (data is Map<String, dynamic>) {
+          // Eğer Map geldiyse 'attempts' anahtarını al
+          final attemptsData = data['attempts'];
+          if (attemptsData != null && attemptsData is List) {
+            attempts = attemptsData;
+          } else {
+            attempts = [];
+          }
+        } else if (data is List) {
+          // Eğer direkt Liste geldiyse onu kullan
+          attempts = data;
+        } else {
+          attempts = [];
+        }
+      } catch (e) {
+        attempts = []; // Hata durumunda boş liste döndür
+      }
 
       // Yerel cache'e kaydet
       await _saveAttemptsToCache(attempts);
@@ -321,28 +343,33 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage>
       cacheExtent: 500,
       itemBuilder: (context, index) {
         final attempt = _attempts[index];
-        final attemptName = attempt['name'] ??
+        final attemptName = attempt['exam_name'] ??
+            attempt['name'] ??
             'Deneme ${attempt['attempt_number'] ?? index + 1}';
-        final tytNet = (attempt['tyt_turkish_net'] ?? 0.0) +
-            (attempt['tyt_math_net'] ?? 0.0) +
-            (attempt['tyt_social_net'] ?? 0.0) +
-            (attempt['tyt_science_net'] ?? 0.0);
-        final aytNet = (attempt['ayt_math_net'] ?? 0.0) +
-            (attempt['ayt_physics_net'] ?? 0.0) +
-            (attempt['ayt_chemistry_net'] ?? 0.0) +
-            (attempt['ayt_biology_net'] ?? 0.0) +
-            (attempt['ayt_literature_net'] ?? 0.0) +
-            (attempt['ayt_history1_net'] ?? 0.0) +
-            (attempt['ayt_geography1_net'] ?? 0.0) +
-            (attempt['ayt_philosophy_net'] ?? 0.0) +
-            (attempt['ayt_history2_net'] ?? 0.0) +
-            (attempt['ayt_geography2_net'] ?? 0.0) +
-            (attempt['ayt_religion_net'] ?? 0.0) +
-            (attempt['ayt_foreign_language_net'] ?? 0.0);
-        final tytScore = attempt['tyt_score']?.toDouble() ?? 0.0;
-        final aytScore = attempt['ayt_score']?.toDouble() ?? 0.0;
-        final totalScore = attempt['total_score']?.toDouble() ?? 0.0;
+        // ✅ Backend'den gelen toplam net değerlerini kullan (varsa), yoksa manuel hesapla
+        final tytTotalNet = attempt['tyt_total_net']?.toDouble();
+        final aytTotalNet = attempt['ayt_total_net']?.toDouble();
+
+        final tytNet = tytTotalNet ??
+            ((attempt['tyt_turkish_net'] ?? 0.0) +
+                (attempt['tyt_math_net'] ?? 0.0) +
+                (attempt['tyt_social_net'] ?? 0.0) +
+                (attempt['tyt_science_net'] ?? 0.0));
+        final aytNet = aytTotalNet ??
+            ((attempt['ayt_math_net'] ?? 0.0) +
+                (attempt['ayt_physics_net'] ?? 0.0) +
+                (attempt['ayt_chemistry_net'] ?? 0.0) +
+                (attempt['ayt_biology_net'] ?? 0.0) +
+                (attempt['ayt_literature_net'] ?? 0.0) +
+                (attempt['ayt_history1_net'] ?? 0.0) +
+                (attempt['ayt_geography1_net'] ?? 0.0) +
+                (attempt['ayt_philosophy_net'] ?? 0.0) +
+                (attempt['ayt_history2_net'] ?? 0.0) +
+                (attempt['ayt_geography2_net'] ?? 0.0) +
+                (attempt['ayt_religion_net'] ?? 0.0) +
+                (attempt['ayt_foreign_language_net'] ?? 0.0));
         final totalNet = tytNet + aytNet;
+
         final examDate = attempt['exam_date'] != null
             ? DateTime.tryParse(attempt['exam_date'].toString())
             : null;
@@ -451,39 +478,37 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage>
                     ),
                   ),
                   const SizedBox(width: 12),
+                  // ✅ CRITICAL FIX: TYT, AYT ve Toplam Puan gösterimi
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      if (hasTyt && tytScore > 0)
-                        Text(
-                          'TYT Puan: ${tytScore.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      // TYT Puan
+                      Text(
+                        'TYT: ${attempt['tyt_score']?.toString() ?? '-'}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
-                      if (hasAyt && aytScore > 0) ...[
-                        if (hasTyt && tytScore > 0) const SizedBox(height: 4),
-                        Text(
-                          'AYT Puan: ${aytScore.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      ),
+                      const SizedBox(height: 4),
+                      // AYT Puan - KESINLIKLE GÖSTERİLMELİ
+                      Text(
+                        'AYT: ${attempt['ayt_score']?.toString() ?? '-'}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
-                      if (totalScore > 0) ...[
-                        if ((hasTyt && tytScore > 0) || (hasAyt && aytScore > 0))
-                          const SizedBox(height: 4),
-                        Text(
-                          'Toplam Puan: ${totalScore.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.purple[700],
-                          ),
+                      ),
+                      const SizedBox(height: 4),
+                      // Toplam Puan - KESINLIKLE GÖSTERİLMELİ
+                      Text(
+                        'TOPLAM: ${attempt['total_score']?.toString() ?? '-'}',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purple[700],
                         ),
-                      ],
+                      ),
                       const SizedBox(height: 8),
                       Icon(
                         Icons.chevron_right,

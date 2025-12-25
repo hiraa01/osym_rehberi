@@ -33,6 +33,7 @@ class _PreferencesSelectionStepState
   final List<String> _selectedDepartments = [];
   String? _selectedFieldType; // 'SAY', 'EA', 'SÖZ', 'DİL'
   String? _selectedUniversityType; // 'devlet', 'vakıf', 'açıköğretim'
+  String _selectedProgramType = 'lisans'; // ✅ CRITICAL FIX: Varsayılan değer 'lisans' (null olmamalı)
 
   bool _isLoading = false;
   final ApiService _apiService = ApiService();
@@ -42,6 +43,167 @@ class _PreferencesSelectionStepState
     super.initState();
     // Alan türünü parent'tan al
     _selectedFieldType = widget.departmentType;
+  }
+
+  // ✅ 1. VERİ TEMİZLEME VE NORMALİZASYON FONKSİYONU
+  /// Bölüm adındaki parantez içlerini ve fazlalıkları temizler
+  /// Örnek: "Bilgisayar Mühendisliği (İngilizce) (Burslu)" -> "Bilgisayar Mühendisliği"
+  /// Örnek: "Adalet (Açıköğretim)" -> "Adalet"
+  String _normalizeDeptName(String rawName) {
+    if (rawName.isEmpty) return rawName;
+    
+    String normalized = rawName.trim();
+    
+    // ✅ Parantez içlerini temizle (tüm parantez türleri: (), [], {}, 「」)
+    normalized = normalized
+        .replaceAll(RegExp(r'\s*\([^)]*\)\s*', caseSensitive: false), '') // ()
+        .replaceAll(RegExp(r'\s*\[[^\]]*\]\s*', caseSensitive: false), '') // []
+        .replaceAll(RegExp(r'\s*\{[^}]*\}\s*', caseSensitive: false), '') // {}
+        .trim();
+    
+    // ✅ Yaygın ekleri temizle
+    final suffixes = [
+      ' (Burslu)',
+      ' (İÖ)',
+      ' (İkinci Öğretim)',
+      ' (KKTC)',
+      ' (Açıköğretim)',
+      ' (Uzaktan Öğretim)',
+      ' (İngilizce)',
+      ' (İng.)',
+      ' (İng)',
+      ' (İÖ)',
+      ' (İkinci Öğretim)',
+      ' (İkinci Öğretim)',
+      ' (İÖ)',
+      ' (İngilizce)',
+      ' (İng.)',
+      ' (İng)',
+    ];
+    
+    for (final suffix in suffixes) {
+      if (normalized.toLowerCase().endsWith(suffix.toLowerCase())) {
+        normalized = normalized.substring(0, normalized.length - suffix.length).trim();
+      }
+    }
+    
+    // ✅ Fazla boşlukları temizle
+    normalized = normalized.replaceAll(RegExp(r'\s+'), ' ').trim();
+    
+    return normalized.isEmpty ? rawName : normalized;
+  }
+
+  // ✅ 2. KATI FİLTRELEME MANTIĞI (_getFilteredDepartments)
+  /// Katı kurallarla filtreleme: Program Türü -> Alan Türü -> Üniversite Türü -> Unique & Normalize
+  List<String> _getFilteredDepartments(List<Map<String, dynamic>> allDepartments) {
+    // 1. Kullanıcı seçimlerini al
+    final isLisans = _selectedProgramType == 'lisans'; // Lisans mı?
+    final selectedField = _selectedFieldType; // SAY, EA, SOZ, DIL
+
+    // 2. Ham listeyi filtrele
+    var filtered = allDepartments.where((dept) {
+      // A. İSİM TEMİZLİĞİ (Parantez içlerini yoksayarak karşılaştırma için)
+      // (Bunu listede gösterirken yapacaksın, filtrede ham veriye bak)
+
+      // B. SÜRE VE TÜR KONTROLÜ (EN KRİTİK KISIM)
+      final duration = dept['duration'] as int?;
+      final fieldType = (dept['field_type'] as String?)?.toUpperCase();
+
+      if (isLisans) {
+        // LİSANS İÇİN KURALLAR:
+
+        // 1. Süre 4 yıl veya üzeri OLMALI (Veri null ise 4 kabul etme, ele)
+        if (duration != null && duration < 4) return false;
+
+        // 2. Puan türü ASLA 'TYT' OLMAMALI (Çünkü TYT önlisanstır)
+        if (fieldType == 'TYT') return false;
+      } else {
+        // ÖNLİSANS İÇİN KURALLAR:
+
+        // 1. Süre 2 yıl OLMALI
+        if (duration != null && duration > 2) return false;
+
+        // 2. Puan türü ZORUNLU OLARAK 'TYT' OLMALI (Önlisans için TYT zorunlu)
+        if (fieldType != 'TYT') return false;
+      }
+
+      // C. ALAN TÜRÜ KONTROLÜ (SAY, EA, vb.)
+      // Eğer Lisans seçiliyse ve bir alan (SAY) seçildiyse:
+      if (isLisans && selectedField != null && selectedField.isNotEmpty) {
+        // Bölümün türü, seçilen türle AYNEN EŞLEŞMELİ.
+        // "SAY" seçtiyse "EA" gelmemeli.
+        if (fieldType != selectedField.toUpperCase()) return false;
+      }
+
+      // D. ÜNİVERSİTE TÜRÜ FİLTRESİ
+      if (_selectedUniversityType != null && _selectedUniversityType!.isNotEmpty) {
+        // University bilgisini al (nested veya flat olabilir)
+        final university = dept['university'] as Map<String, dynamic>?;
+        final universityType = university?['university_type'] as String? ?? 
+                               dept['university_type'] as String?;
+        
+        // ✅ Backend'den gelen değerler: 'state', 'foundation', 'private'
+        if (_selectedUniversityType == 'devlet') {
+          // Devlet: university_type == 'state' (backend formatı)
+          if (universityType?.toLowerCase() != 'state') {
+            return false;
+          }
+        } else if (_selectedUniversityType == 'vakıf') {
+          // Vakıf: university_type == 'foundation' (backend formatı)
+          if (universityType?.toLowerCase() != 'foundation') {
+            return false;
+          }
+        } else if (_selectedUniversityType == 'açıköğretim') {
+          // Açıköğretim: university_type == 'open_education' veya 'open' veya 'açıköğretim'
+          final uniTypeLower = universityType?.toLowerCase() ?? '';
+          if (!(uniTypeLower == 'open_education' || 
+                uniTypeLower == 'open' || 
+                uniTypeLower == 'açıköğretim')) {
+            return false;
+          }
+        }
+      }
+      
+      // E. DERECE TÜRÜ KONTROLÜ (degree_type)
+      final degreeType = dept['degree_type'] as String?;
+      if (isLisans) {
+        // Lisans: degree_type == 'Bachelor'
+        if (degreeType != null && degreeType.toLowerCase() != 'bachelor') {
+          return false;
+        }
+      } else {
+        // Önlisans: degree_type == 'Associate'
+        if (degreeType != null && degreeType.toLowerCase() != 'associate') {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
+
+    // 3. TEKİLLEŞTİRME (DISTINCT BY NAME)
+    // Aynı isimden (örn: "Bilgisayar Mühendisliği") sadece 1 tane kalsın.
+    final uniqueNames = <String>{};
+    final uniqueList = <String>[];
+    
+    for (var dept in filtered) {
+      // İsimdeki (İngilizce), (Burslu) gibi kısımları temizleyerek kontrol et
+      final rawName = dept['name'] as String? ?? 
+                     dept['program_name'] as String? ?? 
+                     '';
+      
+      if (rawName.isEmpty) continue;
+      
+      final cleanName = _normalizeDeptName(rawName);
+      
+      if (uniqueNames.add(cleanName.toLowerCase())) {
+        uniqueList.add(cleanName); // Sadece ilkini ekle
+      }
+    }
+
+    // 4. SIRALA
+    uniqueList.sort();
+    return uniqueList;
   }
 
   Future<void> _complete() async {
@@ -219,12 +381,17 @@ class _PreferencesSelectionStepState
   @override
   Widget build(BuildContext context) {
     final citiesAsync = ref.watch(university_providers.cityListProvider);
-    // ✅ Field type'a göre filtreli bölümler çek
-    final departmentsAsync =
-        _selectedFieldType != null && _selectedFieldType!.isNotEmpty
-            ? ref.watch(university_providers
-                .filteredDepartmentListByFieldProvider(_selectedFieldType))
-            : ref.watch(university_providers.departmentListProvider);
+    // ✅ Field type'a göre filtreli bölümler çek - SADECE field_type seçildiyse
+    // ✅ Boş liste başlangıcı: Alan seçilmeden API isteği atılmasın
+    // ✅ ÖNEMLİ: Önlisans seçildiyse TYT field_type'ı ile API çağrısı yap
+    final effectiveFieldType = _selectedProgramType == 'onlisans' 
+        ? 'TYT'  // Önlisans seçildiyse TYT kullan
+        : _selectedFieldType;  // Lisans seçildiyse seçilen field_type'ı kullan
+    
+    final departmentsAsync = (effectiveFieldType != null && effectiveFieldType.isNotEmpty)
+        ? ref.watch(university_providers
+            .filteredDepartmentListByFieldProvider(effectiveFieldType))
+        : null; // ✅ null döndür - API isteği atılmasın
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
@@ -326,35 +493,102 @@ class _PreferencesSelectionStepState
           ),
           const SizedBox(height: 12),
 
-          // Alan türü seçimi
+          // ✅ Program Türü seçimi (Lisans/Önlisans) - ÖNCE PROGRAM TÜRÜ
           const Text(
-            'Alan Türü',
+            'Program Türü',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: ['SAY', 'EA', 'SÖZ', 'DİL'].map((field) {
-              final isSelected = _selectedFieldType == field;
-              return ChoiceChip(
-                label: Text(field),
-                selected: isSelected,
-                onSelected: (selected) {
-                  setState(() {
-                    _selectedFieldType = selected ? field : null;
-                    _selectedDepartments.clear(); // Bölümleri temizle
-                    _selectedUniversityType =
-                        null; // Üniversite türünü de temizle
-                  });
-                },
-              );
-            }).toList(),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment<String>(
+                value: 'lisans',
+                label: Text('Lisans (4 Yıllık)'),
+              ),
+              ButtonSegment<String>(
+                value: 'onlisans',
+                label: Text('Önlisans (2 Yıllık)'),
+              ),
+            ],
+            selected: {_selectedProgramType},
+            onSelectionChanged: (Set<String> newSelection) {
+              if (newSelection.isNotEmpty) {
+                setState(() {
+                  _selectedProgramType = newSelection.first;
+                  _selectedFieldType = null; // Alan türünü temizle
+                  _selectedDepartments.clear(); // Bölümleri temizle
+                  _selectedUniversityType = null; // Üniversite türünü de temizle
+                  
+                  // ✅ Önlisans seçildiyse field_type'ı TYT yap
+                  if (_selectedProgramType == 'onlisans') {
+                    _selectedFieldType = 'TYT';
+                  }
+                });
+              }
+            },
           ),
           const SizedBox(height: 16),
+
+          // ✅ Alan türü seçimi - Program türüne göre
+          if (_selectedProgramType == 'onlisans') ...[
+            // Önlisans seçildiyse sadece TYT göster
+            const Text(
+              'Alan Türü (Önlisans için TYT)',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'TYT (Temel Yeterlilik Testi)',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue,
+                ),
+              ),
+            ),
+          ] else ...[
+            // Lisans seçildiyse SAY/EA/SÖZ/DİL göster
+            const Text(
+              'Alan Türü',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: ['SAY', 'EA', 'SÖZ', 'DİL'].map((field) {
+                final isSelected = _selectedFieldType == field;
+                return ChoiceChip(
+                  label: Text(field),
+                  selected: isSelected,
+                  onSelected: (selected) {
+                    setState(() {
+                      _selectedFieldType = selected ? field : null;
+                      _selectedDepartments.clear(); // Bölümleri temizle
+                      _selectedUniversityType = null; // Üniversite türünü de temizle
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+          const SizedBox(height: 16),
+
 
           // ✅ Üniversite türü seçimi (Alan türü seçildikten sonra)
           if (_selectedFieldType != null && _selectedFieldType!.isNotEmpty) ...[
@@ -390,309 +624,110 @@ class _PreferencesSelectionStepState
             const SizedBox(height: 16),
           ],
 
-          departmentsAsync.when(
-            loading: () => const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: CircularProgressIndicator(),
+          // ✅ Bölüm seçimi - Sadece field_type seçildiyse göster
+          if (departmentsAsync == null) ...[
+            // ✅ Alan türü seçilmediğinde uyarı mesajı
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
               ),
-            ),
-            error: (error, stack) => Center(
-              child: Column(
+              child: Row(
                 children: [
-                  const Icon(Icons.error_outline, color: Colors.red),
-                  const SizedBox(height: 8),
-                  Text('Bölümler yüklenemedi: $error'),
-                  TextButton(
-                    onPressed: () {
-                      if (_selectedFieldType != null &&
-                          _selectedFieldType!.isNotEmpty) {
-                        ref.invalidate(university_providers
-                            .filteredDepartmentListByFieldProvider(
-                                _selectedFieldType));
-                      } else {
-                        ref.invalidate(
-                            university_providers.departmentListProvider);
-                      }
-                    },
-                    child: const Text('Tekrar Dene'),
+                  Icon(Icons.info_outline, color: Colors.orange[700]),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Lütfen önce bir alan türü (SAY, EA, SÖZ, DİL) veya program türü (Lisans/Önlisans) seçin.',
+                      style: TextStyle(
+                        color: Colors.orange[900],
+                        fontSize: 14,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-            data: (departments) {
-              // ✅ Backend'den zaten field_type'a göre filtrelenmiş geliyor
-              // Sadece bölüm adlarını çıkar ve unique yap
-              debugPrint('🟢 Departments loaded: ${departments.length}');
-
-              // ✅ Sadece bölüm adlarını çıkar (üniversite adı olmadan)
-              final filteredDepartments = departments
-                  .map((dept) {
-                    final name = dept['name'] as String? ??
-                        dept['program_name'] as String? ??
-                        '';
-
-                    // ✅ Bölüm adını temizle - sadece bölüm adını göster
-                    // Backend'den gelen name zaten sadece bölüm adını içeriyor
-                    // Ama bazı bölümler "Adana Tıp Fakültesi" gibi şehir adı içerebilir
-                    String cleanName = name;
-
-                    // Şehir adlarını çıkar (81 il listesi)
-                    final turkishCities = [
-                      'Adana',
-                      'Adıyaman',
-                      'Afyonkarahisar',
-                      'Ağrı',
-                      'Aksaray',
-                      'Amasya',
-                      'Ankara',
-                      'Antalya',
-                      'Ardahan',
-                      'Artvin',
-                      'Aydın',
-                      'Balıkesir',
-                      'Bartın',
-                      'Batman',
-                      'Bayburt',
-                      'Bilecik',
-                      'Bingöl',
-                      'Bitlis',
-                      'Bolu',
-                      'Burdur',
-                      'Bursa',
-                      'Çanakkale',
-                      'Çankırı',
-                      'Çorum',
-                      'Denizli',
-                      'Diyarbakır',
-                      'Düzce',
-                      'Edirne',
-                      'Elazığ',
-                      'Erzincan',
-                      'Erzurum',
-                      'Eskişehir',
-                      'Gaziantep',
-                      'Giresun',
-                      'Gümüşhane',
-                      'Hakkari',
-                      'Hatay',
-                      'Iğdır',
-                      'Isparta',
-                      'İstanbul',
-                      'İzmir',
-                      'Kahramanmaraş',
-                      'Karabük',
-                      'Karaman',
-                      'Kars',
-                      'Kastamonu',
-                      'Kayseri',
-                      'Kırıkkale',
-                      'Kırklareli',
-                      'Kırşehir',
-                      'Kilis',
-                      'Kocaeli',
-                      'Konya',
-                      'Kütahya',
-                      'Malatya',
-                      'Manisa',
-                      'Mardin',
-                      'Mersin',
-                      'Muğla',
-                      'Muş',
-                      'Nevşehir',
-                      'Niğde',
-                      'Ordu',
-                      'Osmaniye',
-                      'Rize',
-                      'Sakarya',
-                      'Samsun',
-                      'Siirt',
-                      'Sinop',
-                      'Sivas',
-                      'Şanlıurfa',
-                      'Şırnak',
-                      'Tekirdağ',
-                      'Tokat',
-                      'Trabzon',
-                      'Tunceli',
-                      'Uşak',
-                      'Van',
-                      'Yalova',
-                      'Yozgat',
-                      'Zonguldak'
-                    ];
-
-                    // ✅ Şehir adlarını ve ilçe adlarını çıkar
-                    // Önce şehir adlarını kontrol et
-                    for (final city in turkishCities) {
-                      // Case-insensitive kontrol
-                      if (cleanName
-                          .toLowerCase()
-                          .startsWith(city.toLowerCase())) {
-                        cleanName = cleanName.substring(city.length).trim();
-                        break;
-                      }
-                    }
-
-                    // İlçe adlarını da temizle (örnek: "Kadıköy", "Beşiktaş", "Çankaya" vb.)
-                    final districts = [
-                      'Kadıköy',
-                      'Beşiktaş',
-                      'Çankaya',
-                      'Şişli',
-                      'Beyoğlu',
-                      'Üsküdar',
-                      'Bakırköy',
-                      'Maltepe',
-                      'Pendik',
-                      'Kartal',
-                      'Ataşehir',
-                      'Sarıyer',
-                      'Beylikdüzü',
-                      'Başakşehir',
-                      'Esenyurt',
-                      'Sultangazi',
-                      'Gaziosmanpaşa',
-                      'Kağıthane',
-                      'Zeytinburnu',
-                      'Fatih',
-                      'Eminönü',
-                      'Taksim',
-                      'Levent',
-                      'Maslak',
-                      'Etiler',
-                      'Nişantaşı',
-                      'Ortaköy',
-                      'Bebek',
-                      'Arnavutköy',
-                      'Sarıgöl',
-                      'Yenimahalle',
-                      'Mamak',
-                      'Keçiören',
-                      'Altındağ',
-                      'Sincan',
-                      'Polatlı',
-                      'Beypazarı',
-                      'Ayaş',
-                      'Gölbaşı',
-                      'Haymana',
-                      'Nallıhan',
-                      'Kızılcahamam',
-                      'Çubuk',
-                      'Elmadağ',
-                      'Kalecik',
-                      'Bala',
-                      'Şereflikoçhisar',
-                      'Akyurt',
-                      'Güdül',
-                      'Evren',
-                      'Kazan',
-                      'Pursaklar',
-                      'Aksaray',
-                      'Ereğli',
-                      'Karapınar',
-                      'Bor',
-                      'Ulukışla',
-                      'Çiftlik',
-                      'Gülağaç',
-                      'Ortaköy',
-                      'Güzelyurt',
-                      'Sarıyahşi',
-                      'Ağaçören',
-                      'Göksun',
-                      'Andırın',
-                      'Çağlayancerit',
-                      'Ekinözü',
-                      'Elbistan',
-                      'Nurhak',
-                      'Pazarcık',
-                      'Türkoğlu',
-                      'Afşin',
-                      'Dulkadiroğlu',
-                      'Onikişubat',
-                      'Merkez',
-                      'İlçe',
-                      'Mahalle'
-                    ];
-
-                    for (final district in districts) {
-                      if (cleanName
-                          .toLowerCase()
-                          .contains(district.toLowerCase())) {
-                        cleanName = cleanName
-                            .replaceAll(
-                                RegExp(district, caseSensitive: false), '')
-                            .trim();
-                      }
-                    }
-
-                    // "Fakültesi", "Üniversitesi", "Üniversite", "Yüksekokulu" gibi kelimeleri temizle
-                    cleanName = cleanName
-                        .replaceAll(
-                            RegExp(
-                                r'\s*(Fakültesi|Üniversitesi|Üniversite|Yüksekokulu|Yüksek Okulu|Meslek Yüksekokulu|MYO)\s*',
-                                caseSensitive: false),
-                            '')
-                        .trim();
-
-                    // Eğer temizlenmiş ad boşsa orijinal adı kullan
-                    return cleanName.isNotEmpty ? cleanName : name;
-                  })
-                  .where((name) => name.isNotEmpty)
-                  .toList() // ✅ Tüm bölümleri göster (unique yapma - backend'den gelen tüm bölümler)
-                ..sort(); // ✅ Alfabetik sırala
-
-              debugPrint(
-                  '🟢 Filtered departments: ${filteredDepartments.length}');
-
-              final availableDepartments = filteredDepartments
-                  .where((d) => !_selectedDepartments.contains(d))
-                  .toList();
-
-              // Durum mesajı
-              String hintText = 'Önce alan türü seçin...';
-              if (_selectedFieldType != null) {
-                hintText = 'Bölüm ekle...';
-              }
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // ✅ Arama yapılabilir dropdown
-                  SearchableDropdown<String>(
-                    items: availableDepartments,
-                    itemAsString: (item) => item,
-                    hintText: hintText,
-                    searchHintText: 'Bölüm ara (örn: bilgisayar)',
-                    onChanged: _selectedFieldType != null
-                        ? (String? dept) {
-                            if (dept != null) {
-                              setState(() => _selectedDepartments.add(dept));
-                            }
-                          }
-                        : (String? dept) {}, // Empty function instead of null
-                  ),
-                  if (_selectedDepartments.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _selectedDepartments.map((deptName) {
-                        return Chip(
-                          label: Text(deptName),
-                          deleteIcon: const Icon(Icons.close, size: 18),
-                          onDeleted: () {
-                            setState(
-                                () => _selectedDepartments.remove(deptName));
-                          },
-                        );
-                      }).toList(),
+          ] else
+            departmentsAsync.when(
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (error, stack) => Center(
+                child: Column(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red),
+                    const SizedBox(height: 8),
+                    Text('Bölümler yüklenemedi: $error'),
+                    TextButton(
+                      onPressed: () {
+                        if (_selectedFieldType != null &&
+                            _selectedFieldType!.isNotEmpty) {
+                          ref.invalidate(university_providers
+                              .filteredDepartmentListByFieldProvider(
+                                  _selectedFieldType));
+                        }
+                      },
+                      child: const Text('Tekrar Dene'),
                     ),
                   ],
-                ],
-              );
-            },
-          ),
+                ),
+              ),
+              data: (departments) {
+                // ✅ 2. KATI FİLTRELEME MANTIĞI (_getFilteredDepartments)
+                final filteredDepartments = _getFilteredDepartments(departments);
+
+                final availableDepartments = filteredDepartments
+                    .where((d) => !_selectedDepartments.contains(d))
+                    .toList();
+
+                // Durum mesajı
+                String hintText = 'Bölüm ekle...';
+                if (availableDepartments.isEmpty) {
+                  hintText = 'Bu kriterlere uygun bölüm bulunamadı';
+                }
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // ✅ Arama yapılabilir dropdown
+                    SearchableDropdown<String>(
+                      items: availableDepartments,
+                      itemAsString: (item) => item,
+                      hintText: hintText,
+                      searchHintText: 'Bölüm ara (örn: bilgisayar)',
+                      onChanged: (String? dept) {
+                        if (dept != null) {
+                          setState(() => _selectedDepartments.add(dept));
+                        }
+                      },
+                    ),
+                    if (_selectedDepartments.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _selectedDepartments.map((deptName) {
+                          return Chip(
+                            label: Text(deptName),
+                            deleteIcon: const Icon(Icons.close, size: 18),
+                            onDeleted: () {
+                              setState(
+                                  () => _selectedDepartments.remove(deptName));
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
           const SizedBox(height: 32),
 
           // Navigation buttons

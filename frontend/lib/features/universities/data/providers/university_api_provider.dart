@@ -1,71 +1,202 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/api_service.dart';
 
-// ✅ autoDispose: Her kullanıcı için fresh data, cache yok!
+// ✅ CRITICAL FIX: keepAlive ile cache tutsun, sonsuz döngüyü önlemek için
 // University list provider - Map dönüşü için
 final universityListProvider =
-    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+    FutureProvider<List<Map<String, dynamic>>>((ref) {
+  // ✅ CRITICAL FIX: keepAlive ile provider'ı cache'le
+  ref.keepAlive();
+  
+  return (() async {
   final apiService = ref.read(apiServiceProvider);
   
   try {
-    // ✅ Tüm üniversiteleri çek (limit 1000)
+    // ✅ Tüm üniversiteleri çek (limit 1000) - preferred cities filtresi provider seviyesinde değil, filtered provider'da uygulanıyor
     final response = await apiService.getUniversities(limit: 1000);
     
+    // 🔍 DEBUG: Raw API Response
+    debugPrint('🔍 DEBUG: Universities API Response Type: ${response.data.runtimeType}');
+    debugPrint('🔍 DEBUG: Universities API Status Code: ${response.statusCode}');
+    
+    // ✅ Status code kontrolü
+    if (response.statusCode != 200) {
+      debugPrint('🔴 Universities API error: Status ${response.statusCode}');
+      throw Exception('Üniversiteler yüklenemedi: Status ${response.statusCode}');
+    }
+    
     if (response.data == null) {
+      debugPrint('🔴 Universities API: response.data is null');
       throw Exception('Üniversiteler yüklenemedi: Response data null');
     }
     
-    if (response.data is! List) {
-      throw Exception('Üniversiteler yüklenemedi: Beklenmeyen format');
+    debugPrint('🟢 Universities response type: ${response.data.runtimeType}');
+    
+    // ✅ Backend formatı: List[UniversityResponse] (direkt liste) veya {"universities": [...]}
+    List<dynamic> universitiesList = [];
+    
+    if (response.data is Map) {
+      final dataMap = response.data as Map<String, dynamic>;
+      debugPrint('🟢 Response is Map, keys: ${dataMap.keys}');
+      
+      if (dataMap['universities'] != null) {
+        final universitiesData = dataMap['universities'];
+        if (universitiesData is List) {
+          universitiesList = universitiesData;
+          debugPrint('🟢 Found ${universitiesList.length} universities in Map');
+        } else {
+          debugPrint('🔴 universities value is not a List, type: ${universitiesData.runtimeType}');
+          throw Exception('Üniversiteler yüklenemedi: universities değeri List değil');
+        }
+      } else {
+        debugPrint('🔴 Map does not contain "universities" key');
+        throw Exception('Üniversiteler yüklenemedi: Beklenmeyen format (Map without universities key)');
+      }
+    } else if (response.data is List) {
+      universitiesList = response.data as List;
+      debugPrint('🟢 Response is List, length: ${universitiesList.length}');
+    } else {
+      throw Exception('Üniversiteler yüklenemedi: Beklenmeyen format (${response.data.runtimeType})');
     }
     
-    final universities = (response.data as List)
+    final universities = universitiesList
         .map((university) => university as Map<String, dynamic>)
         .toList();
     
     debugPrint('🟢 Universities loaded: ${universities.length}');
     return universities;
-  } catch (e) {
-    debugPrint('🔴 University loading error: $e');
+  } on DioException catch (e, stackTrace) {
+    debugPrint('🔴 DioException in universityListProvider: $e');
+    debugPrint('🔴 Error type: ${e.type}');
+    debugPrint('🔴 Stack trace: $stackTrace');
+    
+    // Timeout hataları için özel mesaj
+    if (e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.sendTimeout) {
+      debugPrint('⏱️ Timeout error - universities API took too long');
+      throw Exception('Üniversiteler yüklenirken zaman aşımı oluştu. Lütfen tekrar deneyin.');
+    }
+    
+    // Connection hataları için özel mesaj
+    if (e.type == DioExceptionType.connectionError) {
+      debugPrint('🔌 Connection error - cannot reach server');
+      throw Exception('Sunucuya bağlanılamadı. WiFi bağlantınızı kontrol edin.');
+    }
+    
+    rethrow;
+  } catch (e, stackTrace) {
+    debugPrint('🔴 Error in universityListProvider: $e');
+    debugPrint('🔴 Stack trace: $stackTrace');
     rethrow;
   }
+  })();
 });
 
+// ✅ CRITICAL FIX: keepAlive ile cache tutsun, sonsuz döngüyü önlemek için
 // Department list provider - Map dönüşü için (pagination ile)
 final departmentListProvider =
-    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+    FutureProvider<List<Map<String, dynamic>>>((ref) {
+  // ✅ CRITICAL FIX: keepAlive ile provider'ı cache'le
+  ref.keepAlive();
+  
+  return (() async {
   final apiService = ref.read(apiServiceProvider);
   
   try {
     // ✅ OPTIMIZED: Tüm bölümleri çek - default 2000 kayıt (tüm veriler gelsin)
     final response = await apiService.getDepartments(limit: 2000);
 
+    // 🔍 DEBUG: Raw API Response
+    debugPrint('🔍 DEBUG: Departments API Response Type: ${response.data.runtimeType}');
+    debugPrint('🔍 DEBUG: Departments API Status Code: ${response.statusCode}');
+    if (response.data is Map) {
+      debugPrint('🔍 DEBUG: Departments Response is Map, keys: ${(response.data as Map).keys.toList()}');
+    } else if (response.data is List) {
+      debugPrint('🔍 DEBUG: Departments Response is List, length: ${(response.data as List).length}');
+    }
+
+    // ✅ Status code kontrolü
+    if (response.statusCode != 200) {
+      debugPrint('🔴 Departments API error: Status ${response.statusCode}');
+      throw Exception('Bölümler yüklenemedi: Status ${response.statusCode}');
+    }
+
     // ✅ Response formatını kontrol et
     if (response.data == null) {
+      debugPrint('🔴 Departments API: response.data is null');
       throw Exception('Bölümler yüklenemedi: Response data null');
     }
     
-    // ✅ Map ise hata mesajı olabilir
+    debugPrint('🟢 Departments response type: ${response.data.runtimeType}');
+    
+    // ✅ Backend formatı: List[DepartmentWithUniversityResponse] (direkt liste) veya {"departments": [...]}
+    List<dynamic> departmentsList = [];
+    
     if (response.data is Map) {
-      final errorData = response.data as Map<String, dynamic>;
-      throw Exception(errorData['detail'] ?? 'Bölümler yüklenemedi');
+      final dataMap = response.data as Map<String, dynamic>;
+      debugPrint('🟢 Response is Map, keys: ${dataMap.keys}');
+      
+      // Hata mesajı kontrolü
+      if (dataMap.containsKey('detail')) {
+        throw Exception(dataMap['detail'] ?? 'Bölümler yüklenemedi');
+      }
+      
+      // Departments key'i varsa
+      if (dataMap['departments'] != null) {
+        final departmentsData = dataMap['departments'];
+        if (departmentsData is List) {
+          departmentsList = departmentsData;
+          debugPrint('🟢 Found ${departmentsList.length} departments in Map');
+        } else {
+          debugPrint('🔴 departments value is not a List, type: ${departmentsData.runtimeType}');
+          throw Exception('Bölümler yüklenemedi: departments değeri List değil');
+        }
+      } else {
+        debugPrint('🔴 Map does not contain "departments" key');
+        throw Exception('Bölümler yüklenemedi: Beklenmeyen format (Map without departments key)');
+      }
+    } else if (response.data is List) {
+      departmentsList = response.data as List;
+      debugPrint('🟢 Response is List, length: ${departmentsList.length}');
+    } else {
+      throw Exception('Beklenmeyen response formatı: ${response.data.runtimeType}');
     }
     
-    // ✅ List ise parse et
-    if (response.data is List) {
-      final departments = (response.data as List)
-          .map((department) => department as Map<String, dynamic>)
-          .toList();
-      debugPrint('🟢 Departments loaded: ${departments.length}');
-      return departments;
+    final departments = departmentsList
+        .map((department) => department as Map<String, dynamic>)
+        .toList();
+    
+    debugPrint('🟢 Departments loaded: ${departments.length}');
+    return departments;
+  } on DioException catch (e, stackTrace) {
+    debugPrint('🔴 DioException in departmentListProvider: $e');
+    debugPrint('🔴 Error type: ${e.type}');
+    debugPrint('🔴 Stack trace: $stackTrace');
+    
+    // Timeout hataları için özel mesaj
+    if (e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.sendTimeout) {
+      debugPrint('⏱️ Timeout error - departments API took too long');
+      throw Exception('Bölümler yüklenirken zaman aşımı oluştu. Lütfen tekrar deneyin.');
     }
     
-    throw Exception('Beklenmeyen response formatı: ${response.data.runtimeType}');
-  } catch (e) {
-    debugPrint('🔴 Department loading error: $e');
+    // Connection hataları için özel mesaj
+    if (e.type == DioExceptionType.connectionError) {
+      debugPrint('🔌 Connection error - cannot reach server');
+      throw Exception('Sunucuya bağlanılamadı. WiFi bağlantınızı kontrol edin.');
+    }
+    
+    rethrow;
+  } catch (e, stackTrace) {
+    debugPrint('🔴 Error in departmentListProvider: $e');
+    debugPrint('🔴 Stack trace: $stackTrace');
     rethrow;
   }
+  })();
 });
 
 // ✅ Field type'a göre filtreli bölümler provider'ı
@@ -76,8 +207,15 @@ final filteredDepartmentListByFieldProvider =
   try {
     // ✅ Field type varsa filtreli API kullan
     if (fieldType != null && fieldType.isNotEmpty) {
+      // ✅ ÖNEMLİ: TYT seçildiyse degree_type=Associate gönder
+      String? degreeType;
+      if (fieldType == 'TYT') {
+        degreeType = 'Associate'; // Önlisans için Associate
+      }
+      
       final response = await apiService.getDepartmentsFiltered(
         fieldType: fieldType,
+        degreeType: degreeType, // ✅ Backend'e degree_type gönder
         limit: 2000, // Tüm bölümler gelsin
       );
       
@@ -248,7 +386,11 @@ final universityTypeListProvider = FutureProvider<List<String>>((ref) async {
 // Filtered university list provider - autoDispose eklendi
 final filteredUniversityListProvider =
     FutureProvider.family<List<Map<String, dynamic>>, UniversityFilterParams>(
-        (ref, params) async {
+        (ref, params) {
+  // ✅ CRITICAL FIX: keepAlive ile provider'ı cache'le
+  ref.keepAlive();
+  
+  return (() async {
   final universities = await ref.watch(universityListProvider.future);
 
   return universities.where((university) {
@@ -290,12 +432,17 @@ final filteredUniversityListProvider =
 
     return true;
   }).toList();
+  })();
 });
 
-// Filtered department list provider - autoDispose eklendi
+// ✅ CRITICAL FIX: keepAlive ile cache tutsun, sonsuz döngüyü önlemek için
 final filteredDepartmentListProvider =
     FutureProvider.family<List<Map<String, dynamic>>, DepartmentFilterParams>(
-        (ref, params) async {
+        (ref, params) {
+  // ✅ CRITICAL FIX: keepAlive ile provider'ı cache'le
+  ref.keepAlive();
+  
+  return (() async {
   final departments = await ref.watch(departmentListProvider.future);
 
   return departments.where((department) {
@@ -332,6 +479,7 @@ final filteredDepartmentListProvider =
 
     return true;
   }).toList();
+  })();
 });
 
 // Data classes

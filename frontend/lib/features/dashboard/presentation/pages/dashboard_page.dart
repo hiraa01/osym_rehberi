@@ -471,9 +471,25 @@ class _DashboardPageState extends State<DashboardPage> {
                         ? 5
                         : _recommendations.length,
                     itemBuilder: (context, index) {
+                      // ✅ Null kontrolü: Eğer recommendation null ise atla
+                      if (index >= _recommendations.length) {
+                        return const SizedBox.shrink();
+                      }
+
                       final rec = _recommendations[index];
-                      final dept = rec['department'] ?? {};
-                      final uni = dept['university'] ?? {};
+
+                      // ✅ Null-safe department ve university erişimi
+                      final dept =
+                          (rec['department'] as Map<String, dynamic>?) ??
+                              <String, dynamic>{};
+                      final uni =
+                          (dept['university'] as Map<String, dynamic>?) ??
+                              <String, dynamic>{};
+
+                      // ✅ Bölüm ismi: 'name' alanını kullan (original_name değil)
+                      final deptName =
+                          dept['name'] as String? ?? 'Bilinmeyen Bölüm';
+
                       return Container(
                         width: 300, // Slightly wider
                         margin:
@@ -502,7 +518,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          dept['name'] ?? 'Bilinmeyen Bölüm',
+                                          deptName, // ✅ Temizlenmiş isim
                                           style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
@@ -549,6 +565,20 @@ class _DashboardPageState extends State<DashboardPage> {
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  // ✅ min_score gösterimi (null kontrolü ile)
+                                  Text(
+                                    'Puan: ${dept['min_score'] != null ? (dept['min_score'] as num).toStringAsFixed(2) : 'Puan Oluşmadı'}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: dept['min_score'] != null
+                                          ? Colors.green[700]
+                                          : Colors.grey[500],
+                                      fontWeight: dept['min_score'] != null
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
                                     ),
                                   ),
                                   const Spacer(),

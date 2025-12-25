@@ -17,7 +17,8 @@ class UniversityListPage extends ConsumerStatefulWidget {
   ConsumerState<UniversityListPage> createState() => _UniversityListPageState();
 }
 
-class _UniversityListPageState extends ConsumerState<UniversityListPage> {
+class _UniversityListPageState extends ConsumerState<UniversityListPage>
+    with AutomaticKeepAliveClientMixin {
   String _selectedCity = 'Tümü';
   String _selectedType = 'Tümü';
   String _searchQuery = '';
@@ -25,9 +26,20 @@ class _UniversityListPageState extends ConsumerState<UniversityListPage> {
   bool _isLoadingPreferences = true;
 
   @override
+  bool get wantKeepAlive => true; // ✅ Tab değiştiğinde state'i koru
+
+  @override
   void initState() {
     super.initState();
     _loadPreferredCities();
+    
+    // ✅ CRITICAL FIX: Sayfa ilk açıldığında veriyi bir kere iste
+    // Build içinde fetch YAPMA, sadece initState'te tetikle
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Provider'ı tetiklemek için ref.read ile oku (FutureProvider otomatik tetiklenir)
+      // filteredUniversityListProvider zaten universityListProvider'a bağlı, sadece base provider'ı tetiklemek yeterli
+      ref.read(universityListProvider);
+    });
   }
 
   Future<void> _loadPreferredCities() async {
@@ -54,38 +66,44 @@ class _UniversityListPageState extends ConsumerState<UniversityListPage> {
               cities = [];
             }
             
-            setState(() {
-              _preferredCities = cities;
-              _isLoadingPreferences = false;
-            });
+            if (mounted) {
+              setState(() {
+                _preferredCities = cities;
+                _isLoadingPreferences = false;
+              });
+            }
             
-            debugPrint('🟢 Preferred cities loaded: $_preferredCities');
           } else {
+            if (mounted) {
+              setState(() {
+                _preferredCities = null;
+                _isLoadingPreferences = false;
+              });
+            }
+          }
+        } else {
+          if (mounted) {
             setState(() {
               _preferredCities = null;
               _isLoadingPreferences = false;
             });
-            debugPrint('⚠️ No preferred cities found');
           }
-        } else {
+        }
+      } else {
+        if (mounted) {
           setState(() {
             _preferredCities = null;
             _isLoadingPreferences = false;
           });
         }
-      } else {
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
           _preferredCities = null;
           _isLoadingPreferences = false;
         });
-        debugPrint('⚠️ No student_id found');
       }
-    } catch (e) {
-      debugPrint('🔴 Error loading preferred cities: $e');
-      setState(() {
-        _preferredCities = null;
-        _isLoadingPreferences = false;
-      });
     }
   }
 
@@ -196,6 +214,7 @@ class _UniversityListPageState extends ConsumerState<UniversityListPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // ✅ AutomaticKeepAliveClientMixin için gerekli
     return Scaffold(
       appBar: AppBar(
         title: const Text('Üniversiteler'),
@@ -245,6 +264,12 @@ class _UniversityListPageState extends ConsumerState<UniversityListPage> {
         preferredCities: _preferredCities, // ✅ Tercih edilen şehirleri ekle
       ),
     ));
+    
+    // ✅ CRITICAL FIX: Build içinde fetch YAPMA, sadece watch ile dinle
+    // Loading durumunda sadece loading göster, tekrar tetikleme YOK
+    if (universitiesAsync.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     
     return universitiesAsync.when(
       data: (universities) {
@@ -332,51 +357,75 @@ class _UniversityListPageState extends ConsumerState<UniversityListPage> {
           },
         );
       },
-      loading: () => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-            Text(
-              'Üniversiteler yükleniyor...',
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
-                color: Colors.grey[600],
+      loading: () {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+              Text(
+                'Üniversiteler yükleniyor...',
+                style: TextStyle(
+                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 16),
+                  color: Colors.grey[600],
+                ),
               ),
-            ),
-          ],
-        ),
-      ),
-      error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: ResponsiveUtils.getResponsiveIconSize(context, 64),
-              color: Colors.red,
-            ),
-            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
-            Text(
-              'Üniversiteler yüklenirken hata oluştu',
-              style: TextStyle(
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
-                fontWeight: FontWeight.w500,
+            ],
+          ),
+        );
+      },
+      error: (error, stack) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: ResponsiveUtils.getResponsiveIconSize(context, 64),
+                color: Colors.red,
               ),
-            ),
-            SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
-            Text(
-              error.toString(),
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+              SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+              Text(
+                'Üniversiteler yüklenirken hata oluştu',
+                style: TextStyle(
+                  fontSize: ResponsiveUtils.getResponsiveFontSize(context, 18),
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+              SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 8)),
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: ResponsiveUtils.getResponsiveSpacing(context, 32),
+                ),
+                child: Text(
+                  error.toString().replaceAll('Exception: ', ''),
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: ResponsiveUtils.getResponsiveFontSize(context, 14),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              SizedBox(height: ResponsiveUtils.getResponsiveSpacing(context, 16)),
+              ElevatedButton.icon(
+                onPressed: () {
+                  ref.invalidate(filteredUniversityListProvider(
+                    UniversityFilterParams(
+                      city: _selectedCity == 'Tümü' ? null : _selectedCity,
+                      type: _selectedType == 'Tümü' ? null : _selectedType,
+                      searchQuery: _searchQuery.isEmpty ? null : _searchQuery,
+                      preferredCities: _preferredCities,
+                    ),
+                  ));
+                },
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Tekrar Dene'),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

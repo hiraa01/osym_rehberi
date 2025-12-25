@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -340,8 +341,9 @@ async def get_unique_departments(
 @router.get("/departments/", response_model=List[DepartmentWithUniversityResponse])
 async def get_departments(
     skip: int = Query(0, ge=0),
-    limit: int = Query(2000, ge=1, le=5000),  # ✅ Default 2000, max 5000 - tüm veriler gelsin
+    limit: int = Query(10000, ge=1, le=50000),  # ✅ Default 10000, max 50000 - tüm veriler gelsin (21K+ kayıt için)
     field_type: Optional[str] = Query(None),
+    degree_type: Optional[str] = Query(None, description="✅ Derece türü: 'Associate' (Önlisans) veya 'Bachelor' (Lisans). None ise tümü getirilir."),
     university_id: Optional[int] = Query(None),
     city: Optional[str] = Query(None),
     university_type: Optional[str] = Query(None),
@@ -352,102 +354,210 @@ async def get_departments(
     db: Session = Depends(get_db)
 ):
     """Bölüm listesini getir - OPTIMIZED with eager loading and selectinload"""
-    # ✅ OPTIMIZED: selectinload ile N+1 problemini tamamen önle
-    from sqlalchemy.orm import selectinload
-    
-    # ✅ OPTIMIZED: Sadece city veya university_type filtresi varsa join yap
-    query = db.query(Department)
-    
-    # ✅ OPTIMIZED: selectinload ile University bilgilerini tek sorguda çek (N+1 problemini önler)
-    query = query.options(selectinload(Department.university))
-    
-    # Filtreleme - city veya university_type için join gerekli
-    if city or university_type:
-        query = query.join(University, Department.university_id == University.id)
-    
-    if field_type:
-        query = query.filter(Department.field_type == field_type)
-    if university_id:
-        query = query.filter(Department.university_id == university_id)
-    if city:
-        query = query.filter(University.city.ilike(f"%{city}%"))
-    if university_type:
-        query = query.filter(University.university_type == university_type)
-    if normalized_name:  # ✅ Normalize edilmiş isme göre filtrele (tüm varyasyonları getir)
-        query = query.filter(Department.normalized_name == normalized_name)
-    if min_score:
-        query = query.filter(Department.min_score >= min_score)
-    if max_score:
-        query = query.filter(Department.min_score <= max_score)
-    if has_scholarship is not None:
-        query = query.filter(Department.has_scholarship == has_scholarship)
-    
-    # ✅ Bölüm adına göre alfabetik sıralama
-    query = query.order_by(Department.name)
-    
-    # ✅ OPTIMIZED: Tek sorguda tüm verileri çek (selectinload ile University bilgileri de dahil)
-    departments = query.offset(skip).limit(limit).all()
-    
-    # ✅ N+1 problemi çözüldü: selectinload sayesinde University bilgileri zaten yüklendi
-    result = []
-    for dept in departments:
-        university = dept.university  # ✅ Artık ek sorgu yok, zaten yüklü
-        if not university:
-            continue  # Üniversite bulunamazsa skip et
+    try:
+        # ✅ OPTIMIZED: selectinload ile N+1 problemini tamamen önle
+        from sqlalchemy.orm import selectinload
+        from sqlalchemy import case
         
-        # University response'unu logo URL ile oluştur
-        university_response = UniversityResponse(
-            id=university.id,
-            name=university.name,
-            city=university.city,
-            university_type=university.university_type,
-            website=university.website,
-            established_year=university.established_year,
-            latitude=university.latitude,
-            longitude=university.longitude,
-            created_at=university.created_at,
-            updated_at=university.updated_at,
-            logo_url=get_university_logo_url(university)
+        # ✅ OPTIMIZED: Sadece city veya university_type filtresi varsa join yap
+        query = db.query(Department)
+        
+        # ✅ OPTIMIZED: selectinload ile University bilgilerini tek sorguda çek (N+1 problemini önler)
+        query = query.options(selectinload(Department.university))
+        
+        # Filtreleme - city veya university_type için join gerekli
+        if city or university_type:
+            query = query.join(University, Department.university_id == University.id)
+        
+        # ✅ PERMISSIVE FILTERING: Only apply filters if they are provided (not None)
+        if field_type:
+            query = query.filter(Department.field_type == field_type)
+            # ✅ ÖNEMLİ: Eğer field_type 'TYT' ise, degree_type'ı otomatik olarak 'Associate' olarak kabul et
+            if field_type.upper() == 'TYT':
+                query = query.filter(Department.degree_type == 'Associate')
+        # ✅ If field_type is None, don't filter by field_type (return all field types)
+        
+        if degree_type:
+            # ✅ degree_type filtresi varsa uygula (field_type TYT değilse)
+            if not field_type or field_type.upper() != 'TYT':
+                query = query.filter(Department.degree_type == degree_type)
+        # ✅ If degree_type is None, don't filter by degree_type (return all degree types)
+        if university_id:
+            query = query.filter(Department.university_id == university_id)
+        if city:
+            query = query.filter(University.city.ilike(f"%{city}%"))
+        if university_type:
+            # ✅ Frontend 'foundation' veya 'state' gönderiyorsa, backend'de aynı değerleri kullan
+            # Mapping: 'foundation' -> 'foundation', 'state' -> 'state', 'devlet' -> 'state', 'vakif' -> 'foundation'
+            if university_type.lower() == 'devlet':
+                university_type = 'state'
+            elif university_type.lower() == 'vakif' or university_type.lower() == 'vakıf':
+                university_type = 'foundation'
+            query = query.filter(University.university_type == university_type)
+        if normalized_name:  # ✅ Normalize edilmiş isme göre filtrele (tüm varyasyonları getir)
+            query = query.filter(Department.normalized_name == normalized_name)
+        if min_score:
+            # ✅ min_score None olan bölümleri filtreleme dışında bırak (None kontrolü)
+            query = query.filter(Department.min_score.isnot(None), Department.min_score >= min_score)
+        if max_score:
+            # ✅ min_score None olan bölümleri filtreleme dışında bırak (None kontrolü)
+            query = query.filter(Department.min_score.isnot(None), Department.min_score <= max_score)
+        if has_scholarship is not None:
+            query = query.filter(Department.has_scholarship == has_scholarship)
+        
+        # ✅ Bölüm adına göre alfabetik sıralama
+        # ✅ min_score None olan bölümleri listenin sonuna taşı
+        query = query.order_by(
+            case((Department.min_score.is_(None), 1), else_=0),  # None olanlar sona
+            Department.name  # Sonra alfabetik
         )
         
-        # ✅ Attributes'ı parse et
-        import json
-        attributes = []
-        if dept.attributes:
-            try:
-                attributes = json.loads(dept.attributes)
-            except:
+        # ✅ OPTIMIZED: Tek sorguda tüm verileri çek (selectinload ile University bilgileri de dahil)
+        departments = query.offset(skip).limit(limit).all()
+        
+        # ✅ N+1 problemi çözüldü: selectinload sayesinde University bilgileri zaten yüklendi
+        result = []
+        for dept in departments:
+            university = dept.university  # ✅ Artık ek sorgu yok, zaten yüklü
+            if not university:
+                continue  # Üniversite bulunamazsa skip et
+            
+            # University response'unu logo URL ile oluştur
+            university_response = UniversityResponse(
+                id=university.id,
+                name=university.name,
+                city=university.city,
+                university_type=university.university_type,
+                website=university.website,
+                established_year=university.established_year,
+                latitude=university.latitude,
+                longitude=university.longitude,
+                created_at=university.created_at,
+                updated_at=university.updated_at,
+                logo_url=get_university_logo_url(university)
+            )
+            
+            # ✅ Attributes'ı parse et
+            import json
+            attributes = []
+            if dept.attributes:
+                try:
+                    attributes = json.loads(dept.attributes)
+                except:
+                    attributes = []
+            
+            dept_response = DepartmentWithUniversityResponse(
+                id=dept.id,
+                university_id=dept.university_id,
+                name=dept.name,  # Orijinal isim
+                normalized_name=dept.normalized_name,  # ✅ Normalize edilmiş isim
+                attributes=attributes,  # ✅ Attributes listesi
+                field_type=dept.field_type,
+                language=dept.language,
+                faculty=dept.faculty,
+                duration=dept.duration,
+                degree_type=dept.degree_type,
+                min_score=dept.min_score,
+                min_rank=dept.min_rank,
+                quota=dept.quota,
+                scholarship_quota=dept.scholarship_quota,
+                tuition_fee=dept.tuition_fee,
+                has_scholarship=dept.has_scholarship,
+                last_year_min_score=dept.last_year_min_score,
+                last_year_min_rank=dept.last_year_min_rank,
+                last_year_quota=dept.last_year_quota,
+                description=dept.description,
+                requirements=dept.requirements,
+                created_at=dept.created_at,
+                updated_at=dept.updated_at,
+                university=university_response
+            )
+            result.append(dept_response)
+        
+        return result
+    except Exception as e:
+        # ✅ FALLBACK: Hata durumunda en popüler bölümleri döndür (500 hatası verme)
+        from core.logging_config import api_logger
+        api_logger.error(f"Error in get_departments: {str(e)}", error=str(e))
+        
+        try:
+            # En popüler bölümleri getir (min_score'a göre sıralı, None olanlar sona)
+            from sqlalchemy import case
+            fallback_query = db.query(Department).options(selectinload(Department.university))
+            if field_type:
+                fallback_query = fallback_query.filter(Department.field_type == field_type)
+            
+            fallback_query = fallback_query.order_by(
+                case((Department.min_score.is_(None), 1), else_=0),
+                Department.min_score.desc().nullslast(),
+                Department.name
+            ).limit(min(limit, 50))  # Maksimum 50 bölüm döndür
+            
+            fallback_departments = fallback_query.all()
+            
+            # Response formatına çevir
+            fallback_result = []
+            for dept in fallback_departments:
+                university = dept.university
+                if not university:
+                    continue
+                
+                university_response = UniversityResponse(
+                    id=university.id,
+                    name=university.name,
+                    city=university.city,
+                    university_type=university.university_type,
+                    website=university.website,
+                    established_year=university.established_year,
+                    latitude=university.latitude,
+                    longitude=university.longitude,
+                    created_at=university.created_at,
+                    updated_at=university.updated_at,
+                    logo_url=get_university_logo_url(university)
+                )
+                
+                import json
                 attributes = []
-        
-        dept_response = DepartmentWithUniversityResponse(
-            id=dept.id,
-            university_id=dept.university_id,
-            name=dept.name,  # Orijinal isim
-            normalized_name=dept.normalized_name,  # ✅ Normalize edilmiş isim
-            attributes=attributes,  # ✅ Attributes listesi
-            field_type=dept.field_type,
-            language=dept.language,
-            faculty=dept.faculty,
-            duration=dept.duration,
-            degree_type=dept.degree_type,
-            min_score=dept.min_score,
-            min_rank=dept.min_rank,
-            quota=dept.quota,
-            scholarship_quota=dept.scholarship_quota,
-            tuition_fee=dept.tuition_fee,
-            has_scholarship=dept.has_scholarship,
-            last_year_min_score=dept.last_year_min_score,
-            last_year_min_rank=dept.last_year_min_rank,
-            last_year_quota=dept.last_year_quota,
-            description=dept.description,
-            requirements=dept.requirements,
-            created_at=dept.created_at,
-            updated_at=dept.updated_at,
-            university=university_response
-        )
-        result.append(dept_response)
-    
-    return result
+                if dept.attributes:
+                    try:
+                        attributes = json.loads(dept.attributes)
+                    except:
+                        attributes = []
+                
+                dept_response = DepartmentWithUniversityResponse(
+                    id=dept.id,
+                    university_id=dept.university_id,
+                    name=dept.name,
+                    normalized_name=dept.normalized_name,
+                    attributes=attributes,
+                    field_type=dept.field_type,
+                    language=dept.language,
+                    faculty=dept.faculty,
+                    duration=dept.duration,
+                    degree_type=dept.degree_type,
+                    min_score=dept.min_score,
+                    min_rank=dept.min_rank,
+                    quota=dept.quota,
+                    scholarship_quota=dept.scholarship_quota,
+                    tuition_fee=dept.tuition_fee,
+                    has_scholarship=dept.has_scholarship,
+                    last_year_min_score=dept.last_year_min_score,
+                    last_year_min_rank=dept.last_year_min_rank,
+                    last_year_quota=dept.last_year_quota,
+                    description=dept.description,
+                    requirements=dept.requirements,
+                    created_at=dept.created_at,
+                    updated_at=dept.updated_at,
+                    university=university_response
+                )
+                fallback_result.append(dept_response)
+            
+            api_logger.info(f"Fallback: Returning {len(fallback_result)} popular departments")
+            return fallback_result
+        except Exception as fallback_error:
+            # Fallback de başarısız olursa boş liste döndür (500 hatası verme)
+            api_logger.error(f"Fallback also failed: {str(fallback_error)}", error=str(fallback_error))
+            return []
 
 
 @router.get("/departments/{department_id}", response_model=DepartmentWithUniversityResponse)
@@ -533,3 +643,100 @@ async def delete_department(department_id: int, db: Session = Depends(get_db)):
 
 
 # Cities ve field-types endpoint'leri dosyanın başına taşındı (satır 19-30)
+
+
+# ✅ DEBUG ENDPOINT: Veri bütünlüğü kontrolü için
+@router.get("/debug/check-department/{name}")
+async def check_department_data(
+    name: str,
+    db: Session = Depends(get_db)
+):
+    """
+    ✅ GEÇİCİ DEBUG ENDPOINT: Bölüm verilerini kontrol et
+    
+    Veritabanındaki bölüm verilerinin doğruluğunu kontrol etmek için kullanılır.
+    Örnek: /api/universities/debug/check-department/Adalet
+    
+    Returns:
+        JSON: Bölümün ham verileri (duration, field_type, degree_type, vb.)
+    """
+    from sqlalchemy import or_
+    
+    # Bölüm adında (normalize edilmiş veya orijinal) arama yap
+    departments = db.query(Department).filter(
+        or_(
+            Department.name.ilike(f"%{name}%"),
+            Department.normalized_name.ilike(f"%{name}%")
+        )
+    ).limit(20).all()
+    
+    if not departments:
+        return {
+            "status": "not_found",
+            "message": f"'{name}' adında bölüm bulunamadı",
+            "results": []
+        }
+    
+    results = []
+    for dept in departments:
+        # Üniversite bilgisini al
+        university = db.query(University).filter(University.id == dept.university_id).first()
+        
+        results.append({
+            "id": dept.id,
+            "name": dept.name,  # Orijinal isim
+            "normalized_name": dept.normalized_name,  # Normalize edilmiş isim
+            "field_type": dept.field_type,  # ✅ Puan türü (TYT, SAY, EA, SÖZ, DİL)
+            "duration": dept.duration,  # ✅ Süre (2 veya 4+)
+            "degree_type": dept.degree_type,  # ✅ Derece türü (Associate, Bachelor)
+            "university_name": university.name if university else None,
+            "university_type": university.university_type if university else None,
+            "attributes": dept.attributes,  # JSON string
+            "language": dept.language,
+            "faculty": dept.faculty,
+            "min_score": dept.min_score,
+            "quota": dept.quota,
+            "created_at": str(dept.created_at) if dept.created_at else None,
+            "updated_at": str(dept.updated_at) if dept.updated_at else None,
+            # ✅ Veri bütünlüğü kontrolü
+            "data_integrity": {
+                "is_valid": True,
+                "issues": []
+            }
+        })
+        
+        # Veri bütünlüğü kontrolü
+        issues = []
+        
+        # 1. TYT kontrolü: TYT ise duration 2 olmalı
+        if dept.field_type == 'TYT' and dept.duration != 2:
+            issues.append(f"TYT bölümü ama duration={dept.duration} (2 olmalı)")
+            results[-1]["data_integrity"]["is_valid"] = False
+        
+        # 2. Önlisans kontrolü: Associate ise duration 2 olmalı
+        if dept.degree_type == 'Associate' and dept.duration != 2:
+            issues.append(f"Associate bölümü ama duration={dept.duration} (2 olmalı)")
+            results[-1]["data_integrity"]["is_valid"] = False
+        
+        # 3. Lisans kontrolü: Bachelor ise duration 4+ olmalı
+        if dept.degree_type == 'Bachelor' and dept.duration and dept.duration < 4:
+            issues.append(f"Bachelor bölümü ama duration={dept.duration} (4+ olmalı)")
+            results[-1]["data_integrity"]["is_valid"] = False
+        
+        # 4. TYT + Bachelor çelişkisi
+        if dept.field_type == 'TYT' and dept.degree_type == 'Bachelor':
+            issues.append("TYT puan türü ama Bachelor derecesi (çelişki!)")
+            results[-1]["data_integrity"]["is_valid"] = False
+        
+        # 5. SAY/EA/SÖZ/DİL + Associate çelişkisi (nadir ama olabilir)
+        if dept.field_type in ['SAY', 'EA', 'SÖZ', 'DİL'] and dept.degree_type == 'Associate':
+            issues.append(f"{dept.field_type} puan türü ama Associate derecesi (genelde lisans olur)")
+        
+        results[-1]["data_integrity"]["issues"] = issues
+    
+    return {
+        "status": "found",
+        "count": len(results),
+        "results": results
+    }
+

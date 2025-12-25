@@ -91,7 +91,10 @@ try:
                     continue
                 
                 field_type_raw = str(row.get('Puan Türü', 'SAY')).upper()
-                if 'EA' in field_type_raw:
+                # ✅ CRITICAL FIX: TYT kontrolü önce yapılmalı
+                if 'TYT' in field_type_raw:
+                    field_type = 'TYT'
+                elif 'EA' in field_type_raw:
                     field_type = 'EA'
                 elif 'SÖZ' in field_type_raw or 'TS' in field_type_raw:
                     field_type = 'SÖZ'
@@ -103,6 +106,47 @@ try:
                 language = 'Turkish'
                 if 'İngilizce' in dept_name or 'English' in dept_name:
                     language = 'English'
+                
+                # ✅ CRITICAL FIX: Duration ve degree_type mantığı
+                dept_name_upper = dept_name.upper()
+                is_onlisans = False
+                
+                # 1. Field type kontrolü: TYT = Önlisans
+                if field_type == 'TYT':
+                    is_onlisans = True
+                
+                # 2. Bölüm adı kontrolü
+                onlisans_keywords = ['ÖNLİSANS', 'ÖN LİSANS', '2 YILLIK', '2 YIL', 'MYO', 
+                                     'MESLEK YÜKSEKOKULU', 'MESLEK YÜKSEK OKULU', 'AÖF', 'AÇIKÖĞRETİM']
+                if any(keyword in dept_name_upper for keyword in onlisans_keywords):
+                    is_onlisans = True
+                    if field_type != 'TYT':
+                        field_type = 'TYT'
+                
+                # 3. Lisans bölümleri kontrolü
+                lisans_keywords = ['TIP', 'MÜHENDİSLİK', 'HUKUK', 'MİMARLIK', 'DİŞ HEKİMLİĞİ',
+                                   'ECZACILIK', 'VETERİNER', 'ZİRAAT', 'ORMAN']
+                if any(keyword in dept_name_upper for keyword in lisans_keywords):
+                    is_onlisans = False
+                    if field_type == 'TYT':
+                        field_type = 'SAY'
+                
+                # Duration ve degree_type belirleme
+                if is_onlisans:
+                    duration = 2
+                    degree_type = 'Associate'
+                else:
+                    if 'TIP' in dept_name_upper:
+                        duration = 6
+                    elif 'DİŞ HEKİMLİĞİ' in dept_name_upper or 'DİŞHEKİMLİĞİ' in dept_name_upper:
+                        duration = 5
+                    elif 'VETERİNER' in dept_name_upper:
+                        duration = 5
+                    elif 'MİMARLIK' in dept_name_upper:
+                        duration = 5
+                    else:
+                        duration = 4
+                    degree_type = 'Bachelor'
                 
                 min_score = clean_numeric(row.get('En Küçük Puan', 0))
                 quota = int(clean_numeric(row.get('Kontenjan', 0)))
@@ -120,8 +164,8 @@ try:
                         name=dept_name,
                         field_type=field_type,
                         language=language,
-                        duration=4,
-                        degree_type='Bachelor',
+                        duration=duration,  # ✅ Artık doğru hesaplanıyor
+                        degree_type=degree_type,  # ✅ Associate veya Bachelor
                         quota=quota,
                         min_score=min_score if min_score > 0 else None
                     )

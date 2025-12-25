@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -24,68 +25,252 @@ async def generate_recommendations(
     db: Session = Depends(get_db)
 ):
     """Öğrenci için tercih önerileri oluştur"""
-    api_logger.info("Starting recommendation generation", user_id=student_id, limit=limit)
-    
-    # Öğrenci var mı kontrol et
-    student = db.query(Student).filter(Student.id == student_id).first()
-    if not student:
-        raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
-    
-    # ✅ Cache kontrolü: Eğer öneriler varsa ve force_regenerate=False ise, mevcut önerileri döndür
-    if not force_regenerate:
-        existing_recs = db.query(Recommendation).filter(
-            Recommendation.student_id == student_id
-        ).order_by(Recommendation.final_score.desc()).limit(limit).all()
+    try:
+        api_logger.info("Starting recommendation generation", user_id=student_id, limit=limit)
         
-        if existing_recs and len(existing_recs) >= limit:
-            api_logger.info("Returning cached recommendations", user_id=student_id, count=len(existing_recs))
-            # Mevcut önerileri formatla ve döndür
+        # Öğrenci var mı kontrol et
+        student = db.query(Student).filter(Student.id == student_id).first()
+        if not student:
+            raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
+        
+        # ✅ Cache kontrolü: Eğer öneriler varsa ve force_regenerate=False ise, mevcut önerileri döndür
+        if not force_regenerate:
+            existing_recs = db.query(Recommendation).filter(
+                Recommendation.student_id == student_id
+            ).order_by(Recommendation.final_score.desc()).limit(limit).all()
+            
+            if existing_recs and len(existing_recs) > 0:
+                api_logger.info("Returning cached recommendations", user_id=student_id, count=len(existing_recs))
+                # Mevcut önerileri formatla ve döndür
+                from models.university import Department, University
+                from schemas.university import DepartmentWithUniversityResponse
+                
+                department_ids = {rec.department_id for rec in existing_recs}
+                departments_dict = {
+                    dept.id: dept
+                    for dept in db.query(Department).filter(Department.id.in_(department_ids)).all()
+                }
+                university_ids = {dept.university_id for dept in departments_dict.values()}
+                universities_dict = {
+                    uni.id: uni
+                    for uni in db.query(University).filter(University.id.in_(university_ids)).all()
+                }
+                
+                result = []
+                for rec in existing_recs:
+                    department = departments_dict.get(rec.department_id)
+                    if not department:
+                        continue
+                    
+                    # ✅ NULL PUAN KORUMASI: Cache'den gelen önerilerde de kontrol et
+                    if department.min_score is None or department.min_score <= 0:
+                        api_logger.debug(
+                            f"Skipping cached recommendation {rec.id} - department {department.id} has null min_score",
+                            recommendation_id=rec.id,
+                            department_id=department.id
+                        )
+                        continue
+                    
+                    university = universities_dict.get(department.university_id)
+                    if not university:
+                        continue
+                    department_response = DepartmentWithUniversityResponse(
+                        **department.__dict__,
+                        university=university
+                    )
+                    result.append(RecommendationResponse(
+                        **rec.__dict__,
+                        department=department_response
+                    ))
+                
+                # ✅ Eğer cache'den gelen sonuç varsa döndür
+                if result:
+                    return result
+        
+        # ✅ Önce eski önerileri temizle (yeniden hesaplama için)
+        db.query(Recommendation).filter(Recommendation.student_id == student_id).delete()
+        db.commit()
+        
+        # Öneri motorunu çalıştır (try-except ile güvenli hale getir)
+        try:
+            recommendation_engine = RecommendationEngine(db)
+            # normalize weights (total>0 ise)
+            total_w = max(1e-9, (w_c + w_s + w_p))
+            weights = (w_c / total_w, w_s / total_w, w_p / total_w)
+            recommendations = recommendation_engine.generate_recommendations(student_id, limit, weights)
+            
+            # ✅ NULL PUAN KORUMASI: min_score None olan bölümleri filtrele
+            filtered_recommendations = []
+            for rec in recommendations:
+                if hasattr(rec, 'department') and rec.department:
+                    dept = rec.department
+                    if hasattr(dept, 'min_score') and dept.min_score is not None and dept.min_score > 0:
+                        filtered_recommendations.append(rec)
+                    else:
+                        api_logger.debug(
+                            f"Skipping recommendation - department has null/zero min_score",
+                            recommendation_id=getattr(rec, 'id', None),
+                            department_id=getattr(dept, 'id', None) if hasattr(dept, 'id') else None
+                        )
+                else:
+                    # Department bilgisi yoksa da ekle (fallback için)
+                    filtered_recommendations.append(rec)
+            
+            recommendations = filtered_recommendations
+            
+        except Exception as engine_error:
+            # ✅ Öneri motoru hatası durumunda logla ve fallback'e geç
+            api_logger.error(
+                f"Recommendation engine error: {str(engine_error)}",
+                user_id=student_id,
+                error=str(engine_error)
+            )
+            recommendations = []  # Boş liste - fallback'e geç
+        
+        # ✅ Eğer öneri bulunduysa döndür
+        if recommendations and len(recommendations) > 0:
+            api_logger.info("Recommendations generated successfully", user_id=student_id, count=len(recommendations))
+            return recommendations
+        
+        # ✅ FALLBACK: Eğer öneri bulunamazsa, en yüksek puanlı 10 bölümü "Popüler Bölümler" olarak döndür
+        api_logger.info("No recommendations found, returning popular departments", user_id=student_id)
+        from models.university import Department, University
+        from schemas.university import DepartmentWithUniversityResponse
+        
+        # ✅ min_score None olan bölümleri filtreleme dışında bırak
+        popular_query = db.query(Department).filter(
+            Department.min_score.isnot(None),
+            Department.min_score > 0
+        )
+        
+        # Öğrencinin alan türüne uygun popüler bölümleri getir
+        if student.field_type:
+            popular_query = popular_query.filter(Department.field_type == student.field_type)
+        
+        popular_departments = popular_query.order_by(
+            Department.min_score.desc()
+        ).limit(10).all()  # En yüksek puanlı 10 bölüm
+        
+        # Eğer alan türüne uygun yoksa, tüm popüler bölümleri getir
+        if not popular_departments:
+            popular_departments = db.query(Department).filter(
+                Department.min_score.isnot(None),
+                Department.min_score > 0
+            ).order_by(
+                Department.min_score.desc()
+            ).limit(10).all()
+        
+        # University'leri çek
+        university_ids = {dept.university_id for dept in popular_departments}
+        universities_dict = {
+            uni.id: uni
+            for uni in db.query(University).filter(University.id.in_(university_ids)).all()
+        }
+        
+        # Response formatına çevir (Popüler Bölümler olarak)
+        fallback_result = []
+        for dept in popular_departments:
+            university = universities_dict.get(dept.university_id)
+            if not university:
+                continue
+            
+            department_response = DepartmentWithUniversityResponse(
+                **dept.__dict__,
+                university=university
+            )
+            
+            # Dummy recommendation oluştur (Popüler Bölüm olarak işaretle)
+            fallback_result.append(RecommendationResponse(
+                student_id=student_id,
+                department_id=dept.id,
+                department=department_response,
+                compatibility_score=50.0,
+                success_probability=50.0,
+                preference_score=50.0,
+                final_score=50.0,
+                recommendation_reason="Popüler Bölüm",
+                is_safe_choice=False,
+                is_dream_choice=False,
+                is_realistic_choice=True
+            ))
+        
+        api_logger.info("Returning popular departments as fallback", user_id=student_id, count=len(fallback_result))
+        return fallback_result
+        
+    except HTTPException:
+        # HTTPException'ları tekrar fırlat (404 gibi)
+        raise
+    except Exception as e:
+        # ✅ FALLBACK: Herhangi bir hata durumunda popüler bölümleri döndür (500 hatası verme)
+        api_logger.error(f"Error generating recommendations: {str(e)}", user_id=student_id, error=str(e))
+        
+        try:
+            student = db.query(Student).filter(Student.id == student_id).first()
+            if not student:
+                # Öğrenci yoksa bile popüler bölümleri döndür
+                student = None
+            
             from models.university import Department, University
             from schemas.university import DepartmentWithUniversityResponse
             
-            department_ids = {rec.department_id for rec in existing_recs}
-            departments_dict = {
-                dept.id: dept
-                for dept in db.query(Department).filter(Department.id.in_(department_ids)).all()
-            }
-            university_ids = {dept.university_id for dept in departments_dict.values()}
+            # ✅ min_score None olan bölümleri filtreleme dışında bırak
+            popular_query = db.query(Department).filter(
+                Department.min_score.isnot(None),
+                Department.min_score > 0
+            )
+            
+            if student and student.field_type:
+                popular_query = popular_query.filter(Department.field_type == student.field_type)
+            
+            popular_departments = popular_query.order_by(
+                Department.min_score.desc()
+            ).limit(10).all()
+            
+            if not popular_departments:
+                popular_departments = db.query(Department).filter(
+                    Department.min_score.isnot(None),
+                    Department.min_score > 0
+                ).order_by(
+                    Department.min_score.desc()
+                ).limit(10).all()
+            
+            university_ids = {dept.university_id for dept in popular_departments}
             universities_dict = {
                 uni.id: uni
                 for uni in db.query(University).filter(University.id.in_(university_ids)).all()
             }
             
-            result = []
-            for rec in existing_recs:
-                department = departments_dict.get(rec.department_id)
-                if not department:
-                    continue
-                university = universities_dict.get(department.university_id)
+            fallback_result = []
+            for dept in popular_departments:
+                university = universities_dict.get(dept.university_id)
                 if not university:
                     continue
+                
                 department_response = DepartmentWithUniversityResponse(
-                    **department.__dict__,
+                    **dept.__dict__,
                     university=university
                 )
-                result.append(RecommendationResponse(
-                    **rec.__dict__,
-                    department=department_response
+                
+                fallback_result.append(RecommendationResponse(
+                    student_id=student_id if student else 0,
+                    department_id=dept.id,
+                    department=department_response,
+                    compatibility_score=50.0,
+                    success_probability=50.0,
+                    preference_score=50.0,
+                    final_score=50.0,
+                    recommendation_reason="Popüler Bölüm",
+                    is_safe_choice=False,
+                    is_dream_choice=False,
+                    is_realistic_choice=True
                 ))
-            return result
-    
-    # ✅ Önce eski önerileri temizle (yeniden hesaplama için)
-    db.query(Recommendation).filter(Recommendation.student_id == student_id).delete()
-    db.commit()
-    
-    # Öneri motorunu çalıştır
-    recommendation_engine = RecommendationEngine(db)
-    # normalize weights (total>0 ise)
-    total_w = max(1e-9, (w_c + w_s + w_p))
-    weights = (w_c / total_w, w_s / total_w, w_p / total_w)
-    recommendations = recommendation_engine.generate_recommendations(student_id, limit, weights)
-    
-    api_logger.info("Recommendations generated successfully", user_id=student_id, count=len(recommendations))
-    
-    return recommendations
+            
+            api_logger.info("Returning popular departments after error", user_id=student_id, count=len(fallback_result))
+            return fallback_result
+        except Exception as fallback_error:
+            # Son çare: Boş liste döndür (ama 500 hatası verme)
+            api_logger.error(f"Fallback also failed: {str(fallback_error)}", user_id=student_id, error=str(fallback_error))
+            return []
 
 
 @router.get("/student/{student_id}", response_model=RecommendationListResponse)
@@ -155,6 +340,69 @@ async def get_student_recommendations(
             department=department_response
         ))
     
+    # ✅ FALLBACK: Eğer öneri yoksa popüler bölümleri döndür
+    if not result or len(result) == 0:
+        api_logger.info("No recommendations found, returning popular departments", user_id=student_id)
+        from models.university import Department, University
+        from schemas.university import DepartmentWithUniversityResponse
+        
+        # ✅ min_score None olan bölümleri filtreleme dışında bırak
+        popular_query = db.query(Department).filter(
+            Department.min_score.isnot(None),
+            Department.min_score > 0
+        )
+        
+        # Öğrencinin alan türüne uygun popüler bölümleri getir
+        if student.field_type:
+            popular_query = popular_query.filter(Department.field_type == student.field_type)
+        
+        popular_departments = popular_query.order_by(
+            Department.min_score.desc()  # En yüksek puanlılar önce
+        ).limit(min(limit, 10)).all()  # Maksimum 10 bölüm
+        
+        if not popular_departments:
+            # Eğer alan türüne uygun yoksa, tüm popüler bölümleri getir
+            popular_departments = db.query(Department).filter(
+                Department.min_score.isnot(None),
+                Department.min_score > 0
+            ).order_by(
+                Department.min_score.desc()
+            ).limit(min(limit, 10)).all()
+        
+        # University'leri çek
+        university_ids = {dept.university_id for dept in popular_departments}
+        universities_dict = {
+            uni.id: uni
+            for uni in db.query(University).filter(University.id.in_(university_ids)).all()
+        }
+        
+        # Response formatına çevir (dummy RecommendationResponse oluştur)
+        for dept in popular_departments:
+            university = universities_dict.get(dept.university_id)
+            if not university:
+                continue
+            
+            department_response = DepartmentWithUniversityResponse(
+                **dept.__dict__,
+                university=university
+            )
+            
+            # Dummy recommendation oluştur (final_score = 50.0 varsayılan)
+            result.append(RecommendationResponse(
+                student_id=student_id,
+                department_id=dept.id,
+                department=department_response,
+                compatibility_score=50.0,
+                success_probability=50.0,
+                preference_score=50.0,
+                final_score=50.0,
+                is_safe_choice=False,
+                is_dream_choice=False,
+                is_realistic_choice=True
+            ))
+        
+        total = len(result)
+    
     return RecommendationListResponse(
         recommendations=result,
         total=total,
@@ -209,8 +457,9 @@ async def get_goal_proximity(
 
     target_tyt = 0.0
     target_ayt = 0.0
-    if getattr(department, 'min_score', None):
-        target_ayt = float(department.min_score or 0.0)
+    # ✅ min_score None kontrolü: Eğer min_score None ise, 0.0 kullan
+    if getattr(department, 'min_score', None) is not None and department.min_score > 0:
+        target_ayt = float(department.min_score)
 
     try:
         proximity = ScoreCalculator.calculate_goal_proximity(
@@ -221,15 +470,24 @@ async def get_goal_proximity(
         )
     except Exception:
         overall = 0.0
-        if getattr(department, 'min_score', None) and department.min_score > 0:
-            overall = min(100.0, (float(student.total_score or 0.0) / float(department.min_score)) * 100.0)
+        # ✅ min_score None kontrolü: Eğer min_score None ise, hesaplama yapma
+        if getattr(department, 'min_score', None) is not None and department.min_score > 0:
+            student_score = float(student.total_score or 0.0)
+            dept_score = float(department.min_score)
+            if dept_score > 0:
+                overall = min(100.0, (student_score / dept_score) * 100.0)
+        
+        # ✅ min_score None ise gap hesaplama yapma
+        dept_score = float(department.min_score) if (getattr(department, 'min_score', None) is not None and department.min_score > 0) else 0.0
+        student_score = float(student.total_score or 0.0)
+        
         proximity = {
             'tyt_proximity': 0.0,
             'ayt_proximity': round(overall, 2),
             'overall_proximity': round(overall, 2),
             'tyt_gap': 0.0,
-            'ayt_gap': round(float(department.min_score or 0.0) - float(student.total_score or 0.0), 2),
-            'is_ready': float(student.total_score or 0.0) >= float(department.min_score or 0.0),
+            'ayt_gap': round(dept_score - student_score, 2) if dept_score > 0 else 0.0,
+            'is_ready': student_score >= dept_score if dept_score > 0 else False,
         }
 
     api_logger.info("Goal proximity calculated", user_id=student_id, department_id=department_id)
@@ -312,3 +570,4 @@ async def get_recommendation_stats(student_id: int, db: Session = Depends(get_db
             "preference": round(avg_preference, 2)
         }
     }
+

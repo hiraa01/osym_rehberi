@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../universities/data/providers/university_api_provider.dart';
 import '../../../universities/presentation/pages/university_discover_page.dart';
+import '../../../student_profile/data/providers/student_api_provider.dart';
 
 class GoalsPage extends ConsumerStatefulWidget {
   const GoalsPage({super.key});
@@ -22,33 +24,10 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
     super.initState();
   }
 
-  Widget _buildFilterChip(String label, String value, {IconData? icon}) {
-    final isSelected = _selectedFieldType == value;
-    final theme = Theme.of(context);
-    return FilterChip(
-      label: icon != null ? Icon(icon, size: 18) : Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        setState(() {
-          _selectedFieldType = selected ? value : 'SAY';
-        });
-      },
-      selectedColor: theme.colorScheme.primary,
-      checkmarkColor: Colors.white,
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : Colors.grey[700],
-        fontSize: 13,
-        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🔍 DEBUG: GoalsPage build called');
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -91,11 +70,41 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
               ],
             ),
           ),
-          // Tab Content
+          // Tab Content - ✅ CRITICAL FIX: IndexedStack ile cache'leme + AutomaticKeepAliveClientMixin
           Expanded(
-            child: _selectedTab == 0
-                ? _buildDepartmentsTab(context)
-                : _buildUniversitiesTab(context),
+            child: IndexedStack(
+              index: _selectedTab,
+              children: [
+                _DepartmentsTabWidget(
+                  searchQuery: _departmentSearchQuery,
+                  selectedFieldType: _selectedFieldType,
+                  onSearchChanged: (value) {
+                    if (mounted) {
+                      setState(() {
+                        _departmentSearchQuery = value;
+                      });
+                    }
+                  },
+                  onFieldTypeChanged: (value) {
+                    if (mounted) {
+                      setState(() {
+                        _selectedFieldType = value;
+                      });
+                    }
+                  },
+                ),
+                _UniversitiesTabWidget(
+                  searchQuery: _universitySearchQuery,
+                  onSearchChanged: (value) {
+                    if (mounted) {
+                      setState(() {
+                        _universitySearchQuery = value;
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
           // Alt butonlar
           Container(
@@ -114,11 +123,36 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      // ✅ UniversityDiscoverPage zaten tercih edilen şehirleri otomatik yüklüyor
+                    onPressed: () async {
+                      // ✅ Öğrencinin tercih ettiği şehirleri al
+                      List<String>? preferredCities;
+                      try {
+                        final prefs = await SharedPreferences.getInstance();
+                        final studentId = prefs.getInt('student_id');
+                        if (studentId != null) {
+                          final studentAsync =
+                              ref.read(studentDetailProvider(studentId));
+                          await studentAsync.when(
+                            data: (student) {
+                              preferredCities = student.preferredCities;
+                              return null;
+                            },
+                            loading: () => null,
+                            error: (_, __) => null,
+                          );
+                        }
+                      } catch (e) {
+                        debugPrint('🔴 Error loading preferred cities: $e');
+                      }
+
+                      // ✅ UniversityDiscoverPage'e tercih edilen şehirleri gönder
+                      // ✅ BuildContext async gap kontrolü
+                      if (!mounted) return;
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => const UniversityDiscoverPage(),
+                          builder: (_) => UniversityDiscoverPage(
+                            preferredCities: preferredCities,
+                          ),
                         ),
                       );
                     },
@@ -164,9 +198,11 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
     final theme = Theme.of(context);
     return InkWell(
       onTap: () {
-        setState(() {
-          _selectedTab = index;
-        });
+        if (mounted) {
+          setState(() {
+            _selectedTab = index;
+          });
+        }
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -198,14 +234,54 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
     );
   }
 
-  Widget _buildDepartmentsTab(BuildContext context) {
+}
+
+// ✅ CRITICAL FIX: Ayrı StatefulWidget + AutomaticKeepAliveClientMixin ile sonsuz döngüyü önle
+class _DepartmentsTabWidget extends ConsumerStatefulWidget {
+  final String searchQuery;
+  final String selectedFieldType;
+  final ValueChanged<String> onSearchChanged;
+  final ValueChanged<String> onFieldTypeChanged;
+
+  const _DepartmentsTabWidget({
+    required this.searchQuery,
+    required this.selectedFieldType,
+    required this.onSearchChanged,
+    required this.onFieldTypeChanged,
+  });
+
+  @override
+  ConsumerState<_DepartmentsTabWidget> createState() => _DepartmentsTabWidgetState();
+}
+
+class _DepartmentsTabWidgetState extends ConsumerState<_DepartmentsTabWidget>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true; // ✅ Tab değiştiğinde state'i koru
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ CRITICAL FIX: Sayfa ilk açıldığında veriyi bir kere iste
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Provider'ı tetiklemek için ref.read ile oku (FutureProvider otomatik tetiklenir)
+      ref.read(departmentListProvider);
+      debugPrint('🟢 _DepartmentsTabWidget: Provider tetiklendi');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // ✅ AutomaticKeepAliveClientMixin için gerekli
+    
+    // ✅ CRITICAL FIX: Provider'ı sadece bir kere watch et, cache'i kullan
     final departmentAsync = ref.watch(departmentListProvider);
 
     return departmentAsync.when(
       data: (departments) {
         // Filtreleme
         final filteredDepartments = departments.where((dept) {
-          final query = _departmentSearchQuery.toLowerCase();
+          final query = widget.searchQuery.toLowerCase();
           final deptName = (dept['name'] ?? dept['program_name'] ?? '')
               .toString()
               .toLowerCase();
@@ -215,7 +291,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
           final matchesQuery =
               deptName.contains(query) || uniName.contains(query);
           final matchesFieldType =
-              _selectedFieldType == 'ALL' || fieldType == _selectedFieldType;
+              widget.selectedFieldType == 'ALL' || fieldType == widget.selectedFieldType;
           return matchesQuery && matchesFieldType;
         }).toList();
 
@@ -234,11 +310,7 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                   filled: true,
                   fillColor: Colors.grey[50],
                 ),
-                onChanged: (value) {
-                  setState(() {
-                    _departmentSearchQuery = value;
-                  });
-                },
+                onChanged: widget.onSearchChanged,
               ),
             ),
             // Filtre butonları - Stitch Style
@@ -248,15 +320,15 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildFilterChip('Sayısal', 'SAY'),
+                    _buildFilterChip(context, 'Sayısal', 'SAY'),
                     const SizedBox(width: 8),
-                    _buildFilterChip('Eşit Ağırlık', 'EA'),
+                    _buildFilterChip(context, 'Eşit Ağırlık', 'EA'),
                     const SizedBox(width: 8),
-                    _buildFilterChip('Sözel', 'SÖZ'),
+                    _buildFilterChip(context, 'Sözel', 'SÖZ'),
                     const SizedBox(width: 8),
-                    _buildFilterChip('Dil', 'DİL'),
+                    _buildFilterChip(context, 'Dil', 'DİL'),
                     const SizedBox(width: 8),
-                    _buildFilterChip('Filtre', 'ALL', icon: Icons.filter_list),
+                    _buildFilterChip(context, 'Filtre', 'ALL', icon: Icons.filter_list),
                   ],
                 ),
               ),
@@ -264,189 +336,142 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
             const SizedBox(height: 8),
             // Departman listesi
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: filteredDepartments.length,
-                cacheExtent: 500, // ✅ Render edilmemiş widget'lar için cache
-                itemBuilder: (context, index) {
-                  final dept = filteredDepartments[index];
-                  final uni = dept['university'] as Map<String, dynamic>?;
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      leading: CircleAvatar(
-                        radius: 24,
-                        backgroundColor: Colors.blue.shade100,
-                        child: Text(
-                          (uni?['name'] ?? 'Ü').substring(0, 1).toUpperCase(),
-                          style: TextStyle(
-                            color: Colors.blue.shade700,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      title: Text(
-                        dept['name'] ??
-                            dept['program_name'] ??
-                            'Bilinmeyen Bölüm',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          uni?['name'] ?? 'Bilinmeyen Üniversite',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(
-                          Icons.star_border,
-                          color: Colors.grey,
-                        ),
-                        onPressed: () {
-                          // Favori ekle/kaldır özelliği eklenecek
-                        },
-                      ),
-                      onTap: () => _showDepartmentDetails(context, dept),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(child: Text('Hata: $error')),
-    );
-  }
-
-  Widget _buildUniversitiesTab(BuildContext context) {
-    final universityAsync = ref.watch(universityListProvider);
-
-    return universityAsync.when(
-      data: (universities) {
-        // Filtreleme
-        final filteredUniversities = universities.where((uni) {
-          final query = _universitySearchQuery.toLowerCase();
-          return uni['name'].toString().toLowerCase().contains(query) ||
-              uni['city'].toString().toLowerCase().contains(query);
-        }).toList();
-
-        return Column(
-          children: [
-            // Arama barı
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Üniversite ara (örn: İstanbul)',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    _universitySearchQuery = value;
-                  });
-                },
-              ),
-            ),
-            // Üniversite listesi
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: filteredUniversities.length,
-                cacheExtent: 500, // ✅ Render edilmemiş widget'lar için cache
-                itemBuilder: (context, index) {
-                  final uni = filteredUniversities[index];
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withValues(alpha: 0.05),
-                            Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withValues(alpha: 0.02),
+              child: filteredDepartments.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.search_off,
+                                size: 64, color: Colors.grey),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Filtrelere uygun bölüm bulunamadı',
+                              style: Theme.of(context).textTheme.titleLarge,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Arama terimini veya filtreleri değiştirmeyi deneyin',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Colors.grey[600],
+                                  ),
+                              textAlign: TextAlign.center,
+                            ),
                           ],
                         ),
                       ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        leading: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(12),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: filteredDepartments.length,
+                      cacheExtent:
+                          500, // ✅ Render edilmemiş widget'lar için cache
+                      itemBuilder: (context, index) {
+                        final dept = filteredDepartments[index];
+                        final uni = dept['university'] as Map<String, dynamic>?;
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          child: const Icon(Icons.account_balance,
-                              color: Colors.blue, size: 22),
-                        ),
-                        title: Text(
-                          uni['name'] ?? 'Bilinmeyen Üniversite',
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                        ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            '${uni['city']} • ${uni['university_type']}',
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurface
-                                          .withValues(alpha: 0.7),
-                                    ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            leading: CircleAvatar(
+                              radius: 24,
+                              backgroundColor: Colors.blue.shade100,
+                              child: Text(
+                                (uni?['name'] ?? 'Ü')
+                                    .substring(0, 1)
+                                    .toUpperCase(),
+                                style: TextStyle(
+                                  color: Colors.blue.shade700,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              dept['name'] ??
+                                  dept['program_name'] ??
+                                  'Bilinmeyen Bölüm',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                uni?['name'] ?? 'Bilinmeyen Üniversite',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(
+                                Icons.star_border,
+                                color: Colors.grey,
+                              ),
+                              onPressed: () {
+                                // Favori ekle/kaldır özelliği eklenecek
+                              },
+                            ),
+                            onTap: () => _showDepartmentDetails(context, dept),
                           ),
-                        ),
-                        trailing: Icon(
-                          Icons.arrow_forward_ios,
-                          size: 16,
-                          color: Colors.grey[400],
-                        ),
-                        onTap: () => _showUniversityDetails(context, uni),
-                      ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
           ],
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(child: Text('Hata: $error')),
+      error: (error, stack) {
+        debugPrint('🔴 Error loading departments: $error');
+        debugPrint('🔴 Stack: $stack');
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 64),
+                const SizedBox(height: 16),
+                Text(
+                  'Bölümler yüklenirken hata oluştu',
+                  style: Theme.of(context).textTheme.titleLarge,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  error.toString(),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    ref.invalidate(departmentListProvider);
+                  },
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Tekrar Dene'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -480,6 +505,269 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: Text(value),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(BuildContext context, String label, String value, {IconData? icon}) {
+    final isSelected = widget.selectedFieldType == value;
+    final theme = Theme.of(context);
+    return FilterChip(
+      label: icon != null ? Icon(icon, size: 18) : Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        widget.onFieldTypeChanged(selected ? value : 'SAY');
+      },
+      selectedColor: theme.colorScheme.primary,
+      checkmarkColor: Colors.white,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.grey[700],
+        fontSize: 13,
+        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+    );
+  }
+}
+
+// ✅ CRITICAL FIX: Ayrı StatefulWidget + AutomaticKeepAliveClientMixin ile sonsuz döngüyü önle
+class _UniversitiesTabWidget extends ConsumerStatefulWidget {
+  final String searchQuery;
+  final ValueChanged<String> onSearchChanged;
+
+  const _UniversitiesTabWidget({
+    required this.searchQuery,
+    required this.onSearchChanged,
+  });
+
+  @override
+  ConsumerState<_UniversitiesTabWidget> createState() => _UniversitiesTabWidgetState();
+}
+
+class _UniversitiesTabWidgetState extends ConsumerState<_UniversitiesTabWidget>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true; // ✅ Tab değiştiğinde state'i koru
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ CRITICAL FIX: Sayfa ilk açıldığında veriyi bir kere iste
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Provider'ı tetiklemek için ref.read ile oku (FutureProvider otomatik tetiklenir)
+      // filteredUniversityListProvider zaten universityListProvider'a bağlı, sadece base provider'ı tetiklemek yeterli
+      ref.read(universityListProvider);
+      debugPrint('🟢 _UniversitiesTabWidget: Provider tetiklendi');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // ✅ AutomaticKeepAliveClientMixin için gerekli
+    
+    // ✅ CRITICAL FIX: Provider'ı sadece bir kere watch et, cache'i kullan
+    final universityAsync = ref.watch(universityListProvider);
+
+    return universityAsync.when(
+      data: (universities) {
+        // Filtreleme
+        final filteredUniversities = universities.where((uni) {
+          final query = widget.searchQuery.toLowerCase();
+          return uni['name'].toString().toLowerCase().contains(query) ||
+              uni['city'].toString().toLowerCase().contains(query);
+        }).toList();
+
+        return Column(
+          children: [
+            // Arama barı
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Üniversite ara (örn: İstanbul)',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onChanged: widget.onSearchChanged,
+              ),
+            ),
+            // Üniversite listesi
+            Expanded(
+              child: filteredUniversities.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.search_off,
+                                size: 64, color: Colors.grey),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Filtrelere uygun üniversite bulunamadı',
+                              style: Theme.of(context).textTheme.titleLarge,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Arama terimini veya filtreleri değiştirmeyi deneyin',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: Colors.grey[600],
+                                  ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: filteredUniversities.length,
+                      cacheExtent:
+                          500, // ✅ Render edilmemiş widget'lar için cache
+                      itemBuilder: (context, index) {
+                        final uni = filteredUniversities[index];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withValues(alpha: 0.05),
+                                  Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withValues(alpha: 0.02),
+                                ],
+                              ),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 12),
+                              leading: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(Icons.account_balance,
+                                    color: Colors.blue, size: 22),
+                              ),
+                              title: Text(
+                                uni['name'] ?? 'Bilinmeyen Üniversite',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  '${uni['city']} • ${uni['university_type']}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.7),
+                                      ),
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.arrow_forward_ios,
+                                size: 16,
+                                color: Colors.grey[400],
+                              ),
+                              onTap: () => _showUniversityDetails(context, uni),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) {
+        debugPrint('🔴 Error loading departments: $error');
+        debugPrint('🔴 Stack: $stack');
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 64),
+                const SizedBox(height: 16),
+                Text(
+                  'Bölümler yüklenirken hata oluştu',
+                  style: Theme.of(context).textTheme.titleLarge,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  error.toString(),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    ref.invalidate(departmentListProvider);
+                  },
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Tekrar Dene'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
