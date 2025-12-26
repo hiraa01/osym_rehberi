@@ -341,7 +341,7 @@ async def get_unique_departments(
 @router.get("/departments/", response_model=List[DepartmentWithUniversityResponse])
 async def get_departments(
     skip: int = Query(0, ge=0),
-    limit: int = Query(10000, ge=1, le=50000),  # ✅ Default 10000, max 50000 - tüm veriler gelsin (21K+ kayıt için)
+    limit: int = Query(30000, ge=1, le=50000),  # ✅ Default 30000, max 50000 - tüm veriler gelsin (21.600+ kayıt için)
     field_type: Optional[str] = Query(None),
     degree_type: Optional[str] = Query(None, description="✅ Derece türü: 'Associate' (Önlisans) veya 'Bachelor' (Lisans). None ise tümü getirilir."),
     university_id: Optional[int] = Query(None),

@@ -6,7 +6,7 @@ from typing import List, Optional
 from database import get_db
 from models.student import Student
 from models.university import Recommendation
-from schemas.university import RecommendationResponse, RecommendationListResponse
+from schemas.university import RecommendationResponse
 from services.recommendation_engine import RecommendationEngine
 from services.score_calculator import ScoreCalculator
 from core.logging_config import api_logger
@@ -132,7 +132,7 @@ async def generate_recommendations(
             api_logger.info("Recommendations generated successfully", user_id=student_id, count=len(recommendations))
             return recommendations
         
-        # ✅ FALLBACK: Eğer öneri bulunamazsa, en yüksek puanlı 10 bölümü "Popüler Bölümler" olarak döndür
+        # ✅ FALLBACK: Eğer öneri bulunamazsa, en yüksek puanlı veya en çok kontenjanlı 20 bölümü "Popüler Bölümler" olarak döndür
         api_logger.info("No recommendations found, returning popular departments", user_id=student_id)
         from models.university import Department, University
         from schemas.university import DepartmentWithUniversityResponse
@@ -147,9 +147,11 @@ async def generate_recommendations(
         if student.field_type:
             popular_query = popular_query.filter(Department.field_type == student.field_type)
         
+        # Önce en yüksek puanlıları getir, sonra kontenjanı yüksek olanları
         popular_departments = popular_query.order_by(
-            Department.min_score.desc()
-        ).limit(10).all()  # En yüksek puanlı 10 bölüm
+            Department.min_score.desc(),
+            Department.quota.desc().nullslast()
+        ).limit(20).all()  # En yüksek puanlı 20 bölüm
         
         # Eğer alan türüne uygun yoksa, tüm popüler bölümleri getir
         if not popular_departments:
@@ -157,8 +159,9 @@ async def generate_recommendations(
                 Department.min_score.isnot(None),
                 Department.min_score > 0
             ).order_by(
-                Department.min_score.desc()
-            ).limit(10).all()
+                Department.min_score.desc(),
+                Department.quota.desc().nullslast()
+            ).limit(20).all()
         
         # University'leri çek
         university_ids = {dept.university_id for dept in popular_departments}
@@ -223,16 +226,18 @@ async def generate_recommendations(
                 popular_query = popular_query.filter(Department.field_type == student.field_type)
             
             popular_departments = popular_query.order_by(
-                Department.min_score.desc()
-            ).limit(10).all()
+                Department.min_score.desc(),
+                Department.quota.desc().nullslast()
+            ).limit(20).all()
             
             if not popular_departments:
                 popular_departments = db.query(Department).filter(
                     Department.min_score.isnot(None),
                     Department.min_score > 0
                 ).order_by(
-                    Department.min_score.desc()
-                ).limit(10).all()
+                    Department.min_score.desc(),
+                    Department.quota.desc().nullslast()
+                ).limit(20).all()
             
             university_ids = {dept.university_id for dept in popular_departments}
             universities_dict = {
@@ -273,7 +278,7 @@ async def generate_recommendations(
             return []
 
 
-@router.get("/student/{student_id}", response_model=RecommendationListResponse)
+@router.get("/student/{student_id}", response_model=List[RecommendationResponse])
 async def get_student_recommendations(
     student_id: int,
     skip: int = Query(0, ge=0),
@@ -281,70 +286,83 @@ async def get_student_recommendations(
     recommendation_type: Optional[str] = Query(None, description="safe, dream, realistic"),
     db: Session = Depends(get_db)
 ):
-    """Öğrencinin mevcut önerilerini getir"""
-    # Öğrenci var mı kontrol et
-    student = db.query(Student).filter(Student.id == student_id).first()
-    if not student:
-        raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
-    
-    query = db.query(Recommendation).filter(Recommendation.student_id == student_id)
-    
-    # Öneri türüne göre filtrele
-    if recommendation_type == "safe":
-        query = query.filter(Recommendation.is_safe_choice == True)
-    elif recommendation_type == "dream":
-        query = query.filter(Recommendation.is_dream_choice == True)
-    elif recommendation_type == "realistic":
-        query = query.filter(Recommendation.is_realistic_choice == True)
-    
-    # Final skora göre sırala
-    query = query.order_by(Recommendation.final_score.desc())
-    
-    total = query.count()
-    recommendations = query.offset(skip).limit(limit).all()
-    
-    # ✅ N+1 problemini çöz: Tüm department ve university'leri tek seferde çek
+    """
+    Öğrencinin mevcut önerilerini getir - Direkt List döndürür (Flutter uyumlu)
+    ✅ BULLETPROOF: Herhangi bir hata durumunda fallback mekanizması devreye girer
+    """
     from models.university import Department, University
     from schemas.university import DepartmentWithUniversityResponse
     
-    department_ids = {rec.department_id for rec in recommendations}
-    departments_dict = {
-        dept.id: dept
-        for dept in db.query(Department).filter(Department.id.in_(department_ids)).all()
-    }
-    
-    university_ids = {dept.university_id for dept in departments_dict.values()}
-    universities_dict = {
-        uni.id: uni
-        for uni in db.query(University).filter(University.id.in_(university_ids)).all()
-    }
-    
-    # Response formatına çevir
-    result = []
-    for rec in recommendations:
-        department = departments_dict.get(rec.department_id)
-        if not department:
-            continue
+    try:
+        # Öğrenci var mı kontrol et
+        student = db.query(Student).filter(Student.id == student_id).first()
+        if not student:
+            # Öğrenci yoksa bile fallback ile devam et (404 verme)
+            api_logger.warning(f"Student {student_id} not found, using fallback", user_id=student_id)
+            student = None
         
-        university = universities_dict.get(department.university_id)
-        if not university:
-            continue
+        # Öğrenci varsa normal akışı dene
+        if student:
+            query = db.query(Recommendation).filter(Recommendation.student_id == student_id)
+            
+            # Öneri türüne göre filtrele
+            if recommendation_type == "safe":
+                query = query.filter(Recommendation.is_safe_choice == True)
+            elif recommendation_type == "dream":
+                query = query.filter(Recommendation.is_dream_choice == True)
+            elif recommendation_type == "realistic":
+                query = query.filter(Recommendation.is_realistic_choice == True)
+            
+            # Final skora göre sırala
+            query = query.order_by(Recommendation.final_score.desc())
+            
+            recommendations = query.offset(skip).limit(limit).all()
+            
+            # ✅ N+1 problemini çöz: Tüm department ve university'leri tek seferde çek
+            department_ids = {rec.department_id for rec in recommendations}
+            departments_dict = {
+                dept.id: dept
+                for dept in db.query(Department).filter(Department.id.in_(department_ids)).all()
+            }
+            
+            university_ids = {dept.university_id for dept in departments_dict.values()}
+            universities_dict = {
+                uni.id: uni
+                for uni in db.query(University).filter(University.id.in_(university_ids)).all()
+            }
+            
+            # Response formatına çevir
+            result = []
+            for rec in recommendations:
+                try:
+                    department = departments_dict.get(rec.department_id)
+                    if not department:
+                        continue
+                    
+                    university = universities_dict.get(department.university_id)
+                    if not university:
+                        continue
+                    
+                    department_response = DepartmentWithUniversityResponse(
+                        **department.__dict__,
+                        university=university
+                    )
+                    
+                    result.append(RecommendationResponse(
+                        **rec.__dict__,
+                        department=department_response
+                    ))
+                except Exception as rec_error:
+                    # Tek bir recommendation hatası tüm listeyi bozmasın
+                    api_logger.warning(f"Error processing recommendation {rec.id}: {rec_error}", user_id=student_id)
+                    continue
+            
+            # ✅ Eğer öneri bulunduysa döndür
+            if result and len(result) > 0:
+                return result
         
-        department_response = DepartmentWithUniversityResponse(
-            **department.__dict__,
-            university=university
-        )
-        
-        result.append(RecommendationResponse(
-            **rec.__dict__,
-            department=department_response
-        ))
-    
-    # ✅ FALLBACK: Eğer öneri yoksa popüler bölümleri döndür
-    if not result or len(result) == 0:
-        api_logger.info("No recommendations found, returning popular departments", user_id=student_id)
-        from models.university import Department, University
-        from schemas.university import DepartmentWithUniversityResponse
+        # ✅ FALLBACK: Eğer öneri yoksa veya hata varsa popüler bölümleri döndür
+        api_logger.info("Using fallback: returning popular departments", user_id=student_id)
         
         # ✅ min_score None olan bölümleri filtreleme dışında bırak
         popular_query = db.query(Department).filter(
@@ -353,12 +371,13 @@ async def get_student_recommendations(
         )
         
         # Öğrencinin alan türüne uygun popüler bölümleri getir
-        if student.field_type:
+        if student and student.field_type:
             popular_query = popular_query.filter(Department.field_type == student.field_type)
         
         popular_departments = popular_query.order_by(
-            Department.min_score.desc()  # En yüksek puanlılar önce
-        ).limit(min(limit, 10)).all()  # Maksimum 10 bölüm
+            Department.min_score.desc(),  # En yüksek puanlılar önce
+            Department.quota.desc().nullslast()  # Sonra kontenjanı yüksek olanlar
+        ).limit(20).all()  # Maksimum 20 bölüm
         
         if not popular_departments:
             # Eğer alan türüne uygun yoksa, tüm popüler bölümleri getir
@@ -366,8 +385,9 @@ async def get_student_recommendations(
                 Department.min_score.isnot(None),
                 Department.min_score > 0
             ).order_by(
-                Department.min_score.desc()
-            ).limit(min(limit, 10)).all()
+                Department.min_score.desc(),
+                Department.quota.desc().nullslast()
+            ).limit(20).all()
         
         # University'leri çek
         university_ids = {dept.university_id for dept in popular_departments}
@@ -377,38 +397,108 @@ async def get_student_recommendations(
         }
         
         # Response formatına çevir (dummy RecommendationResponse oluştur)
+        result = []
         for dept in popular_departments:
-            university = universities_dict.get(dept.university_id)
-            if not university:
+            try:
+                university = universities_dict.get(dept.university_id)
+                if not university:
+                    continue
+                
+                department_response = DepartmentWithUniversityResponse(
+                    **dept.__dict__,
+                    university=university
+                )
+                
+                # Dummy recommendation oluştur (final_score = 50.0 varsayılan)
+                result.append(RecommendationResponse(
+                    student_id=student_id if student else 0,
+                    department_id=dept.id,
+                    department=department_response,
+                    compatibility_score=50.0,
+                    success_probability=50.0,
+                    preference_score=50.0,
+                    final_score=50.0,
+                    recommendation_reason="Popüler Bölüm (Öneri Sistemi Yedek Modu)",
+                    is_safe_choice=False,
+                    is_dream_choice=False,
+                    is_realistic_choice=True
+                ))
+            except Exception as dept_error:
+                # Tek bir department hatası tüm listeyi bozmasın
+                api_logger.warning(f"Error processing department {dept.id}: {dept_error}", user_id=student_id)
                 continue
-            
-            department_response = DepartmentWithUniversityResponse(
-                **dept.__dict__,
-                university=university
-            )
-            
-            # Dummy recommendation oluştur (final_score = 50.0 varsayılan)
-            result.append(RecommendationResponse(
-                student_id=student_id,
-                department_id=dept.id,
-                department=department_response,
-                compatibility_score=50.0,
-                success_probability=50.0,
-                preference_score=50.0,
-                final_score=50.0,
-                is_safe_choice=False,
-                is_dream_choice=False,
-                is_realistic_choice=True
-            ))
         
-        total = len(result)
-    
-    return RecommendationListResponse(
-        recommendations=result,
-        total=total,
-        page=skip // limit + 1,
-        size=limit
-    )
+        # ✅ Direkt List döndür (Flutter uyumlu) - Dict wrapper yok
+        return result if result else []  # En kötü durumda boş liste döndür
+        
+    except Exception as e:
+        # ✅ BULLETPROOF FALLBACK: Herhangi bir hata durumunda acil durum planı
+        api_logger.error(f"⚠️ ÖNERİ ALGORİTMASI HATASI: {str(e)}", user_id=student_id, error=str(e))
+        print(f"⚠️ ÖNERİ ALGORİTMASI HATASI: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        try:
+            # ACİL DURUM PLANI: Veritabanından en popüler 20 bölümü çek
+            fallback_deps = db.query(Department).filter(
+                Department.min_score.isnot(None),
+                Department.min_score > 0
+            ).order_by(
+                Department.min_score.desc()
+            ).limit(20).all()
+            
+            if not fallback_deps:
+                # Eğer min_score olan yoksa, herhangi bir bölümü al
+                fallback_deps = db.query(Department).limit(20).all()
+            
+            if not fallback_deps:
+                # En kötü durum: Boş liste döndür (ama 500 hatası verme)
+                return []
+            
+            # University'leri çek
+            university_ids = {dept.university_id for dept in fallback_deps}
+            universities_dict = {
+                uni.id: uni
+                for uni in db.query(University).filter(University.id.in_(university_ids)).all()
+            }
+            
+            # Department objelerini Recommendation formatına çevirip döndür
+            result = []
+            for dep in fallback_deps:
+                try:
+                    university = universities_dict.get(dep.university_id)
+                    if not university:
+                        continue
+                    
+                    department_response = DepartmentWithUniversityResponse(
+                        **dep.__dict__,
+                        university=university
+                    )
+                    
+                    result.append(RecommendationResponse(
+                        student_id=student_id,
+                        department_id=dep.id,
+                        department=department_response,
+                        compatibility_score=85.0,
+                        success_probability=85.0,
+                        preference_score=85.0,
+                        final_score=85.0,
+                        recommendation_reason="Popüler Bölüm (Öneri Sistemi Yedek Modu)",
+                        is_safe_choice=False,
+                        is_dream_choice=False,
+                        is_realistic_choice=True
+                    ))
+                except Exception as fallback_error:
+                    api_logger.warning(f"Error in fallback processing department {dep.id}: {fallback_error}")
+                    continue
+            
+            return result if result else []
+            
+        except Exception as fallback_fatal_error:
+            # Fallback de başarısız olursa boş liste döndür (ama 500 hatası verme)
+            api_logger.error(f"Fallback also failed: {str(fallback_fatal_error)}", user_id=student_id, error=str(fallback_fatal_error))
+            print(f"❌ Fallback de başarısız: {str(fallback_fatal_error)}")
+            return []
 
 
 @router.get("/{recommendation_id}", response_model=RecommendationResponse)

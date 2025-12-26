@@ -236,6 +236,11 @@ class ApiService {
     return await _dio.post('/students/$id/calculate-scores');
   }
 
+  // ✅ Hedef bölüm ekleme (Preferred Department)
+  Future<Response> addPreferredDepartment(int studentId, int departmentId) async {
+    return await _dio.post('/students/$studentId/add-preferred-department/$departmentId');
+  }
+
   // University endpoints
   Future<Response> getUniversities({
     int skip = 0,
@@ -271,7 +276,7 @@ class ApiService {
 
   Future<Response> getDepartments({
     int skip = 0,
-    int limit = 2000, // ✅ Default 2000 - tüm bölümler gelsin (max 5000)
+    int limit = 30000, // ✅ Default 30000 - tüm bölümler gelsin (21.600+ kayıt için)
     String? normalizedName, // ✅ Normalize edilmiş isme göre filtrele
     String? fieldType, // ✅ Alan türü (TYT, SAY, EA, SÖZ, DİL)
     String? degreeType, // ✅ Derece türü (Associate, Bachelor)

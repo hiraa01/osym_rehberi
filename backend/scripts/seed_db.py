@@ -24,7 +24,9 @@ from sqlalchemy.orm import Session
 sys.path.append('/app')
 
 from database import SessionLocal, engine
-from models.university import University, Department
+from models.university import University, Department, Recommendation
+from models.student import Student
+from models.exam_attempt import ExamAttempt
 
 
 def extract_city_from_university(uni_name: str) -> str:
@@ -64,22 +66,34 @@ def normalize_university_type(uni_name: str, uni_type: Optional[str] = None) -> 
 
 
 def truncate_tables(db: Session):
-    """Eski verileri temizle (TRUNCATE CASCADE)"""
+    """Eski verileri temizle (TRUNCATE CASCADE) - Foreign Key sırasına göre"""
     print("=" * 70)
     print("🗑️  ESKİ VERİLER TEMİZLENİYOR...")
     print("=" * 70)
     
     try:
-        # Foreign key constraint'leri geçici olarak devre dışı bırak (PostgreSQL)
-        # Önce DepartmentYearlyStats'ı sil (foreign key var)
+        # Foreign key sırasına göre temizle (en alttan başla)
+        # 1. Recommendations (student_id ve department_id'ye referans veriyor)
+        db.execute(text("TRUNCATE TABLE recommendations CASCADE"))
+        print("   ✅ recommendations temizlendi")
+        
+        # 2. ExamAttempts (student_id'ye referans veriyor)
+        db.execute(text("TRUNCATE TABLE exam_attempts CASCADE"))
+        print("   ✅ exam_attempts temizlendi")
+        
+        # 3. Students (diğer tablolar buna referans veriyor)
+        db.execute(text("TRUNCATE TABLE students CASCADE"))
+        print("   ✅ students temizlendi")
+        
+        # 4. DepartmentYearlyStats (department_id'ye referans veriyor)
         db.execute(text("TRUNCATE TABLE department_yearly_stats CASCADE"))
         print("   ✅ department_yearly_stats temizlendi")
         
-        # Sonra Department'ı sil
+        # 5. Departments (university_id'ye referans veriyor)
         db.execute(text("TRUNCATE TABLE departments CASCADE"))
         print("   ✅ departments temizlendi")
         
-        # Son olarak University'yi sil
+        # 6. Universities (en üst seviye)
         db.execute(text("TRUNCATE TABLE universities CASCADE"))
         print("   ✅ universities temizlendi")
         
@@ -93,6 +107,10 @@ def truncate_tables(db: Session):
         # Alternatif yöntem: SQLAlchemy ile sil
         try:
             print("   💡 Alternatif yöntem deneniyor...")
+            # Foreign key sırasına göre sil
+            db.query(Recommendation).delete()
+            db.query(ExamAttempt).delete()
+            db.query(Student).delete()
             db.query(Department).delete()
             db.query(University).delete()
             db.commit()
@@ -317,6 +335,77 @@ def load_departments(db: Session, json_data: List[Dict], university_mapping: Dic
     print()
 
 
+def create_demo_student(db: Session):
+    """
+    Demo öğrenci oluştur ve gerçek bölümlerden tercih ekle
+    Bu sayede sistem açıldığında Anasayfa dolu gelir.
+    """
+    print("=" * 70)
+    print("👤 DEMO ÖĞRENCİ OLUŞTURULUYOR...")
+    print("=" * 70)
+    
+    try:
+        # Önce gerçek bölümlerden birkaç tane seç (en yüksek puanlılar)
+        popular_departments = db.query(Department).filter(
+            Department.min_score.isnot(None),
+            Department.min_score > 0
+        ).order_by(
+            Department.min_score.desc()
+        ).limit(5).all()
+        
+        if not popular_departments:
+            print("   ⚠️  Hiç bölüm bulunamadı, demo öğrenci oluşturulamadı")
+            return
+        
+        # Demo öğrenci oluştur
+        demo_student = Student(
+            name="Demo Öğrenci",
+            email="demo@osymrehberi.com",
+            phone="5550000000",
+            class_level="12",
+            exam_type="TYT+AYT",
+            field_type="SAY",
+            tyt_turkish_net=15.0,
+            tyt_math_net=20.0,
+            tyt_social_net=10.0,
+            tyt_science_net=18.0,
+            ayt_math_net=25.0,
+            ayt_physics_net=20.0,
+            ayt_chemistry_net=18.0,
+            ayt_biology_net=15.0,
+            tyt_total_score=63.0,
+            ayt_total_score=78.0,
+            total_score=141.0,
+            preferred_cities=json.dumps(["İstanbul", "Ankara"]),
+            preferred_university_types=json.dumps(["devlet"]),
+            scholarship_preference=True
+        )
+        db.add(demo_student)
+        db.flush()  # ID almak için
+        
+        print(f"   ✅ Demo öğrenci oluşturuldu (ID: {demo_student.id})")
+        
+        # Gerçek bölümlerden tercih ekle (preferred_departments JSON'a)
+        department_names = [dept.name for dept in popular_departments[:2]]
+        demo_student.preferred_departments = json.dumps(department_names)
+        
+        # İlgi alanları ekle
+        demo_student.interest_areas = json.dumps(["Tıp", "Mühendislik"])
+        
+        db.commit()
+        
+        print(f"   ✅ {len(department_names)} gerçek bölüm tercih olarak eklendi:")
+        for name in department_names:
+            print(f"      - {name}")
+        print()
+        
+    except Exception as e:
+        db.rollback()
+        print(f"   ❌ Demo öğrenci oluşturma hatası: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 def main():
     parser = argparse.ArgumentParser(description='JSON verilerini veritabanına yükle')
     parser.add_argument('--json-file', type=str, default='data/final_cleaned_data.json', help='JSON dosyası yolu')
@@ -370,15 +459,20 @@ def main():
         # 3. Bölümleri yükle
         load_departments(db, json_data, university_mapping)
         
+        # 4. Demo öğrenci oluştur (gerçek bölümlerden tercih ile)
+        create_demo_student(db)
+        
         # İstatistikler
         uni_count = db.query(University).count()
         dept_count = db.query(Department).count()
+        student_count = db.query(Student).count()
         
         print("=" * 70)
         print("✅ VERİTABANI SEED TAMAMLANDI!")
         print("=" * 70)
         print(f"🏛️  Üniversite sayısı: {uni_count}")
         print(f"📚 Bölüm sayısı: {dept_count}")
+        print(f"👤 Öğrenci sayısı: {student_count}")
         print("=" * 70)
         
     except Exception as e:
