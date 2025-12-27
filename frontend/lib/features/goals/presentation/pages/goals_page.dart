@@ -148,7 +148,8 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                       // ✅ UniversityDiscoverPage'e tercih edilen şehirleri gönder
                       // ✅ BuildContext async gap kontrolü
                       if (!mounted) return;
-                      Navigator.of(context).push(
+                      final navigatorContext = context;
+                      Navigator.of(navigatorContext).push(
                         MaterialPageRoute(
                           builder: (_) => UniversityDiscoverPage(
                             preferredCities: preferredCities,

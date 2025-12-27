@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html class="light" lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ana Navigasyon Barı</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#116062",
+            "primary-dark": "#0d4a4c",
+            "background-light": "#f0f4f5",
+            "background-dark": "#0b1114",
+            "surface-light": "#ffffff",
+            "surface-dark": "#162024",
+          },
+          fontFamily: {
+            "display": ["Lexend", "sans-serif"]
+          },
+          borderRadius: {
+            "DEFAULT": "0.5rem",
+            "lg": "1rem",
+            "xl": "1.5rem",
+            "2xl": "2rem",
+            "3xl": "3rem",
+            "full": "9999px"
+          },
+          boxShadow: {
+            "soft": "0 10px 40px -10px rgba(17, 96, 98, 0.15)",
+            "glow": "0 0 20px rgba(17, 96, 98, 0.3)"
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+      transition: font-variation-settings 0.3s ease;
+    }
+    .material-symbols-outlined.filled {
+      font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .nav-item-active .material-symbols-outlined {
+      font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+    }
+    body {
+      min-height: max(884px, 100dvh);
+    }.no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }.no-scrollbar {
+        -ms-overflow-style: none;scrollbar-width: none;}
+</style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 antialiased selection:bg-primary selection:text-white">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<div class="flex-grow p-6 pb-32">
+<div class="mb-8 flex items-center justify-between">
+<h1 class="text-3xl font-bold text-slate-900 dark:text-white">Merhaba, Öğrenci 👋</h1>
+<div class="h-10 w-10 overflow-hidden rounded-full border-2 border-primary/20">
+<div class="flex h-full w-full items-center justify-center bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+<span class="material-symbols-outlined">person</span>
+</div>
+</div>
+</div>
+<div class="mb-6 rounded-3xl bg-primary p-6 text-white shadow-glow">
+<div class="mb-2 text-sm font-medium opacity-80">Bugünün Hedefi</div>
+<div class="mb-4 text-2xl font-bold">TYT Matematik - 40 Soru</div>
+<div class="h-2 w-full overflow-hidden rounded-full bg-white/20">
+<div class="h-full w-3/4 rounded-full bg-white"></div>
+</div>
+<div class="mt-2 text-right text-xs font-medium">%75 Tamamlandı</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-surface-dark">
+<div class="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-teal-50 text-primary dark:bg-primary/20 dark:text-teal-200">
+<span class="material-symbols-outlined">insights</span>
+</div>
+<h3 class="font-semibold text-slate-800 dark:text-slate-100">Son Deneme</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400">Net: 85.5</p>
+</div>
+<div class="rounded-2xl bg-white p-4 shadow-sm dark:bg-surface-dark">
+<div class="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-teal-50 text-primary dark:bg-primary/20 dark:text-teal-200">
+<span class="material-symbols-outlined">menu_book</span>
+</div>
+<h3 class="font-semibold text-slate-800 dark:text-slate-100">Ders Programı</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400">3 ders beklemede</p>
+</div>
+</div>
+<p class="mt-8 text-center text-sm text-slate-400">Uygulama içeriği devam ediyor...</p>
+</div>
+<div class="fixed bottom-6 left-0 right-0 z-50 w-full px-4">
+<div class="mx-auto max-w-sm">
+<div class="relative flex h-[76px] items-center justify-between rounded-[2.5rem] bg-white px-2 shadow-soft backdrop-blur-md dark:bg-surface-dark dark:shadow-black/40 border border-slate-100 dark:border-slate-800">
+<a class="group relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-white/5" href="#">
+<span class="material-symbols-outlined text-slate-400 transition-colors group-hover:text-primary dark:text-slate-500 dark:group-hover:text-teal-400">bar_chart</span>
+<span class="text-[10px] font-medium text-slate-400 transition-colors group-hover:text-primary dark:text-slate-500 dark:group-hover:text-teal-400">Netlerim</span>
+</a>
+<a class="group relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-white/5" href="#">
+<span class="material-symbols-outlined text-slate-400 transition-colors group-hover:text-primary dark:text-slate-500 dark:group-hover:text-teal-400">explore</span>
+<span class="text-[10px] font-medium text-slate-400 transition-colors group-hover:text-primary dark:text-slate-500 dark:group-hover:text-teal-400">Keşfet</span>
+</a>
+<div class="relative -mt-12 flex w-20 flex-col items-center justify-center">
+<div class="absolute -bottom-6 h-16 w-24 rounded-t-full bg-transparent"></div>
+<a class="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary text-white shadow-xl shadow-primary/40 transition-transform duration-300 hover:scale-105 active:scale-95 ring-4 ring-white dark:ring-surface-dark" href="#">
+<span class="material-symbols-outlined filled !text-[32px]">home</span>
+</a>
+<span class="mt-2 text-[10px] font-semibold text-primary dark:text-teal-400 opacity-0 transition-opacity duration-300 group-hover:opacity-100 absolute -bottom-4">Anasayfa</span>
+</div>
+<a class="group relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-white/5" href="#">
+<span class="material-symbols-outlined text-slate-400 transition-colors group-hover:text-primary dark:text-slate-500 dark:group-hover:text-teal-400">recommend</span>
+<span class="text-[10px] font-medium text-slate-400 transition-colors group-hover:text-primary dark:text-slate-500 dark:group-hover:text-teal-400 text-center leading-none">Öneriler</span>
+</a>
+<a class="group relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-white/5" href="#">
+<span class="material-symbols-outlined text-slate-400 transition-colors group-hover:text-primary dark:text-slate-500 dark:group-hover:text-teal-400">calendar_month</span>
+<span class="text-[10px] font-medium text-slate-400 transition-colors group-hover:text-primary dark:text-slate-500 dark:group-hover:text-teal-400">Ajandam</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+</body></html>

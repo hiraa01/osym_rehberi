@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html class="light" lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Keşfet - YKS Asistanı</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#116062", // Updated specific requested color
+                        "primary-dark": "#0c484a",
+                        "background-light": "#f4f7f7",
+                        "background-dark": "#122020",
+                        "card-light": "#ffffff",
+                        "card-dark": "#1a2c2c",
+                        "text-main-light": "#0e1a1a",
+                        "text-main-dark": "#ffffff",
+                        "text-sub-light": "#519394",
+                    },
+                    fontFamily: {
+                        "display": ["Plus Jakarta Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.5rem",
+                        "lg": "1rem",
+                        "xl": "1.5rem",
+                        "2xl": "2rem",
+                        "3xl": "2.5rem",
+                        "full": "9999px"
+                    },
+                    boxShadow: {
+                        "soft": "0 8px 30px -4px rgba(17, 96, 98, 0.08)",
+                        "glow": "0 0 20px rgba(17, 96, 98, 0.3)",
+                    }
+                },
+            },
+        }
+    </script>
+<style>.no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }.material-symbols-outlined {
+          font-variation-settings:
+          'FILL' 0,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24
+        }
+        .material-symbols-outlined.filled {
+          font-variation-settings:
+          'FILL' 1,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24
+        }
+        body {
+            min-height: max(884px, 100dvh);
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-text-main-light dark:text-text-main-dark transition-colors duration-200">
+<div class="relative flex min-h-screen w-full flex-col pb-28 overflow-x-hidden max-w-md mx-auto shadow-2xl bg-background-light dark:bg-background-dark">
+<header class="sticky top-0 z-30 flex items-center bg-background-light/90 dark:bg-background-dark/90 backdrop-blur-md px-5 py-4 justify-between transition-colors border-b border-gray-100 dark:border-white/5">
+<div>
+<span class="text-xs font-semibold text-primary uppercase tracking-wider block mb-0.5">YKS Asistanı</span>
+<h1 class="text-2xl font-extrabold leading-none tracking-tight text-text-main-light dark:text-white">Keşfet</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-card-dark shadow-sm border border-gray-100 dark:border-gray-800 text-text-main-light dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="relative flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-card-dark shadow-sm border border-gray-100 dark:border-gray-800 text-text-main-light dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-card-dark"></span>
+</button>
+</div>
+</header>
+<main class="flex flex-col gap-6 px-5 pt-4">
+<div class="relative w-full aspect-[4/3] rounded-3xl overflow-hidden shadow-glow group cursor-pointer transform transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]">
+<div class="absolute inset-0 bg-primary">
+<div class="absolute top-0 right-0 w-64 h-64 bg-[#1a7f82] rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 opacity-80"></div>
+<div class="absolute bottom-0 left-0 w-64 h-64 bg-[#0d4b4c] rounded-full blur-3xl translate-y-1/3 -translate-x-1/3"></div>
+<div class="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+</div>
+<div class="relative h-full p-6 flex flex-col justify-between z-10">
+<div class="flex justify-between items-start">
+<div class="p-2.5 bg-white/10 backdrop-blur-md rounded-2xl text-white border border-white/10 shadow-lg">
+<span class="material-symbols-outlined filled" style="font-size: 28px;">style</span>
+</div>
+<span class="px-3 py-1.5 bg-black/20 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-wider border border-white/10">Yapay Zeka</span>
+</div>
+<div class="space-y-3">
+<div>
+<h2 class="text-white text-2xl font-bold leading-tight mb-1">Üniversiteleri Kaydır</h2>
+<p class="text-white/80 text-sm font-medium leading-relaxed max-w-[280px]">
+                                Sana en uygun üniversiteyi sağa sola kaydırarak eğlenceli şekilde keşfet!
+                            </p>
+</div>
+<button class="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-white text-primary rounded-2xl text-sm font-bold shadow-xl hover:bg-gray-50 transition-colors">
+<span>Eşleşmeye Başla</span>
+<span class="material-symbols-outlined text-[20px]">swipe_right</span>
+</button>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<div class="flex justify-between items-end px-1">
+<h3 class="text-lg font-bold text-text-main-light dark:text-white">Popüler Bölümler</h3>
+<button class="text-xs font-bold text-primary dark:text-primary-400 hover:opacity-80 transition-opacity">Tümünü Gör</button>
+</div>
+<div class="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-5 px-5">
+<button class="group flex shrink-0 items-center gap-2 px-5 py-3 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20 transition-all active:scale-95">
+<span class="material-symbols-outlined text-[20px]">grid_view</span>
+<span class="text-sm font-bold">Tümü</span>
+</button>
+<button class="flex shrink-0 items-center gap-2 px-5 py-3 rounded-2xl bg-white dark:bg-card-dark text-text-main-light dark:text-gray-300 border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:hover:bg-gray-800 active:scale-95">
+<span class="material-symbols-outlined text-[20px] text-gray-400 dark:text-gray-500">engineering</span>
+<span class="text-sm font-semibold">Mühendislik</span>
+</button>
+<button class="flex shrink-0 items-center gap-2 px-5 py-3 rounded-2xl bg-white dark:bg-card-dark text-text-main-light dark:text-gray-300 border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:hover:bg-gray-800 active:scale-95">
+<span class="material-symbols-outlined text-[20px] text-gray-400 dark:text-gray-500">stethoscope</span>
+<span class="text-sm font-semibold">Tıp</span>
+</button>
+<button class="flex shrink-0 items-center gap-2 px-5 py-3 rounded-2xl bg-white dark:bg-card-dark text-text-main-light dark:text-gray-300 border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:hover:bg-gray-800 active:scale-95">
+<span class="material-symbols-outlined text-[20px] text-gray-400 dark:text-gray-500">gavel</span>
+<span class="text-sm font-semibold">Hukuk</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-center px-1">
+<h3 class="text-lg font-bold text-text-main-light dark:text-white">Sizin İçin Önerilenler</h3>
+<span class="material-symbols-outlined text-gray-400 text-sm">tune</span>
+</div>
+<div class="group flex flex-col bg-card-light dark:bg-card-dark rounded-3xl shadow-soft dark:shadow-none border border-gray-100 dark:border-gray-800 overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
+<div class="p-4 flex gap-4">
+<div class="relative shrink-0 w-[72px] h-[72px] rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center overflow-hidden border border-gray-100 dark:border-gray-700 p-2">
+<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDsxzRywnBU4G3fgbd2ZZ1s37gVlIXTj9sjqfcHaIdoMKMr_r_xQDg1U5iIJR-hWrYf_LcEFpMiMupiOesQlNVUqvfERio1YPgNyaKqCl1E19fJZcnVXn3LV_kuPgNpR82tOdImxjz21HS83dPLGi2YzcWYVmEe58n7SS4EfxUC0l_i_yDVlDGs3Eu-WCqbsooB82ATmYHGek0l7gV9NNRiCcedcO6P3GiyMf4QZZUR1N7g5xFm_eeZ8vo4opCUbTG4mT1Ootr5VE6Y');"></div>
+</div>
+<div class="flex flex-col flex-1 min-w-0 justify-center">
+<div class="flex justify-between items-start mb-1">
+<h4 class="text-base font-bold text-text-main-light dark:text-white truncate pr-2">Boğaziçi Üniversitesi</h4>
+<span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-100 dark:border-blue-800/50">Devlet</span>
+</div>
+<p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide truncate">İstanbul • Avrupa</p>
+<p class="text-sm font-medium text-text-main-light dark:text-gray-300 mt-1 truncate">Bilgisayar Mühendisliği (İngilizce)</p>
+</div>
+</div>
+<div class="px-4 py-3 bg-gray-50/50 dark:bg-white/5 border-t border-gray-100 dark:border-white/5 flex items-center justify-between gap-4">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary dark:text-primary-400">
+<span class="material-symbols-outlined text-[16px]">leaderboard</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[10px] font-bold text-gray-400 uppercase">Sıralama</span>
+<span class="text-sm font-bold text-text-main-light dark:text-white">350</span>
+</div>
+</div>
+<div class="h-8 w-px bg-gray-200 dark:bg-gray-700"></div>
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600 dark:text-orange-400">
+<span class="material-symbols-outlined text-[16px]">stars</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[10px] font-bold text-gray-400 uppercase">Puan</span>
+<span class="text-sm font-bold text-text-main-light dark:text-white">545.23</span>
+</div>
+</div>
+</div>
+</div>
+<div class="group flex flex-col bg-card-light dark:bg-card-dark rounded-3xl shadow-soft dark:shadow-none border border-gray-100 dark:border-gray-800 overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
+<div class="p-4 flex gap-4">
+<div class="relative shrink-0 w-[72px] h-[72px] rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center overflow-hidden border border-gray-100 dark:border-gray-700 p-2">
+<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAfytxb0mM6eOa6pLF7EkXARZNBv_Zu74eeP2CYQ3JAadhsoMiQFw9lF8NxNjdL8-oU7Wjyzj45DpwBLYELRe8tx2_lJWB1BXr_7xD1Om6fWUkEJX-OT4isC-8EZzAPnHxo2RFcq4I3_jF-cSHFCB8fs1mhg8BbTfUW7mdu5U-H2xNbTYNbjaAUpb1Kx3bWQ5TDZN_QUMYjRT8Vm_CfKc-PbQyCo3viUx-YAUmbFCFZmY63e5uOQXNRy_o2emZVoJ8YjHY3GB-kPmpp');"></div>
+</div>
+<div class="flex flex-col flex-1 min-w-0 justify-center">
+<div class="flex justify-between items-start mb-1">
+<h4 class="text-base font-bold text-text-main-light dark:text-white truncate pr-2">ODTÜ</h4>
+<span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-100 dark:border-blue-800/50">Devlet</span>
+</div>
+<p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide truncate">Ankara</p>
+<p class="text-sm font-medium text-text-main-light dark:text-gray-300 mt-1 truncate">Endüstri Mühendisliği (İngilizce)</p>
+</div>
+</div>
+<div class="px-4 py-3 bg-gray-50/50 dark:bg-white/5 border-t border-gray-100 dark:border-white/5 flex items-center justify-between gap-4">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary dark:text-primary-400">
+<span class="material-symbols-outlined text-[16px]">leaderboard</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[10px] font-bold text-gray-400 uppercase">Sıralama</span>
+<span class="text-sm font-bold text-text-main-light dark:text-white">1.200</span>
+</div>
+</div>
+<div class="h-8 w-px bg-gray-200 dark:bg-gray-700"></div>
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600 dark:text-orange-400">
+<span class="material-symbols-outlined text-[16px]">stars</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[10px] font-bold text-gray-400 uppercase">Puan</span>
+<span class="text-sm font-bold text-text-main-light dark:text-white">520.10</span>
+</div>
+</div>
+</div>
+</div>
+<div class="group flex flex-col bg-card-light dark:bg-card-dark rounded-3xl shadow-soft dark:shadow-none border border-gray-100 dark:border-gray-800 overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
+<div class="p-4 flex gap-4">
+<div class="relative shrink-0 w-[72px] h-[72px] rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center overflow-hidden border border-gray-100 dark:border-gray-700 p-2">
+<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBpiAA05XwrCqpdDnrMj84rj_7_OL6VGGiq3G_mpd7v_viDZbLQlSMH2dSChVePYg039LIZyCN0AhihtBrD4jSLHFG8m6a-OpnMrep86MXCfq8EUq4lQYJZUjaK2f1-zmFnxGCI7QacE0pIKyC8MaBftj5ZP6oCqBy-BVvUPyWwj1y5ZjaqnJAVSCi2KQpanfzXT1co6i2b1oxbcTMTFuy4iuZmhW15uyp-UWju2Fn_tEWf-fu1JCVO1skJhJjA0fB1546-pkps9LyO');"></div>
+</div>
+<div class="flex flex-col flex-1 min-w-0 justify-center">
+<div class="flex justify-between items-start mb-1">
+<h4 class="text-base font-bold text-text-main-light dark:text-white truncate pr-2">Koç Üniversitesi</h4>
+<span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-100 dark:border-purple-800/50">Vakıf</span>
+</div>
+<p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide truncate">İstanbul • Sarıyer</p>
+<p class="text-sm font-medium text-text-main-light dark:text-gray-300 mt-1 truncate">Tıp Fakültesi (İngilizce) (Burslu)</p>
+</div>
+</div>
+<div class="px-4 py-3 bg-gray-50/50 dark:bg-white/5 border-t border-gray-100 dark:border-white/5 flex items-center justify-between gap-4">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary dark:text-primary-400">
+<span class="material-symbols-outlined text-[16px]">leaderboard</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[10px] font-bold text-gray-400 uppercase">Sıralama</span>
+<span class="text-sm font-bold text-text-main-light dark:text-white">50</span>
+</div>
+</div>
+<div class="h-8 w-px bg-gray-200 dark:bg-gray-700"></div>
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600 dark:text-orange-400">
+<span class="material-symbols-outlined text-[16px]">stars</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[10px] font-bold text-gray-400 uppercase">Puan</span>
+<span class="text-sm font-bold text-text-main-light dark:text-white">552.80</span>
+</div>
+</div>
+</div>
+</div>
+<div class="group flex flex-col bg-card-light dark:bg-card-dark rounded-3xl shadow-soft dark:shadow-none border border-gray-100 dark:border-gray-800 overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
+<div class="p-4 flex gap-4">
+<div class="relative shrink-0 w-[72px] h-[72px] rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center overflow-hidden border border-gray-100 dark:border-gray-700 p-2">
+<div class="w-full h-full bg-contain bg-center bg-no-repeat" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBxQElZsq8YaTC3WBlAc8Pxx44H5z5l2d_s_8cdALNnORABJ4BOHeT9nh9YPlZdX0_rRA9S4NSaTEDg9aZjScN00ESOqsUu-UxyGISTHvMyRdhU46hB9RAdS6aBQmPiboSlRD7A7fEg9ZUh3lUF_QrhCG0ycOWqPbMAQ_1MwxcCxqcQkjpAICEzrH4JNLxMFzdB9bG3zSMVdYS-T6cNb2oszrCuWQW8arsqptqkFR0Jdm0ZgmeH1R9KlMstW-hhzRZj3sfzAdekx354');"></div>
+</div>
+<div class="flex flex-col flex-1 min-w-0 justify-center">
+<div class="flex justify-between items-start mb-1">
+<h4 class="text-base font-bold text-text-main-light dark:text-white truncate pr-2">İTÜ</h4>
+<span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-100 dark:border-blue-800/50">Devlet</span>
+</div>
+<p class="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide truncate">İstanbul • Maslak</p>
+<p class="text-sm font-medium text-text-main-light dark:text-gray-300 mt-1 truncate">Mimarlık (İngilizce)</p>
+</div>
+</div>
+<div class="px-4 py-3 bg-gray-50/50 dark:bg-white/5 border-t border-gray-100 dark:border-white/5 flex items-center justify-between gap-4">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary dark:text-primary-400">
+<span class="material-symbols-outlined text-[16px]">leaderboard</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[10px] font-bold text-gray-400 uppercase">Sıralama</span>
+<span class="text-sm font-bold text-text-main-light dark:text-white">8.400</span>
+</div>
+</div>
+<div class="h-8 w-px bg-gray-200 dark:bg-gray-700"></div>
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-600 dark:text-orange-400">
+<span class="material-symbols-outlined text-[16px]">stars</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[10px] font-bold text-gray-400 uppercase">Puan</span>
+<span class="text-sm font-bold text-text-main-light dark:text-white">495.12</span>
+</div>
+</div>
+</div>
+</div>
+<div class="h-6"></div> 
+</div>
+</main>
+<nav class="fixed bottom-0 left-0 w-full z-40">
+<div class="max-w-md mx-auto relative">
+<div class="absolute -top-12 left-0 w-full h-12 bg-gradient-to-t from-background-light dark:from-background-dark to-transparent pointer-events-none"></div>
+<div class="bg-white dark:bg-[#152323] border-t border-gray-100 dark:border-gray-800 flex justify-between items-center h-[90px] px-4 pb-5 pt-2 shadow-[0_-8px_30px_rgba(0,0,0,0.04)] rounded-t-[32px]">
+<button class="group flex flex-col items-center justify-center w-14 gap-1.5 p-1 rounded-2xl hover:bg-gray-50 dark:hover:bg-white/5 transition-all">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary dark:text-gray-500 dark:group-hover:text-primary transition-colors">query_stats</span>
+<span class="text-[10px] font-semibold text-gray-400 group-hover:text-primary dark:text-gray-500 dark:group-hover:text-primary transition-colors">Netlerim</span>
+</button>
+<button class="group flex flex-col items-center justify-center w-14 gap-1.5 p-1 relative">
+<div class="absolute -top-2 w-8 h-1 bg-primary rounded-full shadow-[0_0_10px_rgba(17,96,98,0.5)]"></div>
+<span class="material-symbols-outlined filled text-primary dark:text-primary-400 transition-colors animate-[bounce_0.5s_ease-out_once]">explore</span>
+<span class="text-[10px] font-bold text-primary dark:text-primary-400 transition-colors">Keşfet</span>
+</button>
+<button class="group flex flex-col items-center justify-center w-14 gap-1.5 p-1 rounded-2xl hover:bg-gray-50 dark:hover:bg-white/5 transition-all">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary dark:text-gray-500 dark:group-hover:text-primary transition-colors">home</span>
+<span class="text-[10px] font-semibold text-gray-400 group-hover:text-primary dark:text-gray-500 dark:group-hover:text-primary transition-colors">Anasayfa</span>
+</button>
+<button class="group flex flex-col items-center justify-center w-14 gap-1.5 p-1 rounded-2xl hover:bg-gray-50 dark:hover:bg-white/5 transition-all">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary dark:text-gray-500 dark:group-hover:text-primary transition-colors">auto_awesome</span>
+<span class="text-[10px] font-semibold text-gray-400 group-hover:text-primary dark:text-gray-500 dark:group-hover:text-primary transition-colors">Öneriler</span>
+</button>
+<button class="group flex flex-col items-center justify-center w-14 gap-1.5 p-1 rounded-2xl hover:bg-gray-50 dark:hover:bg-white/5 transition-all">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary dark:text-gray-500 dark:group-hover:text-primary transition-colors">calendar_month</span>
+<span class="text-[10px] font-semibold text-gray-400 group-hover:text-primary dark:text-gray-500 dark:group-hover:text-primary transition-colors">Ajandam</span>
+</button>
+</div>
+</div>
+</nav>
+</div>
+
+</body></html>

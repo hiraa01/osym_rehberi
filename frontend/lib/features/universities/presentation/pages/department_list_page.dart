@@ -16,12 +16,11 @@ class DepartmentListPage extends ConsumerStatefulWidget {
 }
 
 class _DepartmentListPageState extends ConsumerState<DepartmentListPage>
-    with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
+    with AutomaticKeepAliveClientMixin {
   String _selectedField = 'Tümü';
   String _selectedCity = 'Tümü';
   String _selectedType = 'Tümü';
   String _searchQuery = '';
-  late TabController _tabController;
 
   @override
   bool get wantKeepAlive => true; // ✅ Tab değiştiğinde state'i koru
@@ -29,7 +28,6 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     
     // ✅ CRITICAL FIX: Sayfa ilk açıldığında veriyi bir kere iste
     // Build içinde fetch YAPMA, sadece initState'te tetikle
@@ -39,11 +37,6 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage>
     });
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,13 +51,7 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage>
             onPressed: () => _showFilterBottomSheet(context),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'LİSANS BÖLÜMLERİ'),
-            Tab(text: 'ÖNLİSANS BÖLÜMLERİ'),
-          ],
-        ),
+        // ✅ TabBar kaldırıldı - Lisans/Önlisans ayrımı yok, hepsi tek listede
       ),
       body: Column(
         children: [
@@ -150,6 +137,7 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage>
   }
 
   Widget _buildDepartmentList() {
+    // ✅ TÜM BÖLÜMLERİ GETİR - field_type filtresi opsiyonel (kullanıcı seçerse)
     final field = _selectedField == 'Tümü' ? null : _selectedField;
     final city = _selectedCity == 'Tümü' ? null : _selectedCity;
     final type = _selectedType == 'Tümü' ? null : _selectedType;
@@ -224,27 +212,12 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage>
           uniqueDepartments[key]!.add(dept);
         }
 
-        // ✅ 2. LİSANS VE ÖNLİSANS AYIRIMI
-        final List<DepartmentGroup> lisansDepartments = [];
-        final List<DepartmentGroup> onlisansDepartments = [];
+        // ✅ 2. TEK LİSTE (Lisans/Önlisans ayrımı yok)
+        final List<DepartmentGroup> allDepartmentsList = [];
         
         for (final entry in uniqueDepartments.entries) {
           final firstDept = entry.value.first;
           final deptName = entry.key;
-          
-          // Degree type veya duration'a göre ayır
-          final degreeType = firstDept['degree_type'] as String?;
-          final duration = firstDept['duration'] as int?;
-          
-          // Lisans kontrolü: degree_type == 'Bachelor' veya duration == 4
-          final isLisans = (degreeType?.toLowerCase() == 'bachelor' || 
-                           degreeType?.toLowerCase() == 'lisans' ||
-                           duration == 4);
-          
-          // Önlisans kontrolü: degree_type == 'Associate' veya duration == 2
-          final isOnlisans = (degreeType?.toLowerCase() == 'associate' || 
-                             degreeType?.toLowerCase() == 'önlisans' ||
-                             duration == 2);
           
           // Display name oluştur
           final displayName = (firstDept['program_name'] as String? ?? 
@@ -256,31 +229,14 @@ class _DepartmentListPageState extends ConsumerState<DepartmentListPage>
             items: entry.value,
           );
           
-          if (isLisans) {
-            lisansDepartments.add(group);
-          } else if (isOnlisans) {
-            onlisansDepartments.add(group);
-          } else {
-            // Belirsizse varsayılan olarak Lisans'a ekle
-            lisansDepartments.add(group);
-          }
+          allDepartmentsList.add(group);
         }
         
         // Alfabetik sırala
-        lisansDepartments.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-        onlisansDepartments.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        allDepartmentsList.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
-        // ✅ 3. TAB BAR VIEW İLE LİSTELEME
-        return TabBarView(
-          controller: _tabController,
-          children: [
-            // LİSANS BÖLÜMLERİ
-            _buildDepartmentListView(lisansDepartments, 'Lisans'),
-            
-            // ÖNLİSANS BÖLÜMLERİ
-            _buildDepartmentListView(onlisansDepartments, 'Önlisans'),
-          ],
-        );
+        // ✅ 3. TEK LİSTE GÖSTERİMİ
+        return _buildDepartmentListView(allDepartmentsList, 'Tümü');
       },
       loading: () {
         return const Center(

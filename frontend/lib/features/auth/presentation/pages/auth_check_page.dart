@@ -73,6 +73,9 @@ class _AuthCheckPageState extends State<AuthCheckPage> {
 
             // Background'da backend ile sync yap (optional)
             _syncWithBackend(authService, userId);
+            
+            // ✅ KRİTİK: Student ID kontrolü ve otomatik düzeltme
+            _ensureStudentId(authService, userId);
           } else {
             // Local'de kullanıcı bulunamadı, giriş sayfasına git
             _navigateToAuth();
@@ -101,6 +104,40 @@ class _AuthCheckPageState extends State<AuthCheckPage> {
     } catch (e) {
       debugPrint('⚠️ Backend sync failed (offline mode): $e');
       // Hata olsa bile devam et - offline mode
+    }
+  }
+
+  // ✅ AUTO-REPAIR: Student ID'yi garanti et
+  Future<void> _ensureStudentId(dynamic authService, int userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final studentId = prefs.getInt('student_id');
+      
+      // Student ID varsa ve geçerliyse, işlem yapma
+      if (studentId != null) {
+        try {
+          await authService._apiService.getStudent(studentId);
+          debugPrint('✅ Student ID is valid: $studentId');
+          return;
+        } catch (_) {
+          // Geçersiz student_id, temizle
+          await prefs.remove('student_id');
+          debugPrint('⚠️ Invalid student_id removed');
+        }
+      }
+      
+      // Student ID yoksa veya geçersizse, otomatik düzelt
+      debugPrint('🔄 Ensuring student ID for user $userId...');
+      final ensuredStudentId = await authService.ensureStudentId();
+      
+      if (ensuredStudentId != null) {
+        debugPrint('✅ Student ID ensured: $ensuredStudentId');
+      } else {
+        debugPrint('⚠️ Could not ensure student ID (will be created when needed)');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error ensuring student ID: $e');
+      // Hata olsa bile devam et - kullanıcı deneme eklerken oluşturulacak
     }
   }
 

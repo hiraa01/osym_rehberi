@@ -48,6 +48,10 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
           }
         }
 
+        // ✅ Filtreleri backend'e gönder (TODO: Backend API'ye parametre olarak ekle)
+        // final city = _selectedCity != 'all' ? _selectedCity : null;
+        // final universityType = _selectedType != 'all' ? _selectedType : null;
+
         final response =
             await _apiService.generateRecommendations(studentId, limit: 50);
         if (mounted) {
@@ -182,6 +186,18 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
         ),
         elevation: 0,
         actions: [
+          // PDF Export
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf),
+            onPressed: () => _exportToPDF(context),
+            tooltip: 'PDF İndir',
+          ),
+          // Excel Export
+          IconButton(
+            icon: const Icon(Icons.table_chart),
+            onPressed: () => _exportToExcel(context),
+            tooltip: 'Excel İndir',
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
@@ -579,6 +595,8 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                     if (value != null) {
                       setState(() => _selectedCity = value);
                       Navigator.pop(context);
+                      // ✅ Filtre değiştiğinde listeyi yenile
+                      _loadRecommendations();
                     }
                   },
                 ),
@@ -593,6 +611,8 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                       if (value != null) {
                         setState(() => _selectedCity = value);
                         Navigator.pop(context);
+                        // ✅ Filtre değiştiğinde listeyi yenile
+                        _loadRecommendations();
                       }
                     },
                   ),
@@ -634,6 +654,8 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                     if (value != null) {
                       setState(() => _selectedType = value);
                       Navigator.pop(context);
+                      // ✅ Filtre değiştiğinde listeyi yenile
+                      _loadRecommendations();
                     }
                   },
                 ),
@@ -648,6 +670,8 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                       if (value != null) {
                         setState(() => _selectedType = value);
                         Navigator.pop(context);
+                        // ✅ Filtre değiştiğinde listeyi yenile
+                        _loadRecommendations();
                       }
                     },
                   ),
@@ -658,5 +682,35 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
         );
       },
     );
+  }
+
+  // ✅ PDF Export
+  Future<void> _exportToPDF(BuildContext context) async {
+    // Şimdilik basit bir SnackBar göster
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('PDF Hazırlanıyor...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    // TODO: Gerçek PDF export implementasyonu
+    // pdf paketi kullanarak önerileri PDF'e çevir
+    debugPrint('📄 PDF Export: ${_filteredRecommendations.length} öneri');
+  }
+
+  // ✅ Excel Export
+  Future<void> _exportToExcel(BuildContext context) async {
+    // Şimdilik basit bir SnackBar göster
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Excel indiriliyor...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+
+    // TODO: Gerçek Excel export implementasyonu
+    // excel paketi kullanarak önerileri Excel'e çevir
+    debugPrint('📊 Excel Export: ${_filteredRecommendations.length} öneri');
   }
 }

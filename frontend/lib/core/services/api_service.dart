@@ -241,6 +241,17 @@ class ApiService {
     return await _dio.post('/students/$studentId/add-preferred-department/$departmentId');
   }
 
+  // ✅ Öğrencinin hedef bölümlerini detaylı olarak getir
+  Future<Response> getStudentTargets(int studentId) async {
+    return await _dio.get(
+      '/students/$studentId/targets',
+      options: Options(
+        receiveTimeout: const Duration(seconds: 60),
+        sendTimeout: const Duration(seconds: 30),
+      ),
+    );
+  }
+
   // University endpoints
   Future<Response> getUniversities({
     int skip = 0,
@@ -382,7 +393,7 @@ class ApiService {
     double? maxScore,
     bool? hasScholarship,
     int skip = 0,
-    int limit = 2000, // ✅ Default 2000 - tüm bölümler gelsin
+    int limit = 50000, // ✅ Default 50000 - tüm bölümler gelsin
   }) async {
     // ✅ KRİTİK: fieldType'a göre degreeType'ı otomatik belirle
     String? effectiveDegreeType = degreeType;
@@ -716,6 +727,10 @@ class ApiService {
 
   Future<Response> deleteExamAttempt(int attemptId) async {
     return await _dio.delete('/exam-attempts/$attemptId');
+  }
+
+  Future<Response> getExamAttempt(int attemptId) async {
+    return await _dio.get('/exam-attempts/$attemptId');
   }
 }
 

@@ -1,9 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../../core/theme/stitch_theme.dart';
 import 'add_exam_attempt_page.dart';
+import 'exam_detail_page.dart';
 
+/// Denemeler Sayfası - HTML Tasarımına Göre Yeniden Yapılandırıldı
+/// Based on: frontend/stitch_anasayfa/denemeler_sayfası/code.html
 class ExamAttemptsPage extends StatefulWidget {
   const ExamAttemptsPage({super.key});
 
@@ -11,352 +16,50 @@ class ExamAttemptsPage extends StatefulWidget {
   State<ExamAttemptsPage> createState() => _ExamAttemptsPageState();
 }
 
-class _ExamAttemptsPageState extends State<ExamAttemptsPage>
-    with WidgetsBindingObserver {
+class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
   final ApiService _apiService = ApiService();
   List<dynamic> _attempts = [];
   bool _isLoading = true;
-  int? _studentId;
-  int? _lastKnownStudentId; // Son bilinen student_id'yi takip et
+  double _avgTyt = 0.0;
+  double _avgAyt = 0.0;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _loadAttempts();
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Sayfa görünür olduğunda student_id değişikliğini kontrol et
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAndReloadIfNeeded();
-    });
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Uygulama foreground'a geldiğinde verileri yenile
-    if (state == AppLifecycleState.resumed) {
-      _checkAndReloadIfNeeded();
-    }
-  }
-
-  // Student ID değiştiyse veya sayfa tekrar açıldıysa verileri yenile
-  Future<void> _checkAndReloadIfNeeded() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final currentStudentId = prefs.getInt('student_id');
-
-      // Student ID değiştiyse veya ilk kez yükleniyorsa yenile
-      if (currentStudentId != _lastKnownStudentId) {
-        _lastKnownStudentId = currentStudentId;
-        await _loadAttempts();
-      }
-    } catch (e) {
-      debugPrint('Error checking student ID: $e');
-    }
-  }
-
-  // Yerel cache'den denemeleri yükle (student_id'ye özel)
-  Future<void> _loadCachedAttempts() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final studentId = prefs.getInt('student_id');
-
-      if (studentId != null) {
-        // ✅ Student ID'ye özel cache key
-        final cacheKey = 'exam_attempts_cache_$studentId';
-        final cachedJson = prefs.getString(cacheKey);
-
-        if (cachedJson != null) {
-          final cached = jsonDecode(cachedJson) as List;
-          if (mounted) {
-            setState(() {
-              _attempts = cached;
-              _studentId = studentId; // Student ID'yi de kaydet
-              _isLoading = false;
-            });
-          }
-        }
-      } else {
-        // Student ID yoksa cache'i temizle (farklı kullanıcı olabilir)
-        _clearOldCache(prefs);
-      }
-    } catch (e) {
-      debugPrint('Error loading cached attempts: $e');
-    }
-  }
-
-  // Eski cache'leri temizle (farklı kullanıcı için)
-  Future<void> _clearOldCache(SharedPreferences prefs) async {
-    try {
-      final keys = prefs.getKeys();
-      for (final key in keys) {
-        if (key.startsWith('exam_attempts_cache_')) {
-          await prefs.remove(key);
-        }
-      }
-    } catch (e) {
-      debugPrint('Error clearing old cache: $e');
-    }
-  }
-
-  // Denemeleri yerel cache'e kaydet (student_id'ye özel)
-  Future<void> _saveAttemptsToCache(List<dynamic> attempts) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final studentId = prefs.getInt('student_id');
-
-      if (studentId != null) {
-        // ✅ Student ID'ye özel cache key
-        final cacheKey = 'exam_attempts_cache_$studentId';
-        await prefs.setString(cacheKey, jsonEncode(attempts));
-      }
-    } catch (e) {
-      debugPrint('Error saving attempts to cache: $e');
-    }
-  }
-
   Future<void> _loadAttempts() async {
-    // Önce yerel cache'den yükle (hızlı görüntüleme için)
-    await _loadCachedAttempts();
-
     setState(() => _isLoading = true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final currentStudentId = prefs.getInt('student_id');
+      final studentId = prefs.getInt('student_id');
 
-      // Student ID yoksa veya değiştiyse cache'i temizle
-      if (currentStudentId == null) {
-        await _clearOldCache(prefs);
-        if (mounted) {
-          setState(() {
-            _attempts = [];
-            _studentId = null;
-            _isLoading = false;
-          });
-        }
-        return;
-      }
+      if (studentId != null) {
+        final response = await _apiService.getStudentAttempts(studentId);
+        List<dynamic> attempts = [];
 
-      // Student ID değiştiyse cache'i temizle
-      if (_studentId != null && _studentId != currentStudentId) {
-        await _clearOldCache(prefs);
-      }
-
-      _studentId = currentStudentId;
-      _lastKnownStudentId =
-          currentStudentId; // Son bilinen student_id'yi kaydet
-
-      // Backend'den güncel verileri yükle (retry mekanizması ile)
-      final response = await _apiService.getStudentAttempts(_studentId!);
-
-      // ✅ GÜVENLİ PARSING: Backend {"attempts": [...], "total": 1} veya direkt List dönebilir
-      List<dynamic> attempts = [];
-      try {
-        final data = response.data;
-
-        if (data is Map<String, dynamic>) {
-          // Eğer Map geldiyse 'attempts' anahtarını al
-          final attemptsData = data['attempts'];
-          if (attemptsData != null && attemptsData is List) {
-            attempts = attemptsData;
-          } else {
-            attempts = [];
+        if (response.data != null) {
+          if (response.data is Map<String, dynamic>) {
+            attempts = response.data['attempts'] as List? ?? [];
+          } else if (response.data is List) {
+            attempts = response.data;
           }
-        } else if (data is List) {
-          // Eğer direkt Liste geldiyse onu kullan
-          attempts = data;
-        } else {
-          attempts = [];
         }
-      } catch (e) {
-        attempts = []; // Hata durumunda boş liste döndür
-      }
 
-      // Yerel cache'e kaydet
-      await _saveAttemptsToCache(attempts);
+        // Ortalamaları hesapla
+        if (attempts.isNotEmpty) {
+          double totalTyt = 0.0;
+          double totalAyt = 0.0;
+          int count = 0;
 
-      if (mounted) {
-        setState(() {
-          _attempts = attempts;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading attempts from backend: $e');
-
-      // Kullanıcıya bilgi ver (sadece connection hataları için)
-      if (mounted &&
-          (e.toString().contains('Connection closed') ||
-              e.toString().contains('unknown') ||
-              e.toString().contains('timeout'))) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Sunucuya bağlanılamadı. Cache\'deki veriler gösteriliyor.'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-
-      // Backend hatası olsa bile cache'deki veriler gösterildi
-      // Ancak student_id yoksa veya değiştiyse boş liste göster
-      if (mounted) {
-        final prefs = await SharedPreferences.getInstance();
-        final currentStudentId = prefs.getInt('student_id');
-        if (currentStudentId == null || currentStudentId != _studentId) {
-          setState(() {
-            _attempts = [];
-            _studentId = null;
-          });
-        }
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Denemelerim',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        elevation: 0,
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            child: CircleAvatar(
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              child: IconButton(
-                onPressed: () async {
-                  final result = await Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const AddExamAttemptPage(),
-                    ),
-                  );
-                  if (result == true) {
-                    _loadAttempts();
-                  }
-                },
-                icon: const Icon(Icons.add, color: Colors.white),
-                tooltip: 'Deneme Ekle',
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _attempts.isEmpty
-              ? _buildEmptyState()
-              : RefreshIndicator(
-                  onRefresh: _loadAttempts,
-                  child: _buildAttemptsList(),
-                ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.quiz_rounded,
-                size: 80,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Text(
-              'Henüz deneme eklenmemiş',
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'İlk denemenizi ekleyerek başlayın ve performansınızı takip edin',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
-            const SizedBox(height: 40),
-            ElevatedButton.icon(
-              onPressed: () async {
-                final result = await Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const AddExamAttemptPage(),
-                  ),
-                );
-                if (result == true) {
-                  _loadAttempts();
-                }
-              },
-              icon: const Icon(Icons.add_circle_outline),
-              label: const Text('Deneme Ekle'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(28),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAttemptsList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _attempts.length,
-      cacheExtent: 500,
-      itemBuilder: (context, index) {
-        final attempt = _attempts[index];
-        final attemptName = attempt['exam_name'] ??
-            attempt['name'] ??
-            'Deneme ${attempt['attempt_number'] ?? index + 1}';
-        // ✅ Backend'den gelen toplam net değerlerini kullan (varsa), yoksa manuel hesapla
-        final tytTotalNet = attempt['tyt_total_net']?.toDouble();
-        final aytTotalNet = attempt['ayt_total_net']?.toDouble();
-
-        final tytNet = tytTotalNet ??
-            ((attempt['tyt_turkish_net'] ?? 0.0) +
+          for (var attempt in attempts) {
+            final tytNet = ((attempt['tyt_turkish_net'] ?? 0.0) +
                 (attempt['tyt_math_net'] ?? 0.0) +
                 (attempt['tyt_social_net'] ?? 0.0) +
                 (attempt['tyt_science_net'] ?? 0.0));
-        final aytNet = aytTotalNet ??
-            ((attempt['ayt_math_net'] ?? 0.0) +
+            final aytNet = ((attempt['ayt_math_net'] ?? 0.0) +
                 (attempt['ayt_physics_net'] ?? 0.0) +
                 (attempt['ayt_chemistry_net'] ?? 0.0) +
                 (attempt['ayt_biology_net'] ?? 0.0) +
@@ -368,179 +71,594 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage>
                 (attempt['ayt_geography2_net'] ?? 0.0) +
                 (attempt['ayt_religion_net'] ?? 0.0) +
                 (attempt['ayt_foreign_language_net'] ?? 0.0));
-        final totalNet = tytNet + aytNet;
 
-        final examDate = attempt['exam_date'] != null
-            ? DateTime.tryParse(attempt['exam_date'].toString())
-            : null;
-        final dateStr = examDate != null
-            ? '${examDate.day} ${_getMonthName(examDate.month)} ${examDate.year}'
-            : '';
+            if (tytNet > 0 || aytNet > 0) {
+              totalTyt += tytNet;
+              totalAyt += aytNet;
+              count++;
+            }
+          }
 
-        // TYT veya AYT hangisi daha yüksekse ona göre badge
-        final hasTyt = tytNet > 0;
-        final hasAyt = aytNet > 0;
-        final examType =
-            hasTyt && hasAyt ? 'TYT+AYT' : (hasTyt ? 'TYT' : 'AYT');
+          if (count > 0) {
+            _avgTyt = totalTyt / count;
+            _avgAyt = totalAyt / count;
+          }
+        }
 
-        return Card(
-          elevation: 0,
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+        // Cache'e kaydet
+        final cacheKey = 'exam_attempts_cache_$studentId';
+        await prefs.setString(cacheKey, jsonEncode(attempts));
+
+        if (mounted) {
+          setState(() {
+            _attempts = attempts;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _attempts = [];
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading attempts: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _deleteExamAttempt(Map<String, dynamic> attempt) async {
+    try {
+      final attemptId = attempt['id'] as int?;
+      if (attemptId == null) return;
+
+      await _apiService.deleteExamAttempt(attemptId);
+
+      // Cache'den de sil
+      final prefs = await SharedPreferences.getInstance();
+      final studentId = prefs.getInt('student_id');
+      if (studentId != null) {
+        final cacheKey = 'exam_attempts_cache_$studentId';
+        final cachedJson = prefs.getString(cacheKey);
+        if (cachedJson != null) {
+          final cached = jsonDecode(cachedJson) as List;
+          cached.removeWhere((item) => item['id'] == attemptId);
+          await prefs.setString(cacheKey, jsonEncode(cached));
+        }
+      }
+
+      await _loadAttempts();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Deneme başarıyla silindi')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error deleting attempt: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showDeleteConfirmation(Map<String, dynamic> attempt) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Emin misin?'),
+        content: const Text('Bu deneme silinecek.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('İptal'),
           ),
-          child: InkWell(
-            onTap: () {
-              // Detay sayfasına git
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sil', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _deleteExamAttempt(attempt);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor: isDark ? StitchTheme.backgroundDark : StitchTheme.backgroundLight,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ✅ Header - HTML Tasarımına Göre
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 48, 16, 16),
+              decoration: BoxDecoration(
+                color: isDark ? StitchTheme.backgroundDark : StitchTheme.surfaceLight,
+                border: Border(
+                  bottom: BorderSide(
+                    color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
+                  ),
+                ),
+              ),
               child: Row(
                 children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new),
+                    onPressed: () => Navigator.of(context).pop(),
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                attemptName,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                examType,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.green.shade700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        if (hasTyt)
-                          Text(
-                            'TYT Net: ${tytNet.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                        if (hasTyt && hasAyt) const SizedBox(height: 2),
-                        if (hasAyt)
-                          Text(
-                            'AYT Net: ${aytNet.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                        if (hasTyt || hasAyt) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            'Toplam Net: ${totalNet.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.blue[700],
-                            ),
-                          ),
-                        ],
-                        if (dateStr.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            dateStr,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ],
+                    child: Text(
+                      'Denemelerim',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: StitchTheme.primary,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  // ✅ CRITICAL FIX: TYT, AYT ve Toplam Puan gösterimi
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      // TYT Puan
-                      Text(
-                        'TYT: ${attempt['tyt_score']?.toString() ?? '-'}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      // AYT Puan - KESINLIKLE GÖSTERİLMELİ
-                      Text(
-                        'AYT: ${attempt['ayt_score']?.toString() ?? '-'}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      // Toplam Puan - KESINLIKLE GÖSTERİLMELİ
-                      Text(
-                        'TOPLAM: ${attempt['total_score']?.toString() ?? '-'}',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.purple[700],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Icon(
-                        Icons.chevron_right,
-                        color: Colors.grey[400],
-                        size: 20,
-                      ),
-                    ],
-                  ),
+                  const SizedBox(width: 40),
                 ],
               ),
             ),
-          ),
-        );
-      },
+
+            // ✅ Main Content
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : RefreshIndicator(
+                      onRefresh: _loadAttempts,
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ✅ Ortalama TYT ve AYT Kartları
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: StitchTheme.primary.withValues(alpha: 0.05),
+                                      border: Border.all(
+                                        color: StitchTheme.primary.withValues(alpha: 0.1),
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          'Ortalama TYT',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _avgTyt.toStringAsFixed(2),
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: StitchTheme.primary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: StitchTheme.primary.withValues(alpha: 0.05),
+                                      border: Border.all(
+                                        color: StitchTheme.primary.withValues(alpha: 0.1),
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          'Ortalama AYT',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _avgAyt.toStringAsFixed(2),
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: StitchTheme.primary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+
+                            // ✅ Son Denemeler Başlığı
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Son Denemeler',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.grey[200] : Colors.grey[800],
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {},
+                                  child: Text(
+                                    'Tümünü Gör',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: StitchTheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+
+                            // ✅ Deneme Listesi
+                            if (_attempts.isEmpty)
+                              _buildEmptyState(isDark)
+                            else
+                              ..._attempts.map((attempt) {
+                                return _buildAttemptCard(attempt, isDark);
+                              }).toList(),
+
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+      // ✅ FAB Butonu - HTML Tasarımına Göre
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const AddExamAttemptPage()),
+          );
+          if (result == true) {
+            _loadAttempts();
+          }
+        },
+        backgroundColor: StitchTheme.primary,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
     );
   }
 
-  String _getMonthName(int month) {
-    const months = [
-      'Ocak',
-      'Şubat',
-      'Mart',
-      'Nisan',
-      'Mayıs',
-      'Haziran',
-      'Temmuz',
-      'Ağustos',
-      'Eylül',
-      'Ekim',
-      'Kasım',
-      'Aralık'
-    ];
-    return months[month - 1];
+  Widget _buildAttemptCard(Map<String, dynamic> attempt, bool isDark) {
+    final attemptName = attempt['exam_name'] as String? ?? 
+                        attempt['name'] as String? ?? 
+                        'Deneme';
+    
+    // TYT Net hesapla
+    final tytNet = ((attempt['tyt_turkish_net'] ?? 0.0) +
+        (attempt['tyt_math_net'] ?? 0.0) +
+        (attempt['tyt_social_net'] ?? 0.0) +
+        (attempt['tyt_science_net'] ?? 0.0));
+    
+    // AYT Net hesapla
+    final aytNet = ((attempt['ayt_math_net'] ?? 0.0) +
+        (attempt['ayt_physics_net'] ?? 0.0) +
+        (attempt['ayt_chemistry_net'] ?? 0.0) +
+        (attempt['ayt_biology_net'] ?? 0.0) +
+        (attempt['ayt_literature_net'] ?? 0.0) +
+        (attempt['ayt_history1_net'] ?? 0.0) +
+        (attempt['ayt_geography1_net'] ?? 0.0) +
+        (attempt['ayt_philosophy_net'] ?? 0.0) +
+        (attempt['ayt_history2_net'] ?? 0.0) +
+        (attempt['ayt_geography2_net'] ?? 0.0) +
+        (attempt['ayt_religion_net'] ?? 0.0) +
+        (attempt['ayt_foreign_language_net'] ?? 0.0));
+    
+    final totalNet = tytNet + aytNet;
+    final totalScore = (attempt['total_score'] ?? 0.0).toDouble();
+    
+    // Tarih formatı
+    String dateStr = '';
+    if (attempt['exam_date'] != null) {
+      try {
+        final date = DateTime.parse(attempt['exam_date'].toString());
+        dateStr = DateFormat('dd MMMM yyyy', 'tr_TR').format(date);
+      } catch (e) {
+        dateStr = attempt['exam_date'].toString();
+      }
+    }
+    
+    // Badge rengi (TYT veya AYT)
+    final hasTyt = tytNet > 0;
+    final hasAyt = aytNet > 0;
+    final badgeColor = hasTyt && hasAyt
+        ? StitchTheme.primary
+        : (hasTyt ? StitchTheme.primary : const Color(0xFF26A69A));
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDark ? StitchTheme.surfaceDark : StitchTheme.surfaceLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.grey[800]! : Colors.transparent,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // ✅ Sol tarafta renkli çizgi
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: Container(
+              width: 4,
+              decoration: BoxDecoration(
+                color: badgeColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              // Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: badgeColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  hasTyt && hasAyt ? 'TYT+AYT' : (hasTyt ? 'TYT' : 'AYT'),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: badgeColor,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              if (dateStr.isNotEmpty)
+                                Text(
+                                  dateStr,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            attemptName,
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          totalNet.toStringAsFixed(2),
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: badgeColor,
+                          ),
+                        ),
+                        Text(
+                          'Net',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.grey[500] : Colors.grey[500],
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Divider(
+                  color: isDark ? Colors.grey[700] : Colors.grey[100],
+                  height: 1,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.analytics,
+                          size: 18,
+                          color: badgeColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Puan: ',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.grey[300] : Colors.grey[700],
+                          ),
+                        ),
+                        Text(
+                          totalScore.toStringAsFixed(2),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.grey[300] : Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        // Sil Butonu
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.delete, size: 18),
+                            color: Colors.red,
+                            onPressed: () => _showDeleteConfirmation(attempt),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Detay Butonu
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.grey[700] : Colors.grey[50],
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.chevron_right, size: 20),
+                            color: isDark ? Colors.grey[400] : Colors.grey[400],
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ExamDetailPage(attempt: attempt),
+                                ),
+                              );
+                            },
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.only(top: 16),
+      decoration: BoxDecoration(
+        color: isDark ? StitchTheme.surfaceDark.withValues(alpha: 0.5) : Colors.grey[50]!.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+          style: BorderStyle.solid,
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: isDark ? StitchTheme.surfaceDark : Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 4,
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.auto_awesome,
+              color: StitchTheme.primary,
+              size: 24,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Daha fazla veri, daha iyi öneriler',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.grey[200] : Colors.grey[800],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Yapay zekanın seni daha iyi tanıması için deneme sonuçlarını girmeyi unutma.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.grey[400] : Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

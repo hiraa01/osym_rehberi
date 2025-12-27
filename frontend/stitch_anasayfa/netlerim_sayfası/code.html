@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html class="light" lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Netlerim - YKS Asistanım</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#116062", // Updated to requested color
+                        "primary-dark": "#0d4a4c",
+                        "primary-light": "#e0f0f0",
+                        "background-light": "#f6f8f8",
+                        "background-dark": "#122020",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1e2e2e",
+                        "text-main": "#0f1a1a",
+                        "text-secondary": "#539293",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "2xl": "2rem", "full": "9999px"},
+                    boxShadow: {
+                        'soft': '0 4px 20px -2px rgba(17, 96, 98, 0.08)',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Lexend', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-text-main dark:text-white h-screen flex flex-col overflow-hidden w-full max-w-md mx-auto relative border-x border-gray-100 dark:border-gray-800 shadow-2xl">
+<header class="flex-none pt-12 pb-2 px-6 bg-background-light dark:bg-background-dark z-20">
+<div class="flex items-center justify-between">
+<h1 class="text-2xl font-bold tracking-tight text-primary dark:text-teal-400">Netlerim</h1>
+<button class="p-2 rounded-full bg-white dark:bg-surface-dark shadow-sm text-text-secondary dark:text-gray-300 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto pb-24 scrollbar-hide">
+<section class="px-6 py-4">
+<div class="bg-gradient-to-br from-primary to-[#1a8e91] rounded-2xl p-5 text-white shadow-lg relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10 pointer-events-none"></div>
+<div class="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full -ml-8 -mb-8 pointer-events-none"></div>
+<div class="flex justify-between items-start mb-6 relative z-10">
+<div>
+<p class="text-primary-light text-sm font-medium mb-1">Genel Ortalama</p>
+<h2 class="text-4xl font-bold tracking-tight">415.3</h2>
+</div>
+<div class="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span class="text-xs font-semibold">+2.4</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 relative z-10">
+<div class="bg-white/10 rounded-xl p-3 backdrop-blur-sm">
+<p class="text-primary-light text-xs mb-1">Ort. TYT</p>
+<p class="text-xl font-bold">85.5</p>
+</div>
+<div class="bg-white/10 rounded-xl p-3 backdrop-blur-sm">
+<p class="text-primary-light text-xs mb-1">Ort. AYT</p>
+<p class="text-xl font-bold">62.0</p>
+</div>
+<div class="bg-white/10 rounded-xl p-3 backdrop-blur-sm">
+<p class="text-primary-light text-xs mb-1">Hedef</p>
+<p class="text-xl font-bold">450</p>
+</div>
+</div>
+</div>
+</section>
+<div class="px-6 flex justify-between items-end mb-2">
+<h3 class="text-lg font-bold text-gray-800 dark:text-gray-200">Deneme Geçmişi</h3>
+<button class="text-xs font-medium text-primary hover:underline">Tümünü Gör</button>
+</div>
+<div class="flex flex-col gap-4 px-6 pb-6">
+<article class="bg-surface-light dark:bg-surface-dark rounded-2xl p-4 shadow-soft border border-gray-100 dark:border-gray-800 transition-transform active:scale-[0.98]">
+<div class="flex justify-between items-start mb-3">
+<div>
+<span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 mb-1">Genel Deneme</span>
+<h4 class="font-bold text-gray-900 dark:text-white text-base leading-tight">3D Yayınları - Simülasyon #2</h4>
+<p class="text-text-secondary text-xs mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">calendar_today</span> 14 Ekim 2023
+                        </p>
+</div>
+<button aria-label="Sil" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+<div class="grid grid-cols-4 gap-2 mb-4">
+<div class="flex flex-col items-center p-2 rounded-lg bg-background-light dark:bg-background-dark">
+<span class="text-[10px] text-text-secondary uppercase font-bold">TYT Net</span>
+<span class="text-sm font-bold text-gray-800 dark:text-gray-200">92.5</span>
+</div>
+<div class="flex flex-col items-center p-2 rounded-lg bg-background-light dark:bg-background-dark">
+<span class="text-[10px] text-text-secondary uppercase font-bold">AYT Net</span>
+<span class="text-sm font-bold text-gray-800 dark:text-gray-200">65.0</span>
+</div>
+<div class="flex flex-col items-center p-2 rounded-lg bg-background-light dark:bg-background-dark">
+<span class="text-[10px] text-text-secondary uppercase font-bold">Toplam</span>
+<span class="text-sm font-bold text-primary dark:text-teal-400">157.5</span>
+</div>
+<div class="flex flex-col items-center p-2 rounded-lg bg-primary/10 dark:bg-primary/20 border border-primary/10">
+<span class="text-[10px] text-primary dark:text-teal-300 uppercase font-bold">Puan</span>
+<span class="text-sm font-bold text-primary dark:text-teal-300">428.4</span>
+</div>
+</div>
+<button class="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-medium flex items-center justify-center gap-2 shadow-sm shadow-primary/30 hover:bg-primary-dark transition-colors group">
+<span class="material-symbols-outlined icon-filled text-[18px] group-hover:animate-pulse">spark</span>
+                    Analiz ve Öneriler
+                    <span class="material-symbols-outlined text-[16px] ml-auto">chevron_right</span>
+</button>
+</article>
+<article class="bg-surface-light dark:bg-surface-dark rounded-2xl p-4 shadow-soft border border-gray-100 dark:border-gray-800 transition-transform active:scale-[0.98]">
+<div class="flex justify-between items-start mb-3">
+<div>
+<span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 mb-1">TYT Deneme</span>
+<h4 class="font-bold text-gray-900 dark:text-white text-base leading-tight">Bilgi Sarmal - TYT #4</h4>
+<p class="text-text-secondary text-xs mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">calendar_today</span> 02 Ekim 2023
+                        </p>
+</div>
+<button aria-label="Sil" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+<div class="grid grid-cols-4 gap-2 mb-4">
+<div class="flex flex-col items-center p-2 rounded-lg bg-background-light dark:bg-background-dark">
+<span class="text-[10px] text-text-secondary uppercase font-bold">TYT Net</span>
+<span class="text-sm font-bold text-gray-800 dark:text-gray-200">88.5</span>
+</div>
+<div class="flex flex-col items-center p-2 rounded-lg bg-background-light dark:bg-background-dark">
+<span class="text-[10px] text-text-secondary uppercase font-bold">AYT Net</span>
+<span class="text-sm font-bold text-gray-400 dark:text-gray-500">-</span>
+</div>
+<div class="flex flex-col items-center p-2 rounded-lg bg-background-light dark:bg-background-dark">
+<span class="text-[10px] text-text-secondary uppercase font-bold">Toplam</span>
+<span class="text-sm font-bold text-primary dark:text-teal-400">88.5</span>
+</div>
+<div class="flex flex-col items-center p-2 rounded-lg bg-primary/10 dark:bg-primary/20 border border-primary/10">
+<span class="text-[10px] text-primary dark:text-teal-300 uppercase font-bold">Puan</span>
+<span class="text-sm font-bold text-primary dark:text-teal-300">342.1</span>
+</div>
+</div>
+<button class="w-full py-2.5 rounded-xl bg-primary-light dark:bg-surface-light/5 text-primary dark:text-teal-300 text-sm font-medium flex items-center justify-center gap-2 hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-[18px]">analytics</span>
+                    Sonuç ve Karne
+                    <span class="material-symbols-outlined text-[16px] ml-auto opacity-50">chevron_right</span>
+</button>
+</article>
+<article class="bg-surface-light dark:bg-surface-dark rounded-2xl p-4 shadow-soft border border-gray-100 dark:border-gray-800 transition-transform active:scale-[0.98]">
+<div class="flex justify-between items-start mb-3">
+<div>
+<span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 mb-1">AYT Deneme</span>
+<h4 class="font-bold text-gray-900 dark:text-white text-base leading-tight">Orijinal Matematik - AYT #1</h4>
+<p class="text-text-secondary text-xs mt-1 flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">calendar_today</span> 28 Eylül 2023
+                        </p>
+</div>
+<button aria-label="Sil" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+<div class="grid grid-cols-4 gap-2 mb-4">
+<div class="flex flex-col items-center p-2 rounded-lg bg-background-light dark:bg-background-dark">
+<span class="text-[10px] text-text-secondary uppercase font-bold">TYT Net</span>
+<span class="text-sm font-bold text-gray-400 dark:text-gray-500">-</span>
+</div>
+<div class="flex flex-col items-center p-2 rounded-lg bg-background-light dark:bg-background-dark">
+<span class="text-[10px] text-text-secondary uppercase font-bold">AYT Net</span>
+<span class="text-sm font-bold text-gray-800 dark:text-gray-200">62.0</span>
+</div>
+<div class="flex flex-col items-center p-2 rounded-lg bg-background-light dark:bg-background-dark">
+<span class="text-[10px] text-text-secondary uppercase font-bold">Toplam</span>
+<span class="text-sm font-bold text-primary dark:text-teal-400">62.0</span>
+</div>
+<div class="flex flex-col items-center p-2 rounded-lg bg-primary/10 dark:bg-primary/20 border border-primary/10">
+<span class="text-[10px] text-primary dark:text-teal-300 uppercase font-bold">Puan</span>
+<span class="text-sm font-bold text-primary dark:text-teal-300">--</span>
+</div>
+</div>
+<button class="w-full py-2.5 rounded-xl bg-primary-light dark:bg-surface-light/5 text-primary dark:text-teal-300 text-sm font-medium flex items-center justify-center gap-2 hover:bg-primary/10 transition-colors">
+<span class="material-symbols-outlined text-[18px]">analytics</span>
+                    Sonuç ve Karne
+                    <span class="material-symbols-outlined text-[16px] ml-auto opacity-50">chevron_right</span>
+</button>
+</article>
+</div>
+<div class="h-20"></div>
+</main>
+<div class="absolute bottom-24 right-6 z-30">
+<button class="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white rounded-2xl px-5 py-4 shadow-lg shadow-primary/40 transform transition hover:-translate-y-1">
+<span class="material-symbols-outlined text-[24px]">add</span>
+<span class="font-bold text-sm">Deneme Ekle</span>
+</button>
+</div>
+<nav class="flex-none bg-surface-light dark:bg-surface-dark border-t border-gray-100 dark:border-gray-800 pb-6 pt-3 px-2 flex justify-between items-center z-40">
+<a class="flex flex-col items-center gap-1 text-primary dark:text-teal-400 w-1/5" href="#">
+<span class="material-symbols-outlined text-[26px] icon-filled">bar_chart</span>
+<span class="text-[10px] font-bold">Netlerim</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-gray-400 dark:text-gray-500 hover:text-primary transition-colors group w-1/5" href="#">
+<span class="material-symbols-outlined text-[26px] group-hover:-translate-y-0.5 transition-transform">explore</span>
+<span class="text-[10px] font-medium">Keşfet</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-gray-400 dark:text-gray-500 hover:text-primary transition-colors group w-1/5" href="#">
+<span class="material-symbols-outlined text-[26px] group-hover:-translate-y-0.5 transition-transform">home</span>
+<span class="text-[10px] font-medium">Anasayfa</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-gray-400 dark:text-gray-500 hover:text-primary transition-colors group w-1/5" href="#">
+<span class="material-symbols-outlined text-[26px] group-hover:-translate-y-0.5 transition-transform">lightbulb</span>
+<span class="text-[10px] font-medium">Öneriler</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-gray-400 dark:text-gray-500 hover:text-primary transition-colors group w-1/5" href="#">
+<span class="material-symbols-outlined text-[26px] group-hover:-translate-y-0.5 transition-transform">calendar_month</span>
+<span class="text-[10px] font-medium">Ajandam</span>
+</a>
+</nav>
+
+</body></html>

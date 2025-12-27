@@ -11,6 +11,7 @@ import '../../../universities/presentation/pages/university_discover_page.dart';
 import '../../../universities/presentation/pages/department_list_page.dart';
 import '../../../recommendations/data/providers/recommendation_api_provider.dart';
 import '../../../exam_attempts/data/providers/exam_attempt_api_provider.dart';
+import '../../../../core/services/api_service.dart';
 import '../../../recommendations/presentation/pages/recommendations_page.dart';
 import '../../../exam_attempts/presentation/pages/exam_attempts_page.dart';
 
@@ -35,12 +36,21 @@ class _HomePageState extends ConsumerState<HomePage> {
       final studentId = prefs.getInt('student_id');
       
       if (studentId != null) {
-        // Provider'ları tetiklemek için ref.read ile oku (FutureProvider otomatik tetiklenir)
+        // ✅ Provider'ları tetiklemek için ref.read ile oku (FutureProvider otomatik tetiklenir)
+        // Denemeler
         ref.read(examAttemptsListProvider(studentId));
         // ✅ Önerileri yükle
         ref.read(recommendationListProvider(studentId));
+        // ✅ Öğrenci detayı
         ref.read(studentDetailProvider(studentId));
-        debugPrint('🟢 HomePage: Provider\'lar tetiklendi (recommendations dahil)');
+        // ✅ Tercihleri yükle (getStudentTargets API'si)
+        try {
+          final apiService = ApiService();
+          await apiService.getStudentTargets(studentId);
+        } catch (e) {
+          debugPrint('⚠️ Error loading targets: $e');
+        }
+        debugPrint('🟢 HomePage: Tüm provider\'lar tetiklendi (attempts, recommendations, targets)');
       }
     });
   }

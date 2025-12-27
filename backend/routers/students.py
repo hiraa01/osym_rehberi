@@ -6,6 +6,7 @@ import json
 from database import get_db
 from models.student import Student
 from schemas.student import StudentCreate, StudentUpdate, StudentResponse, StudentListResponse
+from schemas.university import DepartmentWithUniversityResponse
 from services.score_calculator import ScoreCalculator
 from core.logging_config import api_logger
 from services.recommendation_engine import RecommendationEngine
@@ -211,6 +212,136 @@ async def add_preferred_department(
         return {"message": "Bölüm tercih listesine eklendi", "department_name": dept_name}
     else:
         return {"message": "Bölüm zaten tercih listesinde", "department_name": dept_name}
+
+
+@router.get("/{student_id}/targets", response_model=List[DepartmentWithUniversityResponse])
+async def get_student_targets(
+    student_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    ✅ HEDEFİM SAYFASI İÇİN: Öğrencinin hedef bölümlerini detaylı olarak döndürür
+    
+    Öğrencinin preferred_departments listesindeki bölüm isimlerine göre
+    Department objelerini (University bilgileriyle birlikte) döndürür.
+    """
+    from models.university import Department, University
+    from schemas.university import DepartmentWithUniversityResponse
+    from sqlalchemy.orm import selectinload
+    
+    try:
+        # Öğrenciyi bul
+        student = db.query(Student).filter(Student.id == student_id).first()
+        if not student:
+            raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
+        
+        # Öğrencinin tercih listesini al
+        preferred_departments = []
+        if student.preferred_departments:
+            try:
+                preferred_departments = json.loads(student.preferred_departments) if isinstance(student.preferred_departments, str) else student.preferred_departments
+            except:
+                preferred_departments = []
+        
+        if not preferred_departments:
+            # Liste boşsa boş liste döndür
+            return []
+        
+        # Bölüm isimlerine göre Department objelerini bul
+        # normalized_name veya name'e göre eşleştir
+        departments = []
+        for dept_name in preferred_departments:
+            if not dept_name:
+                continue
+            
+            # Önce normalized_name'e göre ara, bulamazsan name'e göre ara
+            dept = db.query(Department).options(selectinload(Department.university)).filter(
+                (Department.normalized_name == dept_name) | (Department.name == dept_name)
+            ).first()
+            
+            if dept:
+                departments.append(dept)
+        
+        # DepartmentWithUniversityResponse formatına çevir
+        result = []
+        for dept in departments:
+            # Attributes JSON string'den parse et
+            attributes = []
+            if dept.attributes:
+                try:
+                    if isinstance(dept.attributes, str):
+                        attributes = json.loads(dept.attributes)
+                    else:
+                        attributes = dept.attributes
+                except:
+                    attributes = []
+            
+            # Requirements JSON string'den parse et
+            requirements = None
+            if dept.requirements:
+                try:
+                    if isinstance(dept.requirements, str):
+                        requirements = json.loads(dept.requirements)
+                    else:
+                        requirements = dept.requirements
+                except:
+                    requirements = None
+            
+            # University bilgilerini hazırla
+            university = dept.university
+            university_response = {
+                "id": university.id,
+                "name": university.name,
+                "city": university.city,
+                "university_type": university.university_type,
+                "website": university.website,
+                "established_year": university.established_year,
+                "latitude": university.latitude,
+                "longitude": university.longitude,
+                "logo_url": university.logo_url if hasattr(university, 'logo_url') else None,
+                "created_at": university.created_at.isoformat() if university.created_at else None,
+                "updated_at": university.updated_at.isoformat() if university.updated_at else None,
+            }
+            
+            # Department bilgilerini hazırla
+            dept_response = {
+                "id": dept.id,
+                "university_id": dept.university_id,
+                "name": dept.name,
+                "normalized_name": dept.normalized_name,
+                "attributes": attributes,
+                "field_type": dept.field_type,
+                "language": dept.language,
+                "faculty": dept.faculty,
+                "duration": dept.duration,
+                "degree_type": dept.degree_type,
+                "min_score": dept.min_score,
+                "min_rank": dept.min_rank,
+                "quota": dept.quota,
+                "scholarship_quota": dept.scholarship_quota,
+                "tuition_fee": dept.tuition_fee,
+                "has_scholarship": dept.has_scholarship,
+                "last_year_min_score": dept.last_year_min_score,
+                "last_year_min_rank": dept.last_year_min_rank,
+                "last_year_quota": dept.last_year_quota,
+                "description": dept.description,
+                "requirements": requirements,
+                "created_at": dept.created_at.isoformat() if dept.created_at else None,
+                "updated_at": dept.updated_at.isoformat() if dept.updated_at else None,
+                "university": university_response,
+            }
+            
+            result.append(dept_response)
+        
+        api_logger.info("Student targets retrieved", student_id=student_id, count=len(result))
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        api_logger.error(f"Error getting student targets: {str(e)}", student_id=student_id, error=str(e))
+        # Hata durumunda boş liste döndür (frontend'in çökmesini önle)
+        return []
 
 
 @router.delete("/{student_id}")

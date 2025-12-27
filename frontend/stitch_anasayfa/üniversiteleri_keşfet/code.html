@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html class="light" lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Üniversiteleri Keşfet</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+          --primary-color: #116062;
+        }
+    </style>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                DEFAULT: "#116062",
+                50: "#effcfc",
+                100: "#dcf6f7",
+                200: "#beebeb",
+                300: "#91dadc",
+                400: "#5ec3c6",
+                500: "#3aa6aa",
+                600: "#2b888d",
+                700: "#256f73",
+                800: "#116062", 
+                900: "#1d4c4f",
+                950: "#0f2e31",
+              },
+              surface: {
+                light: "#ffffff",
+                dark: "#1e2329", 
+              },
+              background: {
+                light: "#f4f7fa",
+                dark: "#12151a", 
+              }
+            },
+            fontFamily: {
+              "display": ["Lexend", "sans-serif"]
+            },
+            boxShadow: {
+              'soft': '0 8px 30px -4px rgba(17, 96, 98, 0.08)',
+              'card': '0 10px 40px -10px rgba(0,0,0,0.08)',
+              'card-dark': '0 10px 40px -10px rgba(0,0,0,0.5)',
+              'glow': '0 0 20px rgba(17, 96, 98, 0.35)',
+            }
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      body {
+        overscroll-behavior-y: none;
+      }
+      ::-webkit-scrollbar {
+        width: 0px;
+        background: transparent;
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark text-slate-800 dark:text-slate-100 antialiased h-screen w-full overflow-hidden flex flex-col selection:bg-primary-800 selection:text-white">
+<header class="flex items-center px-6 py-4 justify-between sticky top-0 z-50 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 transition-colors duration-300">
+<div class="flex size-10 shrink-0 items-center justify-start">
+<button class="group rounded-full p-2 -ml-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-slate-600 dark:text-slate-300 group-hover:text-primary-800 dark:group-hover:text-primary-400 transition-colors" style="font-size: 24px;">arrow_back_ios_new</span>
+</button>
+</div>
+<h1 class="text-slate-900 dark:text-white text-lg font-bold tracking-tight">Üniversiteleri Keşfet</h1>
+<div class="flex size-10 items-center justify-end">
+<button class="group flex items-center justify-center rounded-full p-2 -mr-2 hover:bg-primary-50 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-slate-600 dark:text-slate-300 group-hover:text-primary-800 dark:group-hover:text-primary-400 transition-colors" style="font-size: 26px;">tune</span>
+</button>
+</div>
+</header>
+<main class="flex-1 relative w-full max-w-md mx-auto flex flex-col items-center justify-center px-4 overflow-hidden">
+<div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-full h-full max-w-[300px] max-h-[300px] bg-primary-800/10 dark:bg-primary-400/5 rounded-full blur-[80px] -z-10 pointer-events-none"></div>
+<div class="relative w-full h-[620px] flex items-center justify-center perspective-1000 mt-2">
+<div class="absolute w-full max-w-[320px] h-[500px] bg-white dark:bg-surface-dark rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 transform scale-[0.85] translate-y-10 opacity-30 z-0 transition-all duration-500 ease-out"></div>
+<div class="absolute w-full max-w-[335px] h-[520px] bg-white dark:bg-surface-dark rounded-3xl shadow-lg dark:shadow-none border border-slate-100 dark:border-slate-700/50 transform scale-[0.92] translate-y-5 opacity-60 z-10 overflow-hidden transition-all duration-500 ease-out">
+<div class="w-full h-[55%] bg-slate-200 dark:bg-slate-800 relative">
+<div class="absolute inset-0 bg-cover bg-center grayscale opacity-50" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCx0TbJogMeAX_AGOVcCuQ-_J3_WRekQ_K8kboRJWNcz8PU9FTzCWuo9CzANoRG2iMSS1_SDFfSO6LLOJyfVT2EwJTRzCgdQOXAWyqY3yI30_TTeNOgx5I1fKuIIYHC-IWeSpnE2hyOl3pYkf2idFmOrMG6Q2CflrkiTjWTQ8mpYQBZLxNqD8d7aNCTLDtWXetaE6ohCGR67qXqj9EffNU8l-avXuaSyNvmFuOWDfsRYTkgPXu6lUURuRNLxqXZL8Rvq03AJxLSQa37");'></div>
+</div>
+<div class="p-5 space-y-3">
+<div class="h-5 bg-slate-100 dark:bg-slate-700/50 rounded w-2/3"></div>
+<div class="h-4 bg-slate-100 dark:bg-slate-700/50 rounded w-1/2"></div>
+</div>
+</div>
+<div class="absolute w-full max-w-[350px] bg-white dark:bg-surface-dark rounded-3xl shadow-xl dark:shadow-card-dark shadow-primary-900/5 border border-slate-100 dark:border-slate-700 transform scale-100 z-20 overflow-hidden flex flex-col h-auto transition-all duration-500 ease-out">
+<div class="relative w-full h-80 shrink-0 group cursor-pointer overflow-hidden">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-700 group-hover:scale-105" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCK4207CjHbNzAdkfebCF9eAwB3_0LSsg1t-HbWOh_wpNTmFeCaNL6EtKtwbiSxRz9tqzarE1eQotXz-Iti9-isZc7sCpZc3VyOe1qzbupt0ft35W6tSBCUi59VrIoOnZlGLcSvTonCRxFXyjT-vv-_WYsIK__zEc37MSFH-1CXKJ09luue9iphBFn6tT3-p1N4FjomQatb5TwKWo72HC_sgxSpDT26sdG-BaMesXaTiUDBSgJNRUDW6OgNFK4iYKTb22RZJ7LCCt_y");'>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+</div>
+<div class="absolute top-4 right-4 bg-white/90 dark:bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm border border-white/20">
+<span class="material-symbols-outlined text-amber-500" style="font-size: 16px; font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-xs font-bold text-slate-800 dark:text-white">4.8</span>
+</div>
+<div class="absolute bottom-0 left-0 w-full p-6 text-white z-10">
+<h2 class="text-2xl font-bold leading-tight drop-shadow-sm tracking-tight">Boğaziçi Üniversitesi</h2>
+<div class="flex items-center gap-1.5 mt-2 opacity-90">
+<span class="material-symbols-outlined text-primary-300" style="font-size: 18px;">location_on</span>
+<span class="text-sm font-medium tracking-wide">İstanbul, Avrupa Yakası</span>
+</div>
+</div>
+</div>
+<div class="flex-1 p-5 flex flex-col justify-between bg-white dark:bg-surface-dark relative">
+<div>
+<div class="mb-5">
+<div class="inline-flex items-center px-2.5 py-1 rounded-md bg-primary-800/10 dark:bg-primary-400/10 text-primary-800 dark:text-primary-300 mb-2 border border-primary-800/10 dark:border-primary-400/10">
+<span class="text-[10px] font-bold uppercase tracking-wider">Mühendislik Fakültesi</span>
+</div>
+<p class="text-slate-800 dark:text-slate-100 text-[17px] font-semibold leading-snug">Bilgisayar Mühendisliği (İngilizce)</p>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-700/60 flex flex-col justify-center">
+<p class="text-slate-400 text-xs font-medium mb-1">Taban Puan</p>
+<p class="text-primary-800 dark:text-primary-300 text-lg font-bold tracking-tight">524,87</p>
+</div>
+<div class="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-xl border border-slate-100 dark:border-slate-700/60 flex flex-col justify-center">
+<p class="text-slate-400 text-xs font-medium mb-1">Sıralama</p>
+<p class="text-slate-800 dark:text-white text-lg font-bold tracking-tight">1.234</p>
+</div>
+</div>
+</div>
+<div class="flex flex-wrap gap-2 mt-5">
+<span class="text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200/50 dark:border-slate-700">#KampüsHayatı</span>
+<span class="text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200/50 dark:border-slate-700">#Teknoloji</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<div class="w-full px-6 pb-8 pt-2 z-50 bg-gradient-to-t from-background-light via-background-light/80 to-transparent dark:from-background-dark dark:via-background-dark/80 pointer-events-none">
+<div class="flex justify-center items-center gap-6 max-w-xs mx-auto pointer-events-auto">
+<button class="group flex items-center justify-center w-14 h-14 rounded-full bg-white dark:bg-surface-dark shadow-soft dark:shadow-none border border-slate-200 dark:border-slate-700 transition-all active:scale-95 hover:border-red-200 dark:hover:border-red-900/30">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-red-500 transition-colors" style="font-size: 28px;">close</span>
+</button>
+<button class="group flex items-center justify-center w-11 h-11 rounded-full bg-white dark:bg-surface-dark shadow-soft dark:shadow-none border border-slate-200 dark:border-slate-700 transition-all active:scale-95 hover:bg-slate-50 dark:hover:bg-slate-700">
+<span class="material-symbols-outlined text-primary-800 dark:text-primary-300" style="font-size: 22px;">info</span>
+</button>
+<button class="group flex items-center justify-center w-16 h-16 rounded-full bg-primary-800 shadow-lg shadow-primary-800/30 dark:shadow-none transition-all active:scale-95 hover:scale-105 hover:shadow-primary-800/40">
+<span class="material-symbols-outlined text-white" style="font-size: 32px; font-variation-settings: 'FILL' 1;">favorite</span>
+</button>
+</div>
+</div>
+
+</body></html>

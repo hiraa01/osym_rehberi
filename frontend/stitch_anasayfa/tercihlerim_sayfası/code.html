@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html class="light" lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tercihlerim Sayfası</title>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                DEFAULT: "#116062",
+                light: "#26787a",
+                dark: "#0c4547",
+              },
+              accent: {
+                DEFAULT: "#4fd1c5",
+                dim: "#2d7a74",
+              },
+              background: {
+                light: "#f0f4f8",
+                dark: "#111821",
+              },
+              surface: {
+                light: "#ffffff",
+                dark: "#1a222c",
+              },
+              text: {
+                main: "#111418",
+                secondary: "#637588",
+                light: "#f3f4f6",
+                muted: "#9ca3af",
+              }
+            },
+            fontFamily: {
+              "display": ["Lexend", "sans-serif"]
+            },
+            boxShadow: {
+              'card': '0 2px 8px -1px rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.02)',
+              'float': '0 8px 24px -4px rgba(17, 96, 98, 0.4)',
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }.no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display min-h-screen text-text-main dark:text-text-light pb-24 selection:bg-primary selection:text-white">
+<nav class="sticky top-0 z-50 flex h-[60px] items-center justify-between border-b border-gray-200/80 bg-white/90 px-4 backdrop-blur-md transition-colors dark:border-gray-800 dark:bg-background-dark/90">
+<button class="flex h-10 w-10 items-center justify-center rounded-full text-text-main hover:bg-gray-100 active:scale-95 dark:text-white dark:hover:bg-gray-800 transition-all">
+<span class="material-symbols-outlined">arrow_back_ios_new</span>
+</button>
+<h1 class="text-base font-bold text-text-main dark:text-white">
+            Tercih Listem
+        </h1>
+<button class="flex h-10 items-center justify-center rounded-lg px-3 text-sm font-semibold text-primary hover:bg-gray-50 active:opacity-70 dark:text-accent dark:hover:bg-gray-800/50 transition-all">
+            Paylaş
+        </button>
+</nav>
+<main class="mx-auto flex w-full max-w-md flex-col gap-6 p-5">
+<div class="rounded-2xl bg-gradient-to-br from-primary to-primary-light p-5 text-white shadow-lg">
+<div class="flex items-start justify-between">
+<div>
+<p class="text-sm font-medium text-white/80">Toplam Tercih</p>
+<h2 class="mt-1 text-3xl font-bold">3 / 24</h2>
+</div>
+<div class="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+<span class="material-symbols-outlined text-white">analytics</span>
+</div>
+</div>
+<div class="mt-4 flex gap-3">
+<div class="flex-1 rounded-xl bg-white/10 px-3 py-2 backdrop-blur-md">
+<p class="text-xs font-medium text-white/70">Puan Türü</p>
+<p class="font-semibold text-white">SAY</p>
+</div>
+<div class="flex-1 rounded-xl bg-white/10 px-3 py-2 backdrop-blur-md">
+<p class="text-xs font-medium text-white/70">Ort. Sıralama</p>
+<p class="font-semibold text-white">2.540</p>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<h3 class="text-lg font-bold text-text-main dark:text-white">Sıralama</h3>
+<button class="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-dark dark:text-accent">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+                 Filtrele
+             </button>
+</div>
+<div class="flex flex-col gap-4">
+<div class="group relative flex w-full overflow-hidden rounded-2xl bg-surface-light shadow-card ring-1 ring-gray-200/60 transition-all hover:shadow-lg dark:bg-surface-dark dark:ring-gray-800">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-green-500"></div>
+<div class="flex w-full flex-col gap-3 p-4 pl-5">
+<div class="flex items-start gap-4">
+<div class="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-gray-100 shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
+<div class="h-full w-full bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDIBC_xC9su84S4LBB9tabZypPiX2ROOHePbq9KfqGxDKISuUKTDmWuerMlTeCSz3egdd3oP-7G6ylx-mwHimKD1aK1T4errEoKiccldDuhKjR_D6wCfuL_wzxz8aN73Ch7j9qJOLSSlxPzjZCAF5MdWk_STUB9mJaxCrJqYhNxw8sU-Uwe-e2Ulu0bcv1Phg1MLk_P4iZbzTyhKO_Tn-iGiRzwqB3qVOxXQSpqlztbofcfLAwhtmdgTURo_l6vhTSy3WBtFbcq51YL");'></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+</div>
+<div class="flex min-w-0 flex-1 flex-col justify-center">
+<div class="flex items-start justify-between gap-2">
+<div>
+<div class="flex items-center gap-2">
+<span class="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white shadow-sm">1</span>
+<h3 class="line-clamp-1 text-sm font-bold text-text-main dark:text-white">Boğaziçi Üniversitesi</h3>
+</div>
+<p class="mt-1 line-clamp-1 text-xs text-text-secondary dark:text-gray-400">Bilgisayar Mühendisliği (İngilizce)</p>
+</div>
+<button class="text-gray-400 hover:text-primary dark:hover:text-accent">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<div class="mt-3 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1 text-[10px] text-text-secondary dark:text-text-muted">
+<span class="material-symbols-outlined text-[14px]">location_on</span>
+                                        İstanbul
+                                    </div>
+<div class="flex items-center gap-1 text-[10px] font-medium text-green-600 dark:text-green-400">
+<span class="material-symbols-outlined text-[14px] filled">check_circle</span>
+                                        Tutma İhtimali Yüksek
+                                    </div>
+</div>
+<span class="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary dark:bg-primary/20 dark:text-accent">
+                                    1.250
+                                </span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="group relative flex w-full overflow-hidden rounded-2xl bg-surface-light shadow-card ring-1 ring-gray-200/60 transition-all hover:shadow-lg dark:bg-surface-dark dark:ring-gray-800">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-yellow-500"></div>
+<div class="flex w-full flex-col gap-3 p-4 pl-5">
+<div class="flex items-start gap-4">
+<div class="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-gray-100 shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
+<div class="h-full w-full bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBPwsu0eA3ZkIuag9nNwp4RXclG68qH8qspffQSyS1AaOEHEOswkASI-3qzsLjyTG7lnfwVO8wEZmybG4cYSUoS31uWxSVo6bqyjXXUJV-HtjbB1tbdRiVZFU17sypdOrayB6sBaehxn0fGjPNuQCMWzckqBtKloo2itYxQYrI3rpwriG09nCFp58UxzT3vQB2uj6EzGqGG4QYN-LRYMWXt53aAMY-RnzgHWp6vvD_g2F7YkY6L_RRJA0lbSoN-06iwFmSZFaBoU7eB");'></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+</div>
+<div class="flex min-w-0 flex-1 flex-col justify-center">
+<div class="flex items-start justify-between gap-2">
+<div>
+<div class="flex items-center gap-2">
+<span class="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white shadow-sm">2</span>
+<h3 class="line-clamp-1 text-sm font-bold text-text-main dark:text-white">ODTÜ</h3>
+</div>
+<p class="mt-1 line-clamp-1 text-xs text-text-secondary dark:text-gray-400">Elektrik-Elektronik Müh. (İngilizce)</p>
+</div>
+<button class="text-gray-400 hover:text-primary dark:hover:text-accent">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<div class="mt-3 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1 text-[10px] text-text-secondary dark:text-text-muted">
+<span class="material-symbols-outlined text-[14px]">location_on</span>
+                                        Ankara
+                                    </div>
+<div class="flex items-center gap-1 text-[10px] font-medium text-yellow-600 dark:text-yellow-400">
+<span class="material-symbols-outlined text-[14px] filled">help</span>
+                                        Sürpriz Olabilir
+                                    </div>
+</div>
+<span class="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary dark:bg-primary/20 dark:text-accent">
+                                    1.890
+                                </span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="group relative flex w-full overflow-hidden rounded-2xl bg-surface-light shadow-card ring-1 ring-gray-200/60 transition-all hover:shadow-lg dark:bg-surface-dark dark:ring-gray-800">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-green-500"></div>
+<div class="flex w-full flex-col gap-3 p-4 pl-5">
+<div class="flex items-start gap-4">
+<div class="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-gray-100 shadow-sm ring-1 ring-gray-100 dark:ring-gray-700">
+<div class="h-full w-full bg-cover bg-center transition-transform duration-500 group-hover:scale-110" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCJjyYgNhsyTfgejHj4vEEBEHRHVah_2wD4ZJ2jQc_p0aQUppSwqacrWKWve2yUElGyOKps90We_7uixoKwnl9lALlBiBjvQkBlB5T6BG0P9wd-uO8HBNn-F236szs4T0G-aW7dMGkeYzfsP23WLsTaQsJKH4Qq5kfslDqiKblht7sY1gTxUrvoHep3DYT85xFZsNl0PUl78vLrh9CFSBxOPPF_9z0olIECLDHv0_x_yJgbFJzpq3upIfdE3XittOP7_iD6mxXE-U8g");'></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+</div>
+<div class="flex min-w-0 flex-1 flex-col justify-center">
+<div class="flex items-start justify-between gap-2">
+<div>
+<div class="flex items-center gap-2">
+<span class="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white shadow-sm">3</span>
+<h3 class="line-clamp-1 text-sm font-bold text-text-main dark:text-white">İTÜ</h3>
+</div>
+<p class="mt-1 line-clamp-1 text-xs text-text-secondary dark:text-gray-400">Mimarlık (İngilizce)</p>
+</div>
+<button class="text-gray-400 hover:text-primary dark:hover:text-accent">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</div>
+<div class="mt-3 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1 text-[10px] text-text-secondary dark:text-text-muted">
+<span class="material-symbols-outlined text-[14px]">location_on</span>
+                                        İstanbul
+                                    </div>
+<div class="flex items-center gap-1 text-[10px] font-medium text-green-600 dark:text-green-400">
+<span class="material-symbols-outlined text-[14px] filled">check_circle</span>
+                                        Tutma İhtimali Yüksek
+                                    </div>
+</div>
+<span class="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary dark:bg-primary/20 dark:text-accent">
+                                    4.500
+                                </span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<button class="group flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 transition-all hover:border-primary/50 hover:bg-primary/5 dark:border-gray-700 dark:bg-surface-dark/50 dark:hover:border-accent/50 dark:hover:bg-accent/5">
+<div class="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-sm dark:bg-gray-800">
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary dark:text-gray-500 dark:group-hover:text-accent">add</span>
+</div>
+<span class="text-sm font-medium text-text-secondary group-hover:text-primary dark:text-text-muted dark:group-hover:text-accent">Yeni Tercih Ekle</span>
+</button>
+</div>
+</main>
+<div class="fixed bottom-6 right-6 z-40">
+<button class="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-float ring-4 ring-white transition-all duration-300 hover:scale-110 hover:shadow-xl active:scale-95 dark:ring-surface-dark">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+</div>
+
+</body></html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html class="light" lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Denemeler Sayfası</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings:
+      'FILL' 0,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 24
+    }
+    * {
+        transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+    }
+</style>
+<script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#116062",
+            "primary-dark": "#0d4b4d", 
+            "secondary": "#E8F1F2",
+            "accent": "#F2994A",
+            "background-light": "#F7F9FA",
+            "background-dark": "#0F1419",
+            "surface-light": "#FFFFFF",
+            "surface-dark": "#1E2732",
+            "text-main": "#0F1419",
+            "text-sub": "#536471",
+            "text-dark-main": "#E7E9EA",
+            "text-dark-sub": "#71767B",
+            "danger": "#EF4444",
+            "danger-soft": "#FEF2F2",
+          },
+          fontFamily: {
+            "display": ["Lexend", "sans-serif"]
+          },
+          boxShadow: {
+            'soft': '0 2px 8px rgba(0, 0, 0, 0.04)',
+            'card': '0 4px 20px rgba(17, 96, 98, 0.08)',
+          },
+          borderRadius: {
+            "DEFAULT": "0.5rem",
+            "lg": "1rem",
+            "xl": "1.25rem",
+            "2xl": "1.5rem",
+            "full": "9999px"
+          },
+        },
+      },
+    }
+</script>
+<style>
+    body {
+      min-height: max(100vh, 100dvh);
+    }
+    ::-webkit-scrollbar {
+        width: 0px;
+        background: transparent;
+    }
+</style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-text-main dark:text-text-dark-main antialiased selection:bg-primary selection:text-white">
+<div class="relative flex h-full min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<header class="flex items-center bg-surface-light dark:bg-background-dark p-4 pt-12 pb-4 justify-between sticky top-0 z-20 shadow-sm border-b border-gray-100 dark:border-gray-800 backdrop-blur-md bg-opacity-95 dark:bg-opacity-95">
+<div class="flex size-10 shrink-0 items-center justify-center rounded-full active:bg-gray-100 dark:active:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined text-text-main dark:text-text-dark-main cursor-pointer">arrow_back_ios_new</span>
+</div>
+<h1 class="text-xl font-bold leading-tight tracking-tight flex-1 text-center text-primary dark:text-white">Denemelerim</h1>
+<div class="flex size-10 items-center justify-center">
+<div class="size-6"></div>
+</div>
+</header>
+<main class="flex-grow p-5 space-y-5 pb-24">
+<div class="grid grid-cols-2 gap-3 mb-2">
+<div class="bg-primary/5 dark:bg-surface-dark border border-primary/10 dark:border-gray-700 rounded-xl p-3 flex flex-col items-center justify-center text-center">
+<span class="text-xs text-text-sub dark:text-text-dark-sub font-medium mb-1">Ortalama TYT</span>
+<span class="text-xl font-bold text-primary dark:text-[#26a69a]">93.50</span>
+</div>
+<div class="bg-primary/5 dark:bg-surface-dark border border-primary/10 dark:border-gray-700 rounded-xl p-3 flex flex-col items-center justify-center text-center">
+<span class="text-xs text-text-sub dark:text-text-dark-sub font-medium mb-1">Ortalama AYT</span>
+<span class="text-xl font-bold text-primary dark:text-[#26a69a]">68.50</span>
+</div>
+</div>
+<div class="flex items-center justify-between px-1">
+<h2 class="text-lg font-bold text-gray-800 dark:text-gray-200">Son Denemeler</h2>
+<span class="text-xs font-medium text-primary cursor-pointer hover:underline">Tümünü Gör</span>
+</div>
+<div class="group relative flex flex-col items-stretch justify-start rounded-2xl bg-surface-light dark:bg-surface-dark shadow-card border border-transparent hover:border-primary/20 transition-all duration-300 overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary rounded-l-2xl"></div>
+<div class="flex w-full grow flex-col items-stretch justify-center gap-3 p-5">
+<div class="flex items-start justify-between">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center justify-center rounded-md bg-primary/10 dark:bg-primary/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary dark:text-[#26a69a]">TYT</span>
+<span class="text-xs text-text-sub dark:text-gray-400">15 Nisan 2024</span>
+</div>
+<h3 class="text-lg font-bold leading-snug tracking-tight text-gray-900 dark:text-white mt-1">Özdebir Türkiye Geneli 3</h3>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-2xl font-bold text-primary dark:text-[#26a69a] tracking-tight">95.25</span>
+<span class="text-[10px] font-medium text-text-sub dark:text-gray-500 uppercase">Net</span>
+</div>
+</div>
+<div class="h-px w-full bg-gray-100 dark:bg-gray-700"></div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary dark:text-[#26a69a]">analytics</span>
+<p class="text-sm font-medium text-gray-700 dark:text-gray-300">Puan: <span class="font-bold">435.50</span></p>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center justify-center size-8 rounded-full bg-danger-soft dark:bg-red-900/20 text-danger dark:text-red-400 hover:bg-danger hover:text-white dark:hover:bg-red-500 transition-colors" title="Denemeyi Sil">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+<button class="flex items-center justify-center size-8 rounded-full bg-gray-50 dark:bg-gray-700 hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white text-gray-400 dark:text-gray-400 transition-colors">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="group relative flex flex-col items-stretch justify-start rounded-2xl bg-surface-light dark:bg-surface-dark shadow-card border border-transparent hover:border-primary/20 transition-all duration-300 overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-[#26a69a] rounded-l-2xl"></div>
+<div class="flex w-full grow flex-col items-stretch justify-center gap-3 p-5">
+<div class="flex items-start justify-between">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center justify-center rounded-md bg-[#26a69a]/10 dark:bg-[#26a69a]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#26a69a] dark:text-[#26a69a]">AYT</span>
+<span class="text-xs text-text-sub dark:text-gray-400">02 Nisan 2024</span>
+</div>
+<h3 class="text-lg font-bold leading-snug tracking-tight text-gray-900 dark:text-white mt-1">Töder 2. Deneme</h3>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-2xl font-bold text-[#26a69a] dark:text-[#26a69a] tracking-tight">68.50</span>
+<span class="text-[10px] font-medium text-text-sub dark:text-gray-500 uppercase">Net</span>
+</div>
+</div>
+<div class="h-px w-full bg-gray-100 dark:bg-gray-700"></div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-[#26a69a] dark:text-[#26a69a]">analytics</span>
+<p class="text-sm font-medium text-gray-700 dark:text-gray-300">Puan: <span class="font-bold">410.75</span></p>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center justify-center size-8 rounded-full bg-danger-soft dark:bg-red-900/20 text-danger dark:text-red-400 hover:bg-danger hover:text-white dark:hover:bg-red-500 transition-colors" title="Denemeyi Sil">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+<button class="flex items-center justify-center size-8 rounded-full bg-gray-50 dark:bg-gray-700 hover:bg-[#26a69a] hover:text-white dark:hover:bg-[#26a69a] dark:hover:text-white text-gray-400 dark:text-gray-400 transition-colors">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="group relative flex flex-col items-stretch justify-start rounded-2xl bg-surface-light dark:bg-surface-dark shadow-card border border-transparent hover:border-primary/20 transition-all duration-300 overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary rounded-l-2xl"></div>
+<div class="flex w-full grow flex-col items-stretch justify-center gap-3 p-5">
+<div class="flex items-start justify-between">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center justify-center rounded-md bg-primary/10 dark:bg-primary/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary dark:text-[#26a69a]">TYT</span>
+<span class="text-xs text-text-sub dark:text-gray-400">20 Mart 2024</span>
+</div>
+<h3 class="text-lg font-bold leading-snug tracking-tight text-gray-900 dark:text-white mt-1">3D Simülasyon Denemesi</h3>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-2xl font-bold text-primary dark:text-[#26a69a] tracking-tight">91.75</span>
+<span class="text-[10px] font-medium text-text-sub dark:text-gray-500 uppercase">Net</span>
+</div>
+</div>
+<div class="h-px w-full bg-gray-100 dark:bg-gray-700"></div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary dark:text-[#26a69a]">analytics</span>
+<p class="text-sm font-medium text-gray-700 dark:text-gray-300">Puan: <span class="font-bold">415.00</span></p>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center justify-center size-8 rounded-full bg-danger-soft dark:bg-red-900/20 text-danger dark:text-red-400 hover:bg-danger hover:text-white dark:hover:bg-red-500 transition-colors" title="Denemeyi Sil">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+<button class="flex items-center justify-center size-8 rounded-full bg-gray-50 dark:bg-gray-700 hover:bg-primary hover:text-white dark:hover:bg-primary dark:hover:text-white text-gray-400 dark:text-gray-400 transition-colors">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-center justify-center text-center p-6 mt-4 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50/50 dark:bg-surface-dark/50">
+<div class="flex h-12 w-12 items-center justify-center rounded-full bg-white dark:bg-surface-dark shadow-sm text-primary dark:text-[#26a69a] mb-3">
+<span class="material-symbols-outlined text-2xl">auto_awesome</span>
+</div>
+<h2 class="text-base font-bold text-gray-800 dark:text-gray-200">Daha fazla veri, daha iyi öneriler</h2>
+<p class="mt-1 text-xs text-gray-500 dark:text-gray-400 max-w-[240px]">Yapay zekanın seni daha iyi tanıması için deneme sonuçlarını girmeyi unutma.</p>
+</div>
+</main>
+<div class="fixed bottom-6 right-6 z-30">
+<button class="group flex items-center justify-center h-14 w-14 rounded-full bg-primary text-white shadow-[0_8px_30px_rgb(17,96,98,0.3)] hover:bg-primary-dark hover:scale-105 hover:shadow-[0_8px_30px_rgb(17,96,98,0.5)] transition-all duration-300 active:scale-95">
+<span class="material-symbols-outlined text-3xl group-hover:rotate-90 transition-transform duration-300">add</span>
+</button>
+</div>
+<nav class="fixed bottom-0 w-full bg-surface-light dark:bg-surface-dark border-t border-gray-100 dark:border-gray-800 pb-safe pt-2 px-6 flex justify-between items-center z-20 pb-4">
+<button class="flex flex-col items-center gap-1 p-2 text-gray-400 hover:text-primary dark:hover:text-[#26a69a] transition-colors">
+<span class="material-symbols-outlined text-[26px]">home</span>
+<span class="text-[10px] font-medium">Ana Sayfa</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 text-primary dark:text-[#26a69a] transition-colors">
+<span class="material-symbols-outlined text-[26px] fill-current">edit_note</span>
+<span class="text-[10px] font-medium">Denemeler</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 text-gray-400 hover:text-primary dark:hover:text-[#26a69a] transition-colors">
+<span class="material-symbols-outlined text-[26px]">calendar_month</span>
+<span class="text-[10px] font-medium">Takvim</span>
+</button>
+<button class="flex flex-col items-center gap-1 p-2 text-gray-400 hover:text-primary dark:hover:text-[#26a69a] transition-colors">
+<span class="material-symbols-outlined text-[26px]">psychology</span>
+<span class="text-[10px] font-medium">Koçum</span>
+</button>
+</nav>
+</div>
+</body></html>

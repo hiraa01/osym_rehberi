@@ -253,6 +253,95 @@ class AuthService {
     }
   }
 
+  // ✅ AUTO-REPAIR: Student ID'yi garanti et - yoksa otomatik oluştur
+  Future<int?> ensureStudentId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // 1. Önce cache'den kontrol et
+      final cachedStudentId = prefs.getInt('student_id');
+      if (cachedStudentId != null) {
+        // Cache'de varsa, backend'den doğrula
+        try {
+          await _apiService.getStudent(cachedStudentId);
+          // Student bulundu, geçerli
+          debugPrint('✅ Student ID from cache is valid: $cachedStudentId');
+          return cachedStudentId;
+        } catch (_) {
+          // Cache'deki student_id geçersiz, sil
+          await prefs.remove('student_id');
+          debugPrint('⚠️ Cached student_id is invalid, removed');
+        }
+      }
+      
+      // 2. User ID kontrolü
+      final userId = prefs.getInt('user_id');
+      if (userId == null) {
+        debugPrint('⚠️ User ID not found, cannot ensure student ID');
+        return null;
+      }
+      
+      // 3. Backend'den student profilini getir
+      try {
+        final response = await _apiService.getUserStudentProfile(userId);
+        final studentData = response.data['student'];
+        
+        if (studentData != null && studentData['id'] != null) {
+          // Student bulundu, kaydet
+          final studentId = studentData['id'] as int;
+          await prefs.setInt('student_id', studentId);
+          debugPrint('✅ Student ID loaded from backend: $studentId');
+          return studentId;
+        }
+      } catch (e) {
+        debugPrint('⚠️ Could not load student profile: $e');
+      }
+      
+      // 4. Student bulunamadı - otomatik oluştur
+      debugPrint('🔄 Student profile not found, creating new one...');
+      try {
+        final userName = prefs.getString('user_name') ?? 'Öğrenci';
+        final userEmail = prefs.getString('user_email');
+        final userPhone = prefs.getString('user_phone');
+        
+        // Minimal student profili oluştur
+        final studentResponse = await _apiService.createStudent({
+          'name': userName,
+          'email': userEmail,
+          'phone': userPhone,
+          'class_level': '12',
+          'exam_type': 'TYT+AYT',
+          'field_type': 'SAY', // Varsayılan, kullanıcı daha sonra güncelleyebilir
+        });
+        
+        if (studentResponse.data != null && studentResponse.data['id'] != null) {
+          final studentId = studentResponse.data['id'] as int;
+          await prefs.setInt('student_id', studentId);
+          debugPrint('✅ Student profile created automatically: $studentId');
+          return studentId;
+        }
+      } catch (e) {
+        debugPrint('🔴 Failed to create student profile: $e');
+        // User silinmiş olabilir - logout yap
+        if (e.toString().contains('404') || e.toString().contains('401')) {
+          debugPrint('⚠️ User not found, logging out...');
+          await logout();
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      debugPrint('🔴 Error ensuring student ID: $e');
+      return null;
+    }
+  }
+
+  // ✅ Student ID'yi getir (public method)
+  Future<int?> getStudentId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('student_id');
+  }
+
   Future<UserModel> updateUser({
     String? name,
     bool? isOnboardingCompleted,

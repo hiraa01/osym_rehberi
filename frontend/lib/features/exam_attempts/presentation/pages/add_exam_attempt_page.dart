@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/services/api_service.dart';
+import '../../../auth/data/providers/auth_service.dart';
 
 class AddExamAttemptPage extends StatefulWidget {
   const AddExamAttemptPage({super.key});
@@ -108,30 +109,35 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
               ),
               const SizedBox(height: 24),
 
-              // Bölüm Tipi Seçimi
-              const Text(
-                'Bölüm Türü',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              // ✅ Alan Türü Bilgisi (Sadece Göster, Değiştirilemez)
+              if (_selectedDepartmentType.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Alan Türü: $_selectedDepartmentType',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'SAY', label: Text('SAY')),
-                  ButtonSegment(value: 'EA', label: Text('EA')),
-                  ButtonSegment(value: 'SÖZ', label: Text('SÖZ')),
-                  ButtonSegment(value: 'DİL', label: Text('DİL')),
-                ],
-                selected: {_selectedDepartmentType},
-                onSelectionChanged: (Set<String> newSelection) {
-                  setState(() {
-                    _selectedDepartmentType = newSelection.first;
-                  });
-                },
-              ),
-              const SizedBox(height: 32),
+                const SizedBox(height: 24),
+              ],
 
               // TYT Netleri
               const Text(
@@ -487,8 +493,25 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
       setState(() => _isSaving = true);
 
       try {
-        final prefs = await SharedPreferences.getInstance();
-        int? studentId = prefs.getInt('student_id');
+        // ✅ AUTO-REPAIR: Student ID'yi garanti et
+        final authService = getAuthService(_apiService);
+        int? studentId = await authService.ensureStudentId();
+
+        if (studentId == null) {
+          // Student ID oluşturulamadı - kullanıcıyı bilgilendir
+          if (mounted) {
+            setState(() => _isSaving = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Oturum süreniz doldu. Lütfen tekrar giriş yapın.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            // Kullanıcıyı login sayfasına yönlendir
+            Navigator.of(context).pushNamedAndRemoveUntil('/auth', (route) => false);
+          }
+          return;
+        }
 
         // Net'leri hesapla
         final Map<String, double> nets = {};
@@ -496,30 +519,8 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
           nets[key] = _calculateNet(key);
         });
 
-        // Eğer student_id yoksa, önce student oluştur
-        if (studentId == null) {
-          final userId = prefs.getInt('user_id');
-          if (userId != null) {
-            try {
-              final studentResponse = await _apiService.createStudent({
-                'user_id': userId,
-                'name': prefs.getString('user_name') ?? 'Öğrenci',
-                'class_level': '12',
-                'exam_type': 'TYT+AYT',
-                'field_type': _selectedDepartmentType,
-                ...nets,
-              });
-              studentId = studentResponse.data['id'] as int;
-              await prefs.setInt('student_id', studentId);
-            } catch (e) {
-              debugPrint('Student creation error: $e');
-            }
-          }
-        }
-
-        if (studentId != null) {
-          // Deneme sayısını al (retry mekanizması ile)
-          try {
+        // Deneme sayısını al (retry mekanizması ile)
+        try {
             // ✅ attempt_number backend tarafında otomatik hesaplanıyor - göndermeye gerek yok
             // Deneme kaydet (retry mekanizması ile)
             // ✅ attempt_number backend'de otomatik hesaplanıyor - göndermeye gerek yok
@@ -605,9 +606,6 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
             }
             return;
           }
-        } else {
-          throw Exception('Student ID bulunamadı');
-        }
       } catch (e) {
         debugPrint('Save exam attempt error: $e');
         if (mounted) {

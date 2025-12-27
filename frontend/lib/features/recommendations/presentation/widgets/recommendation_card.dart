@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/models/recommendation_model.dart';
+import '../../../../core/services/api_service.dart';
 
 class RecommendationCard extends StatefulWidget {
   final RecommendationModel recommendation;
@@ -17,6 +19,7 @@ class RecommendationCard extends StatefulWidget {
 
 class _RecommendationCardState extends State<RecommendationCard> {
   bool _isBookmarked = false;
+  final ApiService _apiService = ApiService();
 
   @override
   Widget build(BuildContext context) {
@@ -164,12 +167,44 @@ class _RecommendationCardState extends State<RecommendationCard> {
                   color: Colors.blueAccent,
                   size: 28,
                 ),
-                onPressed: () {
-                  // ✅ DEBUG: Konsola yaz
-                  debugPrint('Hedefle butonuna basıldı');
-                  setState(() {
-                    _isBookmarked = !_isBookmarked;
-                  });
+                onPressed: () async {
+                  // ✅ Hedef ekleme işlemi
+                  try {
+                    final prefs = await SharedPreferences.getInstance();
+                    final studentId = prefs.getInt('student_id');
+                    
+                    if (studentId == null) {
+                      if (!mounted) return;
+                      final messengerContext = context;
+                      ScaffoldMessenger.of(messengerContext).showSnackBar(
+                        const SnackBar(content: Text('Öğrenci bilgisi bulunamadı!')),
+                      );
+                      return;
+                    }
+                    
+                    // API'ye istek gönder
+                    await _apiService.addPreferredDepartment(
+                      studentId,
+                      widget.recommendation.departmentId,
+                    );
+                    
+                    // Başarılı olduysa state'i güncelle
+                    if (!mounted) return;
+                    final messengerContext = context;
+                      setState(() {
+                        _isBookmarked = true;
+                      });
+                      ScaffoldMessenger.of(messengerContext).showSnackBar(
+                        const SnackBar(content: Text('Hedeflerinize eklendi!')),
+                      );
+                  } catch (e) {
+                    debugPrint('Hedef ekleme hatası: $e');
+                    if (!mounted) return;
+                    final messengerContext = context;
+                    ScaffoldMessenger.of(messengerContext).showSnackBar(
+                      SnackBar(content: Text('Hata: ${e.toString()}')),
+                    );
+                  }
                 },
                 tooltip: _isBookmarked ? 'Hedeflerden kaldır' : 'Hedefle',
               ),

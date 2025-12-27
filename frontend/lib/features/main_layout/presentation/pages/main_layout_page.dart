@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../dashboard/presentation/pages/stitch_dashboard_page.dart';
 import '../../../exam_attempts/presentation/pages/stitch_exam_attempts_page.dart';
 import '../../../goals/presentation/pages/stitch_goals_page.dart';
+import '../../../goals/presentation/pages/stitch_agenda_page.dart';
 import '../../../recommendations/presentation/pages/stitch_recommendations_page.dart';
-import '../../../profile/presentation/pages/stitch_profile_page.dart';
 import '../../../coach_chat/presentation/coach_chat_fab.dart';
 import '../widgets/stitch_bottom_nav_bar.dart';
 
@@ -39,11 +39,11 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
               });
             },
             children: const [
-              StitchExamAttemptsPage(),
-              StitchGoalsPage(),
-              StitchDashboardPage(), // Anasayfa ortada - Stitch Design
-              StitchRecommendationsPage(),
-              StitchProfilePage(),
+              StitchExamAttemptsPage(), // 0: Netlerim
+              StitchGoalsPage(), // 1: Keşfet
+              StitchDashboardPage(), // 2: Anasayfa
+              StitchRecommendationsPage(), // 3: Öneriler
+              StitchAgendaPage(), // 4: Ajandam
             ],
           ),
           const CoachChatFab(), // Stack içinde Positioned widget
