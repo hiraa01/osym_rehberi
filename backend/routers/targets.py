@@ -18,7 +18,7 @@ from core.exceptions import StudentNotFoundError
 router = APIRouter()
 
 
-@router.get("/", response_model=List[PreferenceWithDepartmentResponse])
+@router.get("", response_model=List[PreferenceWithDepartmentResponse])
 async def get_targets(
     student_id: int = Query(..., description="Öğrenci ID"),
     db: Session = Depends(get_db)
@@ -129,7 +129,7 @@ async def get_targets(
         raise HTTPException(status_code=500, detail="Tercih hedefleri alınırken bir hata oluştu")
 
 
-@router.post("/", response_model=PreferenceResponse)
+@router.post("", response_model=PreferenceResponse)
 async def add_target(
     preference: PreferenceCreate,
     db: Session = Depends(get_db)

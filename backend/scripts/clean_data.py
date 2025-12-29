@@ -2,7 +2,19 @@ import pandas as pd
 import os
 import re
 import logging
+import math
 from typing import Optional, Dict, List
+
+# ✅ PostgreSQL uyumlu veri temizleme fonksiyonları
+try:
+    from utils.postgresql_helpers import (
+        safe_to_int, safe_to_float, safe_to_string,
+        clean_excel_numeric, is_na_value as pg_is_na_value
+    )
+    POSTGRESQL_HELPERS_AVAILABLE = True
+except ImportError:
+    # Fallback: Eğer helper'lar yoksa yerel fonksiyonları kullan
+    POSTGRESQL_HELPERS_AVAILABLE = False
 
 # ---------------------------------------------------------
 # 📂 AYARLAR
@@ -119,17 +131,40 @@ def safe_get_value(row, col_index: int, default=None):
     return default
 
 def safe_get_numeric(value, default=None):
-    """Değeri sayıya çevirir."""
+    """
+    ✅ PostgreSQL uyumlu: Değeri sayıya çevirir.
+    
+    PostgreSQL katı tip kontrolü yapar, bu yüzden:
+    - Boş string ("") -> None (NULL)
+    - "NA", "N/A", "nan" -> None (NULL)
+    - Boşluk (" ") -> None (NULL)
+    """
     if is_na_value(value):
         return default
     
+    # ✅ PostgreSQL için: Boş string kontrolü
+    if isinstance(value, str):
+        value_clean = value.strip()
+        if not value_clean or value_clean.lower() in ['na', 'n/a', 'nan', 'none', 'null', '-', '?', '']:
+            return default
+    
     try:
         value_str = str(value).replace(',', '.').replace(' ', '').strip()
+        
+        # ✅ PostgreSQL için: Boş string kontrolü (temizleme sonrası)
+        if not value_str or value_str.lower() in ['na', 'n/a', 'nan', 'none', 'null', '-', '?']:
+            return default
+        
         if '.' in value_str:
-            return float(value_str)
+            result = float(value_str)
+            # ✅ NaN veya Infinity kontrolü
+            import math
+            if math.isnan(result) or math.isinf(result):
+                return default
+            return result
         else:
             return int(value_str)
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, OverflowError):
         return default
 
 def determine_degree_type(filename: str) -> str:
@@ -325,9 +360,14 @@ def process_hierarchical_file(filepath: str, filename: str) -> List[Dict]:
             field_type = determine_field_type(program_name_original, field_type_raw, degree_type, filename)
             duration = determine_duration(program_name_original, duration_raw, field_type, degree_type)
             
-            # Sayısal değerleri çevir
-            quota = safe_get_numeric(quota_raw, 0)
-            min_score = safe_get_numeric(min_score_raw, None)  # None olabilir - ASLA ATMA
+            # ✅ PostgreSQL uyumlu: Sayısal değerleri çevir
+            # Helper fonksiyonlar varsa onları kullan, yoksa yerel fonksiyonu kullan
+            if POSTGRESQL_HELPERS_AVAILABLE:
+                quota = safe_to_int(quota_raw, default=0)
+                min_score = safe_to_float(min_score_raw, default=None)  # ✅ None olabilir - PostgreSQL NULL
+            else:
+                quota = safe_get_numeric(quota_raw, 0)
+                min_score = safe_get_numeric(min_score_raw, None)  # None olabilir - ASLA ATMA
             
             # Kayıt oluştur - HER PROGRAM KODU KAYDEDİLİR
             program_data = {

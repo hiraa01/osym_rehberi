@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from database import get_db
 from models import ExamAttempt, Student
@@ -14,12 +14,11 @@ from services.score_calculator import ScoreCalculator
 from services.recommendation_engine import RecommendationEngine
 from routers.ml_recommendations import train_models_background
 from core.logging_config import api_logger
-from core.logging_config import api_logger
 
 router = APIRouter()
 
 
-@router.post("/", response_model=ExamAttemptResponse)
+@router.post("", response_model=ExamAttemptResponse)
 async def create_exam_attempt(
     attempt: ExamAttemptCreate,
     background_tasks: BackgroundTasks,

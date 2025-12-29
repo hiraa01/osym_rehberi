@@ -18,17 +18,42 @@ api_logger = logging.getLogger("api")
 # Database URL - PostgreSQL for production, SQLite for development
 # ✅ PostgreSQL'e geçiş yapıldı - performans için kritik
 # Environment variable'dan al, yoksa PostgreSQL varsayılan değerlerini kullan
+# ✅ CRITICAL: Host için birden fazla env variable kontrolü (POSTGRES_HOST, POSTGRES_SERVER, DB_HOST)
 POSTGRES_USER = os.getenv("POSTGRES_USER", "osym_user")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "osym_password")
 POSTGRES_DB = os.getenv("POSTGRES_DB", "osym_rehber")
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "db")  # Docker compose'da servis adı
+# ✅ Host için alternatif env variable'lar: POSTGRES_HOST, POSTGRES_SERVER, DB_HOST
+# ✅ CRITICAL: localhost kullanılmamalı, Docker servis adı ('db') kullanılmalı
+POSTGRES_HOST = os.getenv("POSTGRES_HOST") or os.getenv("POSTGRES_SERVER") or os.getenv("DB_HOST") or "db"
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
 
-# PostgreSQL connection string
+# ✅ PostgreSQL connection string - psycopg2 driver (senkron)
+# NOT: asyncpg kullanmıyoruz, senkron psycopg2 kullanıyoruz
+# Eğer async kullanmak istersen: postgresql+asyncpg://...
+# ✅ CRITICAL: Environment variable'dan al, yoksa varsayılan değerleri kullan
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 )
+
+# ✅ CRITICAL: PostgreSQL URL formatını doğrula ve düzelt
+# Docker Compose'dan gelen DATABASE_URL'de driver belirtilmemiş olabilir
+if not DATABASE_URL.startswith(("postgresql://", "postgresql+psycopg2://", "postgresql+asyncpg://")):
+    api_logger.warning(f"⚠️ DATABASE_URL PostgreSQL formatında değil: {DATABASE_URL[:30]}...")
+    # Eğer sadece postgresql:// ile başlıyorsa, psycopg2 ekle
+    if DATABASE_URL.startswith("postgresql://") and "+psycopg2" not in DATABASE_URL and "+asyncpg" not in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+        api_logger.info("✅ DATABASE_URL psycopg2 driver ile güncellendi")
+
+# ✅ CRITICAL: localhost kontrolü - Docker içinde localhost kullanılmamalı
+if "localhost" in DATABASE_URL or "127.0.0.1" in DATABASE_URL:
+    api_logger.warning(f"⚠️ DATABASE_URL'de localhost kullanılıyor! Docker içinde servis adı kullanılmalı (örn: 'db')")
+    api_logger.warning(f"⚠️ Mevcut DATABASE_URL: {DATABASE_URL[:50]}...")
+    # Otomatik düzeltme (sadece uyarı, değiştirme)
+    api_logger.info(f"💡 Docker Compose'da POSTGRES_HOST='db' kullanıldığından emin olun")
+
+# ✅ CRITICAL: Host adını logla (debug için)
+api_logger.info(f"📊 Database connection config: Host={POSTGRES_HOST}, DB={POSTGRES_DB}, Port={POSTGRES_PORT}")
 
 # Create engine with connection pooling for better performance
 # ✅ PostgreSQL'e geçiş yapıldı - SQLite artık kullanılmıyor
@@ -56,21 +81,30 @@ if DATABASE_URL.startswith("sqlite"):
         cursor.close()
 else:
     # ✅ PostgreSQL için optimize edilmiş connection pool
-    engine = create_engine(
-        DATABASE_URL,
-        pool_size=20,        # Connection pool size (optimal for most cases)
-        max_overflow=30,     # Additional connections beyond pool_size
-        pool_pre_ping=True,  # Connection health check
-        pool_recycle=1800,   # Recycle connections after 30 minutes
-        pool_timeout=30,     # Wait time for connection from pool (seconds)
-        echo=False,          # SQL query logging (production'da kapalı)
-        # PostgreSQL özel optimizasyonlar
-        connect_args={
-            "connect_timeout": 20,  # Connection timeout (10 -> 20 seconds)
-            "application_name": "osym_rehberi_api",  # Connection identifier
-            "options": "-c statement_timeout=300000",  # 5 minutes query timeout
-        },
-    )
+    # ✅ CRITICAL: psycopg2 driver kullanıyoruz (senkron)
+    try:
+        engine = create_engine(
+            DATABASE_URL,
+            pool_size=10,        # ✅ Connection pool size (kullanıcı isteği: 10)
+            max_overflow=20,      # Additional connections beyond pool_size
+            pool_pre_ping=True,  # ✅ CRITICAL: Connection health check - kopmuş bağlantıları tespit eder
+            pool_recycle=1800,   # Recycle connections after 30 minutes (PostgreSQL'in idle timeout'undan önce)
+            pool_timeout=30,     # Wait time for connection from pool (seconds)
+            echo=False,          # SQL query logging (production'da kapalı)
+            # ✅ PostgreSQL özel optimizasyonlar
+            connect_args={
+                "connect_timeout": 20,  # Connection timeout (20 seconds)
+                "application_name": "osym_rehberi_api",  # Connection identifier (pg_stat_activity'de görünür)
+                "options": "-c statement_timeout=300000",  # 5 minutes query timeout (300000 ms)
+                # ✅ PostgreSQL encoding ayarları
+                "client_encoding": "UTF8",
+            },
+        )
+        api_logger.info(f"✅ PostgreSQL engine created successfully (Host: {POSTGRES_HOST}, DB: {POSTGRES_DB})")
+    except Exception as e:
+        api_logger.error(f"❌ CRITICAL: PostgreSQL engine creation failed: {e}")
+        api_logger.error(f"❌ DATABASE_URL: {DATABASE_URL[:50]}...")  # Şifreyi gösterme
+        raise
 
 # Create session
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -81,19 +115,24 @@ Base = declarative_base()
 # Metadata for table creation
 metadata = MetaData()
 
-# ✅ IMPORT ALL MODELS FROM SINGLE FILE (After Base is created, before create_tables is called)
-# Tüm modeller tek dosyada (models.py) - circular import sorunu kesin çözüm
+# ✅ IMPORT ALL MODELS (After Base is created, before create_tables is called)
+# ✅ CRITICAL: models/__init__.py'den relative import kullanarak circular import'u önle
 try:
-    # ✅ Tek dosyadan tüm modelleri import et
+    # ✅ models paketinden import et (relative import kullanıyor)
     from models import (  # noqa: F401
         User, Student, ExamAttempt,
         University, Department, DepartmentYearlyStats, Recommendation,
         Preference, Swipe,
         ForumPost, ForumComment,
-        AgendaItem, StudySession, ChatMessage,
         YokUniversity, YokProgram, YokCity, ScoreCalculation
     )
-    api_logger.info("✅ All models imported successfully from models.py")
+    # ✅ AgendaItem, StudySession, ChatMessage opsiyonel (eğer varsa)
+    try:
+        from models import AgendaItem, StudySession, ChatMessage  # noqa: F401
+    except ImportError:
+        api_logger.warning("⚠️ AgendaItem, StudySession, ChatMessage modelleri bulunamadı (opsiyonel)")
+    
+    api_logger.info("✅ All models imported successfully from models package")
         
 except ImportError as e:
     api_logger.error(f"❌ CRITICAL: Failed to import models: {e}")
@@ -151,6 +190,51 @@ def create_tables(max_retries: int = 3, retry_delay: int = 2):
             # Kayıtlı modelleri kontrol et
             registered_tables = list(Base.metadata.tables.keys())
             api_logger.info(f"📋 Kayıtlı modeller: {len(registered_tables)} tablo metadata'da")
+            
+            # ✅ CRITICAL: PostgreSQL sequence'leri düzelt (SQLite'tan geçiş sonrası)
+            if not DATABASE_URL.startswith("sqlite"):
+                try:
+                    api_logger.info("🔧 PostgreSQL sequence'leri düzeltiliyor...")
+                    from sqlalchemy import text, inspect
+                    inspector = inspect(engine)
+                    tables = inspector.get_table_names()
+                    
+                    # ✅ Tüm tablolar için sequence'leri düzelt
+                    with engine.connect() as conn:
+                        for table_name in tables:
+                            try:
+                                # ID kolonunu bul
+                                columns = inspector.get_columns(table_name)
+                                id_column = None
+                                for col in columns:
+                                    if col.get('primary_key') and 'int' in str(col.get('type')).lower():
+                                        id_column = col['name']
+                                        break
+                                
+                                if not id_column:
+                                    continue
+                                
+                                # Maksimum ID'yi bul
+                                max_id_result = conn.execute(text(f"SELECT COALESCE(MAX({id_column}), 0) FROM {table_name}"))
+                                max_id = max_id_result.scalar() or 0
+                                
+                                # Sequence adını bul ve düzelt
+                                seq_result = conn.execute(text(f"SELECT pg_get_serial_sequence(:table, :col)"), {"table": table_name, "col": id_column})
+                                sequence_name = seq_result.scalar()
+                                
+                                if sequence_name:
+                                    conn.execute(text(f"SELECT setval(:seq, :max_id, false)"), {"seq": sequence_name, "max_id": max_id})
+                                    conn.commit()
+                                    api_logger.info(f"✅ {table_name}.{id_column}: Sequence → {max_id + 1}")
+                            except Exception as seq_error:
+                                # Sequence yoksa veya IDENTITY kullanılıyorsa normal (PostgreSQL 10+)
+                                if "does not exist" not in str(seq_error).lower():
+                                    api_logger.warning(f"⚠️ {table_name} sequence düzeltme hatası: {seq_error}")
+                                continue
+                    
+                    api_logger.info("✅ Sequence'ler düzeltildi!")
+                except Exception as seq_fix_error:
+                    api_logger.warning(f"⚠️ Sequence düzeltme sırasında hata (non-critical): {seq_fix_error}")
             
             return True
             

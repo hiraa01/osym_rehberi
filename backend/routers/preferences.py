@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import List
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import Session, selectinload
+from typing import List, Optional, Tuple
 
 from database import get_db
 from models import Preference, Student, Department, University
@@ -43,7 +42,7 @@ def calculate_probability(student_score: float, department_min_score: Optional[f
         return probability, "Orta"
 
 
-def get_university_logo_url(university: University) -> str | None:
+def get_university_logo_url(university: University) -> Optional[str]:
     """Üniversite logosu URL'i oluştur"""
     if university.website:
         domain = university.website.replace('http://', '').replace('https://', '').replace('www.', '').split('/')[0]
@@ -171,7 +170,7 @@ async def get_preferences(
         raise HTTPException(status_code=500, detail=f"Tercihler getirilemedi: {str(e)}")
 
 
-@router.post("/", response_model=PreferenceResponse)
+@router.post("", response_model=PreferenceResponse)
 async def create_preference(
     preference: PreferenceCreate,
     db: Session = Depends(get_db)

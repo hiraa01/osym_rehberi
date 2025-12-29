@@ -289,7 +289,7 @@ async def get_student_recommendations(
     Öğrencinin mevcut önerilerini getir - Direkt List döndürür (Flutter uyumlu)
     ✅ BULLETPROOF: Herhangi bir hata durumunda fallback mekanizması devreye girer
     """
-            from models import Department, University
+    from models import Department, University
     from schemas.university import DepartmentWithUniversityResponse
     
     try:
@@ -508,7 +508,7 @@ async def get_recommendation(recommendation_id: int, db: Session = Depends(get_d
         raise HTTPException(status_code=404, detail="Öneri bulunamadı")
     
     # Department ve University bilgilerini getir
-            from models import Department, University
+    from models import Department, University
     from schemas.university import DepartmentWithUniversityResponse
     
     department = db.query(Department).filter(Department.id == recommendation.department_id).first()

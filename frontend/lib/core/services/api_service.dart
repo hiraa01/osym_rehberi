@@ -22,170 +22,184 @@ class ApiService {
   late final Dio _dio;
 
   ApiService() {
-    // ⚠️ IP ADRESİNİ DURUMUNUZA GÖRE DEĞİŞTİRİN:
-    // 🖥️  Android Emulator:    10.0.2.2:8002
-    // 📱 Gerçek Android Cihaz: Bilgisayarınızın WiFi IP'si (cmd: ipconfig)
-    // 🌐 Web:                  localhost:8002
-
-    // ✅ Güncel WiFi IP: ipconfig.exe ile kontrol edin
-    // Android için IP adresini kontrol edin: ipconfig (Windows) veya ifconfig (Linux/Mac)
-    const String baseUrl = kIsWeb
-        ? 'http://localhost:8002/api'
-        : 'http://172.31.88.134:8002/api'; // 👈 Windows WiFi IP (değişebilir!)
+    // ✅ Tek ve Sabit Base URL
+    // adb reverse tcp:8003 tcp:8003 komutu ile Android emülatörde 127.0.0.1:8003 host makineye yönlendirilir
+    const String baseUrl = 'http://127.0.0.1:8003/api';
 
     if (kDebugMode) {
       debugPrint('API Base URL: $baseUrl');
     }
 
-    _dio = Dio(BaseOptions(
-      baseUrl: baseUrl,
-      connectTimeout: const Duration(
-          seconds:
-              120), // Backend'e bağlanma için 120 saniye (yavaş network için)
-      receiveTimeout: const Duration(
-          minutes: 20), // ✅ CRITICAL FIX: AI işlemleri için 20 dakika (5 dakikadan uzun olmalı)
-      sendTimeout:
-          const Duration(seconds: 120), // Veri göndermek için 120 saniye
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Accept-Encoding': 'gzip, deflate', // Gzip desteği
-      },
-      // Android için connection ayarları
-      persistentConnection:
-          true, // ✅ True yaparak bağlantıyı yeniden kullan (daha hızlı)
-      // Tüm status kodlarını kabul et (400-499 hataları da response olarak gelsin)
-      validateStatus: (status) => status != null && status < 600,
-      // Chrome için özel ayarlar
-      followRedirects: false, // Redirect'leri takip etme
-      maxRedirects: 0,
-      // Android için özel ayarlar
-      receiveDataWhenStatusError: true,
-    ));
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(
+          seconds: 15,
+        ), // ✅ Bağlantı süresi 15 saniye (bağlantı yoksa hemen hata versin)
+        receiveTimeout: const Duration(
+          minutes: 20,
+        ), // ✅ CRITICAL FIX: AI işlemleri için 20 dakika (5 dakikadan uzun olmalı)
+        sendTimeout: const Duration(
+          seconds: 120,
+        ), // Veri göndermek için 120 saniye
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Accept-Encoding': 'gzip, deflate', // Gzip desteği
+        },
+        // Android için connection ayarları
+        persistentConnection:
+            true, // ✅ True yaparak bağlantıyı yeniden kullan (daha hızlı)
+        // Tüm status kodlarını kabul et (400-499 hataları da response olarak gelsin)
+        validateStatus: (status) => status != null && status < 600,
+        // Chrome için özel ayarlar
+        followRedirects: false, // Redirect'leri takip etme
+        maxRedirects: 0,
+        // Android için özel ayarlar
+        receiveDataWhenStatusError: true,
+      ),
+    );
 
     // Platform-specific interceptors
     if (kIsWeb) {
       // Chrome için özel interceptor (web platformunda)
-      _dio.interceptors.add(InterceptorsWrapper(
-        onRequest: (options, handler) {
-          // Chrome için özel header'lar
-          options.headers['Cache-Control'] = 'no-cache';
-          options.headers['Pragma'] = 'no-cache';
-          handler.next(options);
-        },
-        onError: (error, handler) {
-          // Chrome için özel hata yönetimi
-          if (kDebugMode) {
-            debugPrint('[Chrome] Request failed: ${error.requestOptions.uri}');
-            debugPrint('[Chrome] Error type: ${error.type}');
-            debugPrint('[Chrome] Error message: ${error.message}');
-          }
-          handler.next(error);
-        },
-      ));
+      _dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            // Chrome için özel header'lar
+            options.headers['Cache-Control'] = 'no-cache';
+            options.headers['Pragma'] = 'no-cache';
+            handler.next(options);
+          },
+          onError: (error, handler) {
+            // Chrome için özel hata yönetimi
+            if (kDebugMode) {
+              debugPrint(
+                '[Chrome] Request failed: ${error.requestOptions.uri}',
+              );
+              debugPrint('[Chrome] Error type: ${error.type}');
+              debugPrint('[Chrome] Error message: ${error.message}');
+            }
+            handler.next(error);
+          },
+        ),
+      );
     } else {
       // Android için özel interceptor
-      _dio.interceptors.add(InterceptorsWrapper(
-        onRequest: (options, handler) {
-          // Android için özel header'lar
-          options.headers.remove(
-              'Connection'); // Connection header'ını kaldır (Dio otomatik ekler)
-          options.headers['Cache-Control'] =
-              'no-cache, no-store, must-revalidate';
-          options.headers['Pragma'] = 'no-cache';
-          options.headers['Expires'] = '0';
-          // Her request için timeout'lar - Android için makul timeout'lar
-          // NOT: Endpoint'lerde özel timeout varsa onlar kullanılır
-          // Kritik endpoint'ler için özel timeout'lar tanımlanmıştır
-          // NOT: connectTimeout sadece BaseOptions'ta ayarlanabilir, Options'ta yok
-          options.receiveTimeout =
-              const Duration(seconds: 300); // Default: 300 saniye
-          options.sendTimeout = const Duration(seconds: 120);
-          if (kDebugMode) {
-            debugPrint('[Android] Request: ${options.method} ${options.uri}');
-            debugPrint('[Android] Headers: ${options.headers}');
-          }
-          handler.next(options);
-        },
-        onError: (error, handler) {
-          // Android için özel hata yönetimi
-          if (kDebugMode) {
-            debugPrint('[Android] Request failed: ${error.requestOptions.uri}');
-            debugPrint('[Android] Error type: ${error.type}');
-            debugPrint('[Android] Error message: ${error.message}');
-            if (error.response != null) {
-              debugPrint(
-                  '[Android] Response status: ${error.response?.statusCode}');
+      _dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            // Android için özel header'lar
+            options.headers.remove(
+              'Connection',
+            ); // Connection header'ını kaldır (Dio otomatik ekler)
+            options.headers['Cache-Control'] =
+                'no-cache, no-store, must-revalidate';
+            options.headers['Pragma'] = 'no-cache';
+            options.headers['Expires'] = '0';
+            // Her request için timeout'lar - Android için makul timeout'lar
+            // NOT: Endpoint'lerde özel timeout varsa onlar kullanılır
+            // Kritik endpoint'ler için özel timeout'lar tanımlanmıştır
+            // NOT: connectTimeout sadece BaseOptions'ta ayarlanabilir, Options'ta yok
+            options.receiveTimeout = const Duration(
+              seconds: 300,
+            ); // Default: 300 saniye
+            options.sendTimeout = const Duration(seconds: 120);
+            if (kDebugMode) {
+              debugPrint('[Android] Request: ${options.method} ${options.uri}');
+              debugPrint('[Android] Headers: ${options.headers}');
             }
-          }
-          handler.next(error);
-        },
-      ));
+            handler.next(options);
+          },
+          onError: (error, handler) {
+            // Android için özel hata yönetimi
+            if (kDebugMode) {
+              debugPrint(
+                '[Android] Request failed: ${error.requestOptions.uri}',
+              );
+              debugPrint('[Android] Error type: ${error.type}');
+              debugPrint('[Android] Error message: ${error.message}');
+              if (error.response != null) {
+                debugPrint(
+                  '[Android] Response status: ${error.response?.statusCode}',
+                );
+              }
+            }
+            handler.next(error);
+          },
+        ),
+      );
     }
 
     // Add interceptors for logging in debug mode
     if (kDebugMode) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        logPrint: (obj) => debugPrint(obj.toString()),
-      ));
+      _dio.interceptors.add(
+        LogInterceptor(
+          requestBody: true,
+          responseBody: true,
+          logPrint: (obj) => debugPrint(obj.toString()),
+        ),
+      );
     }
 
     // Bağlantı hatası interceptor'ı (hem debug hem production'da çalışır)
-    _dio.interceptors.add(InterceptorsWrapper(
-      onResponse: (response, handler) {
-        if (kDebugMode) {
-          debugPrint(
-              '📡 API Response: ${response.requestOptions.method} ${response.requestOptions.uri}');
-          debugPrint('📡 Status: ${response.statusCode}');
-          debugPrint('📡 Data type: ${response.data.runtimeType}');
-          debugPrint('📡 Data: ${response.data}');
-        }
-        handler.next(response);
-      },
-      onError: (error, handler) {
-        if (kDebugMode) {
-          debugPrint('🔴 API Error: ${error.message}');
-          debugPrint('🔴 Error type: ${error.type}');
-          if (error.response != null) {
-            debugPrint('🔴 Response status: ${error.response?.statusCode}');
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onResponse: (response, handler) {
+          if (kDebugMode) {
             debugPrint(
-                '🔴 Response data type: ${error.response?.data.runtimeType}');
-            debugPrint('🔴 Response data: ${error.response?.data}');
-
-            // Backend'den gelen hata mesajını extract et
-            if (error.response?.data is Map) {
-              final errorData = error.response!.data as Map;
-              final detail = errorData['detail'] ?? errorData['message'];
-              if (detail != null) {
-                debugPrint('🔴 Error detail: $detail');
-              }
-            }
-          } else {
-            debugPrint('🔴 No response (connection error)');
+              '📡 API Response: ${response.requestOptions.method} ${response.requestOptions.uri}',
+            );
+            debugPrint('📡 Status: ${response.statusCode}');
+            debugPrint('📡 Data type: ${response.data.runtimeType}');
+            debugPrint('📡 Data: ${response.data}');
           }
-        }
+          handler.next(response);
+        },
+        onError: (error, handler) {
+          if (kDebugMode) {
+            debugPrint('🔴 API Error: ${error.message}');
+            debugPrint('🔴 Error type: ${error.type}');
+            if (error.response != null) {
+              debugPrint('🔴 Response status: ${error.response?.statusCode}');
+              debugPrint(
+                '🔴 Response data type: ${error.response?.data.runtimeType}',
+              );
+              debugPrint('🔴 Response data: ${error.response?.data}');
 
-        // Bağlantı hatası kontrolü
-        if (error.type == DioExceptionType.connectionTimeout ||
-            error.type == DioExceptionType.receiveTimeout ||
-            error.type == DioExceptionType.sendTimeout ||
-            error.type == DioExceptionType.connectionError) {
-          // Kullanıcı dostu hata mesajı oluştur
-          final userFriendlyError = DioException(
-            requestOptions: error.requestOptions,
-            error: error,
-            type: error.type,
-            message: _getConnectionErrorMessage(error),
-          );
-          handler.next(userFriendlyError);
-          return;
-        }
+              // Backend'den gelen hata mesajını extract et
+              if (error.response?.data is Map) {
+                final errorData = error.response!.data as Map;
+                final detail = errorData['detail'] ?? errorData['message'];
+                if (detail != null) {
+                  debugPrint('🔴 Error detail: $detail');
+                }
+              }
+            } else {
+              debugPrint('🔴 No response (connection error)');
+            }
+          }
 
-        handler.next(error);
-      },
-    ));
+          // Bağlantı hatası kontrolü
+          if (error.type == DioExceptionType.connectionTimeout ||
+              error.type == DioExceptionType.receiveTimeout ||
+              error.type == DioExceptionType.sendTimeout ||
+              error.type == DioExceptionType.connectionError) {
+            // Kullanıcı dostu hata mesajı oluştur
+            final userFriendlyError = DioException(
+              requestOptions: error.requestOptions,
+              error: error,
+              type: error.type,
+              message: _getConnectionErrorMessage(error),
+            );
+            handler.next(userFriendlyError);
+            return;
+          }
+
+          handler.next(error);
+        },
+      ),
+    );
   }
 
   /// Bağlantı hataları için kullanıcı dostu mesaj oluştur
@@ -210,10 +224,10 @@ class ApiService {
 
   // Student endpoints
   Future<Response> getStudents({int skip = 0, int limit = 100}) async {
-    return await _dio.get('/students', queryParameters: {
-      'skip': skip,
-      'limit': limit,
-    });
+    return await _dio.get(
+      '/students',
+      queryParameters: {'skip': skip, 'limit': limit},
+    );
   }
 
   Future<Response> getStudent(int id) async {
@@ -221,7 +235,8 @@ class ApiService {
   }
 
   Future<Response> createStudent(Map<String, dynamic> data) async {
-    return await _dio.post('/students/', data: data); // Trailing slash added
+    return await _dio.post('/students',
+        data: data); // ✅ Trailing slash removed to prevent 307 redirect
   }
 
   Future<Response> updateStudent(int id, Map<String, dynamic> data) async {
@@ -237,13 +252,13 @@ class ApiService {
   }
 
   // ✅ Hedef bölüm ekleme (Preferred Department) - Backend: /api/targets/
-  Future<Response> addPreferredDepartment(int studentId, int departmentId) async {
+  Future<Response> addPreferredDepartment(
+    int studentId,
+    int departmentId,
+  ) async {
     return await _dio.post(
-      '/targets/',
-      data: {
-        'student_id': studentId,
-        'department_id': departmentId,
-      },
+      '/targets',
+      data: {'student_id': studentId, 'department_id': departmentId},
       options: Options(
         receiveTimeout: const Duration(seconds: 60),
         sendTimeout: const Duration(seconds: 30),
@@ -253,12 +268,10 @@ class ApiService {
 
   // ✅ Öğrencinin hedef bölümlerini detaylı olarak getir
   Future<Response> getStudentTargets(int studentId) async {
-    // ✅ Backend endpoint: /api/targets/?student_id=...
+    // ✅ Backend endpoint: /api/targets?student_id=...
     return await _dio.get(
-      '/targets/',
-      queryParameters: {
-        'student_id': studentId,
-      },
+      '/targets',
+      queryParameters: {'student_id': studentId},
       options: Options(
         receiveTimeout: const Duration(seconds: 60),
         sendTimeout: const Duration(seconds: 30),
@@ -274,10 +287,7 @@ class ApiService {
     List<String>? preferredCities, // ✅ Öğrencinin tercih ettiği şehirler
   }) async {
     // Üniversiteler çok sayıda olabilir - pagination kullanın
-    final queryParams = <String, dynamic>{
-      'skip': skip,
-      'limit': limit,
-    };
+    final queryParams = <String, dynamic>{'skip': skip, 'limit': limit};
 
     // ✅ Şehir filtresi varsa ekle
     if (city != null && city.isNotEmpty) {
@@ -293,7 +303,8 @@ class ApiService {
       queryParameters: queryParams,
       options: Options(
         receiveTimeout: const Duration(
-            seconds: 180), // 3 dakika (pagination ile daha hızlı olmalı)
+          seconds: 180,
+        ), // 3 dakika (pagination ile daha hızlı olmalı)
         sendTimeout: const Duration(seconds: 60),
       ),
     );
@@ -301,20 +312,18 @@ class ApiService {
 
   Future<Response> getDepartments({
     int skip = 0,
-    int limit = 30000, // ✅ Default 30000 - tüm bölümler gelsin (21.600+ kayıt için)
+    int limit =
+        30000, // ✅ Default 30000 - tüm bölümler gelsin (21.600+ kayıt için)
     String? normalizedName, // ✅ Normalize edilmiş isme göre filtrele
     String? fieldType, // ✅ Alan türü (TYT, SAY, EA, SÖZ, DİL)
     String? degreeType, // ✅ Derece türü (Associate, Bachelor)
   }) async {
     // Bölümler çok sayıda olabilir - pagination kullanın
-    final queryParams = <String, dynamic>{
-      'skip': skip,
-      'limit': limit,
-    };
+    final queryParams = <String, dynamic>{'skip': skip, 'limit': limit};
     if (normalizedName != null && normalizedName.isNotEmpty) {
       queryParams['normalized_name'] = normalizedName;
     }
-    
+
     // ✅ KRİTİK: fieldType'a göre degreeType'ı otomatik belirle
     String? effectiveDegreeType = degreeType;
     if (fieldType != null) {
@@ -322,15 +331,15 @@ class ApiService {
       if (fieldTypeUpper == 'TYT') {
         // TYT seçildiyse zorla Associate gönder
         effectiveDegreeType = 'Associate';
-      } else if (fieldTypeUpper == 'SAY' || 
-                  fieldTypeUpper == 'EA' || 
-                  fieldTypeUpper == 'SÖZ' || 
-                  fieldTypeUpper == 'DİL') {
+      } else if (fieldTypeUpper == 'SAY' ||
+          fieldTypeUpper == 'EA' ||
+          fieldTypeUpper == 'SÖZ' ||
+          fieldTypeUpper == 'DİL') {
         // SAY/EA/SÖZ/DİL seçildiyse zorla Bachelor gönder
         effectiveDegreeType = 'Bachelor';
       }
     }
-    
+
     // ✅ fieldType ve degreeType parametrelerini ekle (null kontrolü ile)
     if (fieldType != null && fieldType.isNotEmpty) {
       queryParams['field_type'] = fieldType;
@@ -339,15 +348,36 @@ class ApiService {
       queryParams['degree_type'] = effectiveDegreeType;
     }
 
-    return await _dio.get(
-      '/universities/departments/',
-      queryParameters: queryParams,
-      options: Options(
-        receiveTimeout: const Duration(
-            seconds: 180), // 3 dakika (pagination ile daha hızlı olmalı)
-        sendTimeout: const Duration(seconds: 60),
-      ),
-    );
+    try {
+      return await _dio.get(
+        '/universities/departments/',
+        queryParameters: queryParams,
+        options: Options(
+          receiveTimeout: const Duration(
+            seconds: 180,
+          ), // 3 dakika (pagination ile daha hızlı olmalı)
+          sendTimeout: const Duration(seconds: 60),
+        ),
+      );
+    } on DioException catch (e) {
+      // ✅ Connection refused hatasını yakala ve kullanıcı dostu mesaj göster
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout) {
+        if (kDebugMode) {
+          debugPrint('🔴 Connection Error: ${e.message}');
+          debugPrint('🔴 Request URL: ${e.requestOptions.uri}');
+        }
+        // Hata mesajını iyileştir
+        throw DioException(
+          requestOptions: e.requestOptions,
+          type: e.type,
+          error: e.error,
+          message:
+              'Sunucuya ulaşılamıyor. Backend servisinin çalıştığından emin olun (http://127.0.0.1:8003)',
+        );
+      }
+      rethrow;
+    }
   }
 
   // ✅ Unique (normalize edilmiş) bölüm listesi
@@ -367,8 +397,9 @@ class ApiService {
       '/universities/departments/unique/',
       queryParameters: queryParams,
       options: Options(
-        receiveTimeout:
-            const Duration(seconds: 60), // Unique listesi küçük olmalı
+        receiveTimeout: const Duration(
+          seconds: 60,
+        ), // Unique listesi küçük olmalı
         sendTimeout: const Duration(seconds: 30),
       ),
     );
@@ -379,8 +410,9 @@ class ApiService {
     return await _dio.get(
       '/universities/cities/',
       options: Options(
-        receiveTimeout:
-            const Duration(seconds: 30), // 30 saniye (küçük veri seti)
+        receiveTimeout: const Duration(
+          seconds: 30,
+        ), // 30 saniye (küçük veri seti)
         sendTimeout: const Duration(seconds: 30),
       ),
     );
@@ -391,8 +423,9 @@ class ApiService {
     return await _dio.get(
       '/universities/field-types/',
       options: Options(
-        receiveTimeout:
-            const Duration(seconds: 30), // 30 saniye (küçük veri seti)
+        receiveTimeout: const Duration(
+          seconds: 30,
+        ), // 30 saniye (küçük veri seti)
         sendTimeout: const Duration(seconds: 30),
       ),
     );
@@ -402,7 +435,8 @@ class ApiService {
     String? fieldType,
     String? city,
     String? universityType,
-    String? degreeType, // ✅ ÖNEMLİ: degree_type parametresi eklendi (Associate, Bachelor)
+    String?
+        degreeType, // ✅ ÖNEMLİ: degree_type parametresi eklendi (Associate, Bachelor)
     double? minScore,
     double? maxScore,
     bool? hasScholarship,
@@ -416,22 +450,24 @@ class ApiService {
       if (fieldTypeUpper == 'TYT') {
         // TYT seçildiyse zorla Associate gönder
         effectiveDegreeType = 'Associate';
-      } else if (fieldTypeUpper == 'SAY' || 
-                  fieldTypeUpper == 'EA' || 
-                  fieldTypeUpper == 'SÖZ' || 
-                  fieldTypeUpper == 'DİL') {
+      } else if (fieldTypeUpper == 'SAY' ||
+          fieldTypeUpper == 'EA' ||
+          fieldTypeUpper == 'SÖZ' ||
+          fieldTypeUpper == 'DİL') {
         // SAY/EA/SÖZ/DİL seçildiyse zorla Bachelor gönder
         effectiveDegreeType = 'Bachelor';
       }
     }
-    
+
     return await _dio.get(
       '/universities/departments/',
       queryParameters: {
         if (fieldType != null) 'field_type': fieldType,
         if (city != null) 'city': city,
         if (universityType != null) 'university_type': universityType,
-        if (effectiveDegreeType != null) 'degree_type': effectiveDegreeType, // ✅ Otomatik belirlenen degree_type
+        if (effectiveDegreeType != null)
+          'degree_type':
+              effectiveDegreeType, // ✅ Otomatik belirlenen degree_type
         if (minScore != null) 'min_score': minScore,
         if (maxScore != null) 'max_score': maxScore,
         if (hasScholarship != null) 'has_scholarship': hasScholarship,
@@ -440,7 +476,8 @@ class ApiService {
       },
       options: Options(
         receiveTimeout: const Duration(
-            seconds: 120), // 2 dakika (filtreli sorgu - daha hızlı olmalı)
+          seconds: 120,
+        ), // 2 dakika (filtreli sorgu - daha hızlı olmalı)
         sendTimeout: const Duration(seconds: 30),
       ),
     );
@@ -462,7 +499,8 @@ class ApiService {
       },
       options: Options(
         receiveTimeout: const Duration(
-            seconds: 120), // 2 dakika (filtreli sorgu - daha hızlı olmalı)
+          seconds: 120,
+        ), // 2 dakika (filtreli sorgu - daha hızlı olmalı)
         sendTimeout: const Duration(seconds: 30),
       ),
     );
@@ -487,13 +525,17 @@ class ApiService {
       },
       options: Options(
         receiveTimeout: const Duration(
-            seconds: 180), // 3 dakika (filtreli sorgu - yavaş network için)
+          seconds: 180,
+        ), // 3 dakika (filtreli sorgu - yavaş network için)
         sendTimeout: const Duration(seconds: 60),
       ),
     );
   }
 
-  Future<Response> getStudentRecommendations(int studentId, {int maxRetries = 3}) async {
+  Future<Response> getStudentRecommendations(
+    int studentId, {
+    int maxRetries = 3,
+  }) async {
     // ✅ Retry mekanizması eklendi - timeout ve connection hataları için
     int retryCount = 0;
     while (retryCount < maxRetries) {
@@ -501,7 +543,9 @@ class ApiService {
         return await _dio.get(
           '/recommendations/student/$studentId',
           options: Options(
-            receiveTimeout: const Duration(seconds: 180), // ✅ 3 dakika (120s -> 180s)
+            receiveTimeout: const Duration(
+              seconds: 180,
+            ), // ✅ 3 dakika (120s -> 180s)
             sendTimeout: const Duration(seconds: 60),
             validateStatus: (status) =>
                 status != null && status < 500, // 4xx hatalarını da handle et
@@ -517,7 +561,8 @@ class ApiService {
           if (retryCount < maxRetries) {
             if (kDebugMode) {
               debugPrint(
-                  '[Retry] Attempt $retryCount/$maxRetries for getStudentRecommendations');
+                '[Retry] Attempt $retryCount/$maxRetries for getStudentRecommendations',
+              );
             }
             // Exponential backoff: 2s, 4s, 8s
             await Future.delayed(Duration(seconds: 2 * retryCount));
@@ -529,7 +574,9 @@ class ApiService {
       }
     }
     throw DioException(
-      requestOptions: RequestOptions(path: '/recommendations/student/$studentId'),
+      requestOptions: RequestOptions(
+        path: '/recommendations/student/$studentId',
+      ),
       type: DioExceptionType.unknown,
       message: 'Max retries ($maxRetries) exceeded',
     );
@@ -567,7 +614,8 @@ class ApiService {
       },
       options: Options(
         receiveTimeout: const Duration(
-            minutes: 20), // ✅ CRITICAL FIX: AI işlemleri için 20 dakika (5 dakikadan uzun olmalı)
+          minutes: 20,
+        ), // ✅ CRITICAL FIX: AI işlemleri için 20 dakika (5 dakikadan uzun olmalı)
         sendTimeout: const Duration(minutes: 20),
         validateStatus: (status) =>
             status != null && status < 500, // ✅ 4xx hatalarını da handle et
@@ -584,11 +632,7 @@ class ApiService {
     // Register için özel timeout ve connection ayarları
     return await _dio.post(
       '/auth/register',
-      data: {
-        'email': email,
-        'phone': phone,
-        'name': name,
-      },
+      data: {'email': email, 'phone': phone, 'name': name},
       options: Options(
         receiveTimeout: const Duration(seconds: 40),
         sendTimeout: const Duration(seconds: 20),
@@ -602,17 +646,11 @@ class ApiService {
     );
   }
 
-  Future<Response> login({
-    String? email,
-    String? phone,
-  }) async {
+  Future<Response> login({String? email, String? phone}) async {
     // ✅ Login için daha uzun timeout (backend yavaş olabilir)
     return await _dio.post(
       '/auth/login',
-      data: {
-        'email': email,
-        'phone': phone,
-      },
+      data: {'email': email, 'phone': phone},
       options: Options(
         receiveTimeout: const Duration(seconds: 60), // 30s -> 60s
         sendTimeout: const Duration(seconds: 30),
@@ -637,31 +675,37 @@ class ApiService {
     bool? isOnboardingCompleted,
     bool? isInitialSetupCompleted,
   }) async {
-    return await _dio.put('/auth/me/$userId', data: {
-      if (name != null) 'name': name,
-      if (email != null) 'email': email,
-      if (phone != null) 'phone': phone,
-      if (isOnboardingCompleted != null)
-        'is_onboarding_completed': isOnboardingCompleted,
-      if (isInitialSetupCompleted != null)
-        'is_initial_setup_completed': isInitialSetupCompleted,
-    });
+    return await _dio.put(
+      '/auth/me/$userId',
+      data: {
+        if (name != null) 'name': name,
+        if (email != null) 'email': email,
+        if (phone != null) 'phone': phone,
+        if (isOnboardingCompleted != null)
+          'is_onboarding_completed': isOnboardingCompleted,
+        if (isInitialSetupCompleted != null)
+          'is_initial_setup_completed': isInitialSetupCompleted,
+      },
+    );
   }
 
   // Exam Attempt endpoints
-  Future<Response> createExamAttempt(Map<String, dynamic> data,
-      {int maxRetries = 3}) async {
+  Future<Response> createExamAttempt(
+    Map<String, dynamic> data, {
+    int maxRetries = 3,
+  }) async {
     // ⚠️ Deneme kaydetme - backend optimize edilmeli (index'ler eklendi)
     // ✅ Retry mekanizması eklendi - connection hataları için
     int retryCount = 0;
     while (retryCount < maxRetries) {
       try {
         return await _dio.post(
-          '/exam-attempts/',
+          '/exam-attempts',
           data: data,
           options: Options(
             receiveTimeout: const Duration(
-                seconds: 120), // 2 dakika (backend optimize edildi)
+              seconds: 120,
+            ), // 2 dakika (backend optimize edildi)
             sendTimeout: const Duration(seconds: 60),
           ),
         );
@@ -674,7 +718,8 @@ class ApiService {
           if (retryCount < maxRetries) {
             if (kDebugMode) {
               debugPrint(
-                  '[Retry] Attempt $retryCount/$maxRetries for createExamAttempt');
+                '[Retry] Attempt $retryCount/$maxRetries for createExamAttempt',
+              );
             }
             // Exponential backoff: 2s, 4s, 8s
             await Future.delayed(Duration(seconds: 2 * retryCount));
@@ -692,8 +737,10 @@ class ApiService {
     );
   }
 
-  Future<Response> getStudentAttempts(int studentId,
-      {int maxRetries = 3}) async {
+  Future<Response> getStudentAttempts(
+    int studentId, {
+    int maxRetries = 3,
+  }) async {
     // ⚠️ Deneme listesi - backend optimize edilmeli (index'ler eklendi)
     // ✅ Retry mekanizması eklendi - connection hataları için
     int retryCount = 0;
@@ -703,7 +750,8 @@ class ApiService {
           '/exam-attempts/student/$studentId',
           options: Options(
             receiveTimeout: const Duration(
-                seconds: 120), // 2 dakika (index'li sorgu - yavaş network için)
+              seconds: 120,
+            ), // 2 dakika (index'li sorgu - yavaş network için)
             sendTimeout: const Duration(seconds: 60),
           ),
         );
@@ -716,7 +764,8 @@ class ApiService {
           if (retryCount < maxRetries) {
             if (kDebugMode) {
               debugPrint(
-                  '[Retry] Attempt $retryCount/$maxRetries for getStudentAttempts');
+                '[Retry] Attempt $retryCount/$maxRetries for getStudentAttempts',
+              );
             }
             // Exponential backoff: 2s, 4s, 8s
             await Future.delayed(Duration(seconds: 2 * retryCount));
@@ -735,7 +784,9 @@ class ApiService {
   }
 
   Future<Response> updateExamAttempt(
-      int attemptId, Map<String, dynamic> data) async {
+    int attemptId,
+    Map<String, dynamic> data,
+  ) async {
     return await _dio.put('/exam-attempts/$attemptId', data: data);
   }
 
@@ -745,6 +796,65 @@ class ApiService {
 
   Future<Response> getExamAttempt(int attemptId) async {
     return await _dio.get('/exam-attempts/$attemptId');
+  }
+
+  // ✅ Settings endpoints
+  Future<Response> getNotificationPreferences(int userId) async {
+    return await _dio.get('/settings/notifications/$userId');
+  }
+
+  Future<Response> updateNotificationPreferences(
+    int userId,
+    Map<String, dynamic> preferences,
+  ) async {
+    return await _dio.put(
+      '/settings/notifications/$userId',
+      data: preferences,
+    );
+  }
+
+  Future<Response> getUserSettings(int userId) async {
+    return await _dio.get('/settings/profile/$userId');
+  }
+
+  Future<Response> updateUserProfile(
+    int userId,
+    Map<String, dynamic> profileData,
+  ) async {
+    return await _dio.put(
+      '/settings/profile/$userId',
+      data: profileData,
+    );
+  }
+
+  Future<Response> changePassword(
+    int userId,
+    String? currentPassword,
+    String newPassword,
+    String confirmPassword,
+  ) async {
+    return await _dio.post(
+      '/settings/password/$userId',
+      data: {
+        if (currentPassword != null) 'current_password': currentPassword,
+        'new_password': newPassword,
+        'confirm_password': confirmPassword,
+      },
+    );
+  }
+
+  Future<Response> updateSecuritySettings(
+    int userId, {
+    bool? twoFactorEnabled,
+    bool? biometricEnabled,
+  }) async {
+    return await _dio.put(
+      '/settings/security/$userId',
+      data: {
+        if (twoFactorEnabled != null) 'two_factor_enabled': twoFactorEnabled,
+        if (biometricEnabled != null) 'biometric_enabled': biometricEnabled,
+      },
+    );
   }
 }
 

@@ -18,7 +18,7 @@ from core.exceptions import StudentNotFoundError
 router = APIRouter()
 
 
-@router.get("/", response_model=AgendaItemListResponse)
+@router.get("", response_model=AgendaItemListResponse)
 async def get_agenda_items(
     student_id: int = Query(..., description="Öğrenci ID"),
     page: int = Query(1, ge=1, description="Sayfa numarası"),
@@ -65,7 +65,7 @@ async def get_agenda_items(
         raise HTTPException(status_code=500, detail="Ajanda öğeleri alınırken bir hata oluştu")
 
 
-@router.post("/", response_model=AgendaItemResponse)
+@router.post("", response_model=AgendaItemResponse)
 async def create_agenda_item(
     item: AgendaItemCreate,
     db: Session = Depends(get_db)

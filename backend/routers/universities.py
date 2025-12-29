@@ -136,7 +136,7 @@ async def get_field_types(db: Session = Depends(get_db)):
 
 
 # University endpoints
-@router.post("/", response_model=UniversityResponse)
+@router.post("", response_model=UniversityResponse)
 async def create_university(university: UniversityCreate, db: Session = Depends(get_db)):
     """Yeni üniversite oluştur"""
     db_university = University(**university.dict())
@@ -155,7 +155,7 @@ def get_university_logo_url(university: University) -> Optional[str]:
     return None
 
 
-@router.get("/", response_model=List[UniversityResponse])
+@router.get("", response_model=List[UniversityResponse])
 async def get_universities(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -255,7 +255,7 @@ async def delete_university(university_id: int, db: Session = Depends(get_db)):
 
 
 # Department endpoints
-@router.post("/departments/", response_model=DepartmentResponse)
+@router.post("/departments", response_model=DepartmentResponse)
 async def create_department(department: DepartmentCreate, db: Session = Depends(get_db)):
     """Yeni bölüm oluştur"""
     # Üniversite var mı kontrol et
@@ -374,12 +374,43 @@ async def get_departments(
             query = query.filter(Department.field_type == field_type)
             # ✅ ÖNEMLİ: Eğer field_type 'TYT' ise, degree_type'ı otomatik olarak 'Associate' olarak kabul et
             if field_type.upper() == 'TYT':
-                query = query.filter(Department.degree_type == 'Associate')
+                # ✅ Veritabanında "Associate" veya "Önlisans" değerlerini kabul et
+                from sqlalchemy import or_
+                query = query.filter(
+                    or_(
+                        Department.degree_type == 'Associate',
+                        Department.degree_type == 'Önlisans',
+                        Department.degree_type == 'onlisans',
+                        Department.degree_type == 'önlisans'
+                    )
+                )
         # ✅ If field_type is None, don't filter by field_type (return all field types)
         
         if degree_type:
-            # ✅ degree_type filtresi varsa uygula (field_type TYT değilse)
-            if not field_type or field_type.upper() != 'TYT':
+            # ✅ degree_type mapping: Frontend'den gelen "Associate"/"Bachelor" değerlerini
+            # veritabanındaki "Associate"/"Bachelor" veya "Önlisans"/"Lisans" değerleriyle eşleştir
+            from sqlalchemy import or_
+            if degree_type == 'Associate':
+                # Frontend "Associate" gönderiyor -> veritabanında "Associate", "Önlisans", "onlisans" olabilir
+                query = query.filter(
+                    or_(
+                        Department.degree_type == 'Associate',
+                        Department.degree_type == 'Önlisans',
+                        Department.degree_type == 'onlisans',
+                        Department.degree_type == 'önlisans'
+                    )
+                )
+            elif degree_type == 'Bachelor':
+                # Frontend "Bachelor" gönderiyor -> veritabanında "Bachelor", "Lisans", "lisans" olabilir
+                query = query.filter(
+                    or_(
+                        Department.degree_type == 'Bachelor',
+                        Department.degree_type == 'Lisans',
+                        Department.degree_type == 'lisans'
+                    )
+                )
+            else:
+                # Diğer durumlarda direkt eşleştir
                 query = query.filter(Department.degree_type == degree_type)
         # ✅ If degree_type is None, don't filter by degree_type (return all degree types)
         if university_id:

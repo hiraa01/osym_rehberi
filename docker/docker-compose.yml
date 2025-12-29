@@ -6,15 +6,17 @@ services:
     container_name: osym_rehberi_backend
     restart: always # ✅ Her zaman yeniden başlat (unless-stopped yerine)
     ports:
-      - "8002:8000"
+      - "8003:8000" # ✅ Port 8002'den 8003'e değiştirildi (port forwarding sorunu için)
     environment:
       # ✅ PostgreSQL'e geçiş yapıldı
-      - DATABASE_URL=postgresql://osym_user:osym_password@db:5432/osym_rehber
-      - POSTGRES_USER=osym_user
-      - POSTGRES_PASSWORD=osym_password
-      - POSTGRES_DB=osym_rehber
-      - POSTGRES_HOST=db
-      - POSTGRES_PORT=5432
+      # ✅ CRITICAL: DATABASE_URL psycopg2 driver ile (senkron bağlantı için)
+      # ✅ CRITICAL: localhost yerine 'db' servis adını kullan (Docker network)
+      - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg2://osym_user:osym_password@db:5432/osym_rehber}
+      - POSTGRES_USER=${POSTGRES_USER:-osym_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-osym_password}
+      - POSTGRES_DB=${POSTGRES_DB:-osym_rehber}
+      - POSTGRES_HOST=${POSTGRES_HOST:-db} # ✅ Docker servis adı (localhost değil!)
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
@@ -96,12 +98,13 @@ services:
       dockerfile: Dockerfile
     container_name: osym_rehberi_celery_worker
     environment:
-      - DATABASE_URL=postgresql://osym_user:osym_password@db:5432/osym_rehber
-      - POSTGRES_USER=osym_user
-      - POSTGRES_PASSWORD=osym_password
-      - POSTGRES_DB=osym_rehber
-      - POSTGRES_HOST=db
-      - POSTGRES_PORT=5432
+      # ✅ CRITICAL: Celery worker için de aynı DATABASE_URL formatı
+      - DATABASE_URL=${DATABASE_URL:-postgresql+psycopg2://osym_user:osym_password@db:5432/osym_rehber}
+      - POSTGRES_USER=${POSTGRES_USER:-osym_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-osym_password}
+      - POSTGRES_DB=${POSTGRES_DB:-osym_rehber}
+      - POSTGRES_HOST=${POSTGRES_HOST:-db} # ✅ Docker servis adı
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
       - REDIS_URL=redis://redis:6379/0
       - PYTHONPATH=/app
       - LOG_LEVEL=INFO

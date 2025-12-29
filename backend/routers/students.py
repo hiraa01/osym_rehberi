@@ -16,7 +16,7 @@ from core.exceptions import StudentNotFoundError, InvalidScoreError
 router = APIRouter()
 
 
-@router.post("/", response_model=StudentResponse)
+@router.post("", response_model=StudentResponse)
 async def create_student(student: StudentCreate, db: Session = Depends(get_db)):
     """Yeni öğrenci profili oluştur"""
     try:
@@ -82,7 +82,7 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Öğrenci profili oluşturulurken bir hata oluştu")
 
 
-@router.get("/", response_model=StudentListResponse)
+@router.get("", response_model=StudentListResponse)
 async def get_students(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -186,7 +186,7 @@ async def add_preferred_department(
         raise HTTPException(status_code=404, detail="Öğrenci bulunamadı")
     
     # Bölüm var mı kontrol et
-    from models.university import Department
+    from models import Department
     department = db.query(Department).filter(Department.id == department_id).first()
     if not department:
         raise HTTPException(status_code=404, detail="Bölüm bulunamadı")
@@ -225,7 +225,7 @@ async def get_student_targets(
     Öğrencinin preferred_departments listesindeki bölüm isimlerine göre
     Department objelerini (University bilgileriyle birlikte) döndürür.
     """
-        from models import Department, University
+    from models import Department, University
     from schemas.university import DepartmentWithUniversityResponse
     from sqlalchemy.orm import selectinload
     

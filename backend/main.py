@@ -11,7 +11,7 @@ import contextlib
 from database import create_tables, get_db, Base
 from core.logging_config import api_logger
 
-from routers import students, universities, recommendations, ml_recommendations, auth, exam_attempts, coach_chat, preferences, discovery, chatbot, profile, forum, stats, agenda, study, targets
+from routers import students, universities, recommendations, ml_recommendations, auth, exam_attempts, coach_chat, preferences, discovery, chatbot, profile, forum, stats, agenda, study, targets, settings
 
 
 async def _periodic_ml_training_task():
@@ -188,6 +188,19 @@ async def lifespan(app: FastAPI):
         api_logger.info("✅ Application started successfully!")
         api_logger.info("=" * 60)
         
+        # ✅ Tüm API route'larını logla (startup event - router'lar zaten eklenmiş)
+        log_all_routes()
+        
+        # ✅ Tüm API route'larını logla (startup event)
+        api_logger.info("=" * 60)
+        api_logger.info("📋 REGISTERED API ROUTES:")
+        api_logger.info("=" * 60)
+        for route in app.routes:
+            if hasattr(route, 'path') and hasattr(route, 'methods'):
+                methods = ', '.join(sorted(route.methods)) if route.methods else 'N/A'
+                api_logger.info(f"  {methods:20} {route.path}")
+        api_logger.info("=" * 60)
+        
         # ✅ CRITICAL: Tablo oluşturma sonucunu tekrar kontrol et ve logla
         if db_ready:
             try:
@@ -282,7 +295,7 @@ app = FastAPI(
         "url": "https://opensource.org/licenses/MIT",
     },
     lifespan=lifespan,
-    redirect_slashes=False  # Disable automatic trailing slash redirects
+    redirect_slashes=True  # Enable automatic trailing slash redirects (for compatibility)
 )
 
 # CORS middleware
@@ -314,6 +327,23 @@ app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
 app.include_router(agenda.router, prefix="/api/agenda", tags=["agenda"])
 app.include_router(study.router, prefix="/api/study", tags=["study"])
 app.include_router(targets.router, prefix="/api/targets", tags=["targets"])
+app.include_router(settings.router, prefix="/api/settings", tags=["settings"])
+
+
+# ✅ Tüm API route'larını logla (router'lar eklendikten sonra - startup'ta)
+def log_all_routes():
+    """Tüm kayıtlı route'ları logla"""
+    api_logger.info("=" * 60)
+    api_logger.info("📋 REGISTERED API ROUTES:")
+    api_logger.info("=" * 60)
+    for route in app.routes:
+        if hasattr(route, 'path') and hasattr(route, 'methods'):
+            methods = ', '.join(sorted(route.methods)) if route.methods else 'N/A'
+            api_logger.info(f"  {methods:20} {route.path}")
+        elif hasattr(route, 'path'):
+            # Route without methods (e.g., sub-applications)
+            api_logger.info(f"  {'N/A':20} {route.path}")
+    api_logger.info("=" * 60)
 
 
 @app.get("/")
@@ -323,4 +353,205 @@ async def root():
 
 @app.get("/health")
 async def health_check():
+    """Basit health check endpoint"""
     return {"status": "healthy", "service": "osym-rehberi-api"}
+
+
+@app.get("/api/health/db")
+async def health_check_database_simple():
+    """
+    ✅ Basit veritabanı health check endpoint
+    
+    PostgreSQL bağlantısını test eder ve başarılı/başarısız durumu döner.
+    """
+    from sqlalchemy import text
+    from database import engine
+    
+    try:
+        # ✅ Basit SELECT 1 sorgusu ile bağlantı testi
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1 as test"))
+            test_value = result.scalar()
+            
+            if test_value == 1:
+                return {
+                    "status": "healthy",
+                    "database": "connected",
+                    "message": "Database connection successful"
+                }
+            else:
+                return {
+                    "status": "unhealthy",
+                    "database": "error",
+                    "message": "Database query returned unexpected value"
+                }
+    except Exception as e:
+        api_logger.error(f"❌ Database health check failed: {str(e)}")
+        return {
+            "status": "unhealthy",
+            "database": "disconnected",
+            "error": str(e),
+            "message": "Database connection failed"
+        }
+
+
+@app.get("/api/health/db-test")
+async def health_check_database_test():
+    """
+    ✅ Veritabanı bağlantısını ve User tablosunu test eden endpoint
+    
+    - Veritabanı bağlantısını test eder
+    - User tablosundan basit bir okuma yapar
+    - Sequence durumunu kontrol eder
+    """
+    from sqlalchemy import text, inspect
+    from database import engine, get_db
+    from models import User
+    
+    try:
+        db = next(get_db())
+        try:
+            # ✅ 1. Basit bağlantı testi
+            with engine.connect() as conn:
+                result = conn.execute(text("SELECT 1 as test"))
+                test_value = result.scalar()
+                if test_value != 1:
+                    raise Exception("Database query returned unexpected value")
+            
+            # ✅ 2. User tablosundan okuma testi
+            user_count = db.query(User).count()
+            
+            # ✅ 3. User tablosundan ilk kaydı çek (eğer varsa)
+            first_user = db.query(User).first()
+            first_user_info = None
+            if first_user:
+                first_user_info = {
+                    "id": first_user.id,
+                    "email": first_user.email,
+                    "name": first_user.name,
+                    "is_active": first_user.is_active
+                }
+            
+            # ✅ 4. Sequence durumunu kontrol et (users tablosu için)
+            inspector = inspect(engine)
+            sequence_info = None
+            try:
+                seq_result = db.execute(text("SELECT pg_get_serial_sequence('users', 'id')"))
+                sequence_name = seq_result.scalar()
+                if sequence_name:
+                    curr_val_result = db.execute(text(f"SELECT currval(:seq)"), {"seq": sequence_name})
+                    curr_val = curr_val_result.scalar()
+                    next_val_result = db.execute(text(f"SELECT nextval(:seq)"), {"seq": sequence_name})
+                    next_val = next_val_result.scalar()
+                    # nextval kullandığımız için geri al
+                    db.execute(text(f"SELECT setval(:seq, :val, false)"), {"seq": sequence_name, "val": curr_val})
+                    db.commit()
+                    
+                    sequence_info = {
+                        "sequence_name": sequence_name,
+                        "current_value": curr_val,
+                        "next_value": next_val
+                    }
+            except Exception as seq_error:
+                sequence_info = {"error": str(seq_error)}
+            
+            return {
+                "status": "healthy",
+                "database": "connected",
+                "tests": {
+                    "connection": "success",
+                    "user_table_read": "success",
+                    "user_count": user_count,
+                    "first_user": first_user_info,
+                    "sequence_status": sequence_info
+                },
+                "message": "Database connection and User table test successful"
+            }
+        finally:
+            db.close()
+            
+    except Exception as e:
+        api_logger.error(f"❌ Database test failed: {str(e)}")
+        import traceback
+        api_logger.error(traceback.format_exc())
+        return {
+            "status": "unhealthy",
+            "database": "error",
+            "error": str(e),
+            "message": "Database test failed"
+        }
+
+
+@app.get("/api/health-check-db")
+async def health_check_database():
+    """
+    ✅ Veritabanı bağlantısını test eden detaylı health check endpoint
+    
+    PostgreSQL bağlantısını kontrol eder ve veritabanı bilgilerini döner.
+    """
+    from sqlalchemy import text, inspect
+    from database import engine, get_db
+    
+    try:
+        # ✅ 1. Basit bağlantı testi
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1 as test"))
+            test_value = result.scalar()
+            
+            if test_value != 1:
+                raise Exception("Database query returned unexpected value")
+        
+        # ✅ 2. PostgreSQL versiyon bilgisi
+        with engine.connect() as conn:
+            version_result = conn.execute(text("SELECT version()"))
+            pg_version = version_result.scalar()
+        
+        # ✅ 3. Veritabanı adı ve kullanıcı bilgisi
+        with engine.connect() as conn:
+            db_info_result = conn.execute(text("SELECT current_database(), current_user"))
+            db_info = db_info_result.fetchone()
+            db_name = db_info[0] if db_info else "unknown"
+            db_user = db_info[1] if db_info else "unknown"
+        
+        # ✅ 4. Tablo sayısı
+        inspector = inspect(engine)
+        table_count = len(inspector.get_table_names())
+        
+        # ✅ 5. Connection pool durumu
+        pool = engine.pool
+        pool_status = {
+            "size": pool.size(),
+            "checked_in": pool.checkedin(),
+            "checked_out": pool.checkedout(),
+            "overflow": pool.overflow(),
+            "invalid": pool.invalid()
+        }
+        
+        return {
+            "status": "healthy",
+            "database": {
+                "type": "PostgreSQL",
+                "version": pg_version.split(",")[0] if pg_version else "unknown",  # Sadece versiyon numarası
+                "name": db_name,
+                "user": db_user,
+                "connection": "successful",
+                "table_count": table_count
+            },
+            "connection_pool": pool_status,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        import traceback
+        api_logger.error(f"❌ Database health check failed: {str(e)}")
+        api_logger.error(f"❌ Traceback: {traceback.format_exc()}")
+        
+        return {
+            "status": "unhealthy",
+            "database": {
+                "type": "PostgreSQL",
+                "connection": "failed",
+                "error": str(e)
+            },
+            "timestamp": datetime.now().isoformat()
+        }

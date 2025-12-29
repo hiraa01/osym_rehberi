@@ -19,11 +19,21 @@ sys.path.append('/app')
 import pandas as pd
 from pathlib import Path
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError, DataError
 from database import SessionLocal
-from models.university import University, Department, DepartmentYearlyStats
+from models import University, Department, DepartmentYearlyStats
+# ✅ PostgreSQL uyumlu veri temizleme fonksiyonları
+from utils.postgresql_helpers import (
+    safe_to_int, safe_to_float, safe_to_string,
+    clean_excel_numeric, truncate_string_for_postgres,
+    validate_enum_value, is_na_value
+)
 
-# Excel dosyalarının bulunduğu klasör
-DATA_DIR = Path('/app/data')
+# ✅ Veri dosyalarının bulunduğu klasörler (hem /app/data hem de /app/data/raw_files)
+DATA_DIRS = [
+    Path('/app/data'),
+    Path('/app/data/raw_files'),
+]
 
 # ÖSYM Excel kolonları (2024-2025 formatına göre)
 COLUMN_MAPPING = {
@@ -127,28 +137,125 @@ def normalize_field_type(value):
 
 
 def clean_numeric_value(value):
-    """Sayısal değerleri temizle (virgül, nokta, vs.)"""
+    """
+    ✅ PostgreSQL uyumlu: Sayısal değerleri temizle (virgül, nokta, vs.)
+    
+    PostgreSQL için NULL değerler 0.0 yerine None döndürülmeli (nullable=True alanlar için).
+    """
+    # ✅ PostgreSQL helper kullan
+    result = clean_excel_numeric(value, default=None)
+    # Eğer None ise ve nullable=False ise 0.0 döndür
+    return result if result is not None else 0.0
+
+
+def clean_special_values(value):
+    """
+    ✅ ÖSYM verilerindeki özel karakterleri temizle ve NULL'a çevir
+    
+    "Dolmadı", "...", "-", "N/A" gibi değerleri None (PostgreSQL NULL) olarak döndür
+    """
     if pd.isna(value):
-        return 0.0
+        return None
     
-    # String ise temizle
-    if isinstance(value, str):
-        value = value.replace(',', '.').replace(' ', '').strip()
+    value_str = str(value).strip().upper()
+    
+    # Özel değerler listesi
+    null_values = [
+        "DOLMADI", "DOLMADı", "Dolmadı", "dolmadı",
+        "...", "---", "-", "N/A", "NA", "NULL", "NONE",
+        "YOK", "Yok", "yok", "BELİRTİLMEMİŞ", "Belirtilmemiş"
+    ]
+    
+    if value_str in null_values or not value_str:
+        return None
+    
+    return value
+
+
+def read_data_file(file_path: Path):
+    """
+    ✅ Hem Excel hem de CSV dosyalarını oku
+    
+    Returns:
+        pd.DataFrame: Okunan veri
+    """
+    file_ext = file_path.suffix.lower()
+    
+    if file_ext in ['.xlsx', '.xls']:
+        # Excel dosyası - ÖSYM formatında ilk 2 satır başlık, 3. satır kolon isimleri
         try:
-            return float(value)
-        except:
-            return 0.0
+            df = pd.read_excel(file_path, sheet_name=0, header=2)
+            return df
+        except Exception as e:
+            print(f"   ⚠️  Excel okuma hatası (header=2): {e}")
+            # Alternatif: header=0 ile dene
+            try:
+                df = pd.read_excel(file_path, sheet_name=0, header=0)
+                return df
+            except Exception as e2:
+                print(f"   ❌ Excel okuma hatası (header=0): {e2}")
+                raise
     
-    return float(value)
+    elif file_ext == '.csv':
+        # CSV dosyası - ÖSYM formatında delimiter ve encoding kontrolü
+        try:
+            # Önce UTF-8 ile dene
+            df = pd.read_csv(
+                file_path,
+                encoding='utf-8',
+                delimiter=',',
+                decimal='.',
+                header=2,  # ÖSYM formatında 3. satır kolon isimleri
+                skipinitialspace=True,
+                na_values=['Dolmadı', '...', '-', 'N/A', 'NA', 'NULL', 'Yok', ''],
+                low_memory=False
+            )
+            return df
+        except Exception as e1:
+            print(f"   ⚠️  CSV okuma hatası (UTF-8, delimiter=','): {e1}")
+            try:
+                # Alternatif: noktalı virgül delimiter
+                df = pd.read_csv(
+                    file_path,
+                    encoding='utf-8',
+                    delimiter=';',
+                    decimal=',',
+                    header=2,
+                    skipinitialspace=True,
+                    na_values=['Dolmadı', '...', '-', 'N/A', 'NA', 'NULL', 'Yok', ''],
+                    low_memory=False
+                )
+                return df
+            except Exception as e2:
+                print(f"   ⚠️  CSV okuma hatası (delimiter=';'): {e2}")
+                try:
+                    # Alternatif: ISO-8859-9 encoding (Türkçe karakterler için)
+                    df = pd.read_csv(
+                        file_path,
+                        encoding='iso-8859-9',
+                        delimiter=',',
+                        decimal='.',
+                        header=2,
+                        skipinitialspace=True,
+                        na_values=['Dolmadı', '...', '-', 'N/A', 'NA', 'NULL', 'Yok', ''],
+                        low_memory=False
+                    )
+                    return df
+                except Exception as e3:
+                    print(f"   ❌ CSV okuma hatası (tüm denemeler başarısız): {e3}")
+                    raise
+    
+    else:
+        raise ValueError(f"Desteklenmeyen dosya formatı: {file_ext}")
 
 
 def import_excel_file(file_path: Path, year: int, db: Session):
-    """✅ GÜNCELLENMİŞ: Tek bir Excel dosyasını import et - normalize edilmiş isimler ve yıllara göre veri saklama"""
+    """✅ GÜNCELLENMİŞ: Tek bir Excel/CSV dosyasını import et - normalize edilmiş isimler ve yıllara göre veri saklama"""
     print(f"\n📁 {file_path.name} işleniyor (Yıl: {year})...")
     
     try:
-        # Excel'i oku (ÖSYM formatında ilk 2 satır başlık, 3. satır kolon isimleri)
-        df = pd.read_excel(file_path, sheet_name=0, header=2)
+        # ✅ Hem Excel hem de CSV dosyalarını oku
+        df = read_data_file(file_path)
         
         print(f"   📊 {len(df)} satır bulundu")
         print(f"   🔍 Kolonlar: {df.columns.tolist()[:5]}...")
@@ -190,7 +297,14 @@ def import_excel_file(file_path: Path, year: int, db: Session):
                 else:
                     uni_name = uni_name_raw
                 
-                uni_type = normalize_university_type(row.get('Üniversite Türü', 'devlet'))
+                # ✅ PostgreSQL uyumlu: String uzunluk kontrolü
+                uni_name = truncate_string_for_postgres(uni_name, max_length=200, field_name="university.name")
+                if not uni_name:
+                    continue  # Üniversite adı yoksa atla
+                
+                # ✅ PostgreSQL uyumlu: Enum doğrulama
+                uni_type_raw = row.get('Üniversite Türü', 'devlet')
+                uni_type = validate_enum_value(uni_type_raw, ['devlet', 'vakif', 'kktc'], default='devlet')
                 
                 # Üniversite var mı kontrol et
                 university = db.query(University).filter(
@@ -219,7 +333,13 @@ def import_excel_file(file_path: Path, year: int, db: Session):
                 if not normalized_name:
                     continue
                 
-                field_type = normalize_field_type(row.get('Puan Türü', 'SAY'))
+                # ✅ PostgreSQL uyumlu: String uzunluk kontrolü
+                dept_name_raw = truncate_string_for_postgres(dept_name_raw, max_length=200, field_name="department.name")
+                normalized_name = truncate_string_for_postgres(normalized_name, max_length=200, field_name="department.normalized_name")
+                
+                # ✅ PostgreSQL uyumlu: Enum doğrulama
+                field_type_raw = row.get('Puan Türü', 'SAY')
+                field_type = validate_enum_value(field_type_raw, ['SAY', 'EA', 'SÖZ', 'DİL', 'TYT'], default='SAY')
                 
                 # Dil bilgisini program adından çıkar (İngilizce, %30 İngilizce vs.)
                 language = 'Turkish'
@@ -274,12 +394,25 @@ def import_excel_file(file_path: Path, year: int, db: Session):
                     else:
                         duration = 4  # Varsayılan lisans süresi
                     degree_type = 'Bachelor'
-                quota = int(clean_numeric_value(row.get('Kontenjan', 0)))
-                placed_students = int(clean_numeric_value(row.get('Yerleşen', 0)))
-                min_score = clean_numeric_value(row.get('En Küçük Puan', 0))
-                max_score = clean_numeric_value(row.get('En Büyük Puan', 0))
-                min_rank = 0  # Excel'de yok (genelde)
-                max_rank = 0  # Excel'de yok (genelde)
+                # ✅ PostgreSQL uyumlu: Sayısal değerleri temizle ve doğrula
+                # ✅ ÖSYM verilerindeki özel karakterleri temizle ("Dolmadı", "...", vb.)
+                quota_raw = clean_special_values(row.get('Kontenjan', None))
+                quota = safe_to_int(quota_raw, default=0) if quota_raw is not None else 0
+                
+                placed_students_raw = clean_special_values(row.get('Yerleşen', None))
+                placed_students = safe_to_int(placed_students_raw, default=0) if placed_students_raw is not None else 0
+                
+                min_score_raw = clean_special_values(row.get('En Küçük Puan', None))
+                min_score = safe_to_float(min_score_raw, default=None) if min_score_raw is not None else None  # ✅ NULL olabilir
+                
+                max_score_raw = clean_special_values(row.get('En Büyük Puan', None))
+                max_score = safe_to_float(max_score_raw, default=None) if max_score_raw is not None else None  # ✅ NULL olabilir
+                
+                min_rank_raw = clean_special_values(row.get('En Küçük Sıralama', None))
+                min_rank = safe_to_int(min_rank_raw, default=None) if min_rank_raw is not None else None  # ✅ NULL olabilir
+                
+                max_rank_raw = clean_special_values(row.get('En Büyük Sıralama', None))
+                max_rank = safe_to_int(max_rank_raw, default=None) if max_rank_raw is not None else None  # ✅ NULL olabilir
                 
                 # ✅ Bölüm var mı kontrol et (aynı üniversite, normalize edilmiş isim, aynı field_type)
                 # NOT: Orijinal isim farklı olabilir (örn: "Tıp (Burslu)" vs "Tıp (%50 İndirimli)")
@@ -400,9 +533,25 @@ def import_excel_file(file_path: Path, year: int, db: Session):
                     try:
                         db.commit()
                         print(f"   ⏳ {idx + 1}/{len(df)} satır işlendi... (Uni: {new_universities}, Dept: {new_departments}, Stats: {new_yearly_stats})", flush=True)
+                    except (IntegrityError, DataError) as db_error:
+                        # ✅ PostgreSQL uyumlu hata yakalama
+                        db.rollback()
+                        error_msg = str(db_error)
+                        
+                        # ✅ PostgreSQL özel hata mesajları
+                        if "duplicate key" in error_msg.lower() or "unique constraint" in error_msg.lower():
+                            print(f"   ⚠️  Duplicate key hatası (satır {idx + 1}): Zaten mevcut kayıt, atlanıyor...", flush=True)
+                        elif "value too long" in error_msg.lower() or "character varying" in error_msg.lower():
+                            print(f"   ⚠️  String uzunluk hatası (satır {idx + 1}): {error_msg[:100]}", flush=True)
+                            # String'i kes ve tekrar dene (opsiyonel)
+                        elif "invalid input syntax" in error_msg.lower():
+                            print(f"   ⚠️  Veri tipi hatası (satır {idx + 1}): {error_msg[:100]}", flush=True)
+                        else:
+                            print(f"   ⚠️  PostgreSQL hatası (satır {idx + 1}): {error_msg[:100]}", flush=True)
+                        # Devam et, bir sonraki satırda düzelir
                     except Exception as commit_error:
                         db.rollback()
-                        print(f"   ⚠️  Commit hatası (satır {idx + 1}): {str(commit_error)[:100]}", flush=True)
+                        print(f"   ⚠️  Genel commit hatası (satır {idx + 1}): {str(commit_error)[:100]}", flush=True)
                         # Devam et, bir sonraki commit'te düzelir
             
             except Exception as e:
@@ -437,33 +586,65 @@ def import_excel_file(file_path: Path, year: int, db: Session):
         return 0, 0, 0
 
 
+def find_data_files():
+    """
+    ✅ Tüm veri dosyalarını bul (hem Excel hem CSV, hem /app/data hem de /app/data/raw_files)
+    
+    Returns:
+        list[Path]: Bulunan dosya yolları
+    """
+    all_files = []
+    
+    for data_dir in DATA_DIRS:
+        if not data_dir.exists():
+            print(f"⚠️  Klasör bulunamadı: {data_dir}")
+            continue
+        
+        print(f"📂 Klasör taranıyor: {data_dir}")
+        
+        # Excel dosyaları
+        xlsx_files = list(data_dir.glob('*.xlsx'))
+        xls_files = list(data_dir.glob('*.xls'))
+        # CSV dosyaları
+        csv_files = list(data_dir.glob('*.csv'))
+        
+        found_in_dir = xlsx_files + xls_files + csv_files
+        
+        if found_in_dir:
+            print(f"   ✅ {len(found_in_dir)} dosya bulundu:")
+            for f in found_in_dir:
+                print(f"      - {f.name} ({f.suffix})")
+            all_files.extend(found_in_dir)
+        else:
+            print(f"   ⚠️  Bu klasörde dosya bulunamadı")
+    
+    return all_files
+
+
 def main():
     """Ana import fonksiyonu"""
     import sys
     sys.stdout.flush()  # ✅ Buffer'ı temizle
     print("=" * 70, flush=True)
-    print("ÖSYM EXCEL DOSYALARINI İÇE AKTAR", flush=True)
+    print("ÖSYM VERİ DOSYALARINI İÇE AKTAR", flush=True)
+    print("✅ Excel (.xlsx, .xls) ve CSV (.csv) desteği", flush=True)
     print("✅ Normalize edilmiş bölüm isimleri ve yıllara göre veri saklama", flush=True)
     print("=" * 70, flush=True)
     
-    # Data klasörünü kontrol et
-    if not DATA_DIR.exists():
-        print(f"❌ {DATA_DIR} klasörü bulunamadı!")
-        print(f"💡 Lütfen backend/data/ klasörü oluşturun ve Excel dosyalarını oraya koyun")
+    # ✅ Tüm veri dosyalarını bul (hem Excel hem CSV, hem /app/data hem de /app/data/raw_files)
+    print("\n🔍 Veri dosyaları aranıyor...")
+    data_files = find_data_files()
+    
+    if not data_files:
+        print(f"\n❌ Hiçbir veri dosyası bulunamadı!")
+        print(f"💡 ÖSYM'den indirdiğiniz dosyaları şu klasörlerden birine koyun:")
+        for data_dir in DATA_DIRS:
+            print(f"   - {data_dir}")
+        print(f"   Desteklenen formatlar: .xlsx, .xls, .csv")
+        print(f"   Örnek: 2024_yerlestirme_l.xlsx, 2025_yerlestirme_l.csv")
         return
     
-    # Excel dosyalarını bul
-    excel_files = list(DATA_DIR.glob('*.xlsx')) + list(DATA_DIR.glob('*.xls'))
-    
-    if not excel_files:
-        print(f"❌ {DATA_DIR} klasöründe Excel dosyası bulunamadı!")
-        print(f"💡 ÖSYM'den indirdiğiniz Excel dosyalarını backend/data/ klasörüne koyun")
-        print(f"   Örnek: 2024_yerlestirme_l.xlsx, 2025_yerlestirme_l.xlsx")
-        return
-    
-    print(f"📂 {len(excel_files)} Excel dosyası bulundu:")
-    for f in excel_files:
-        print(f"   - {f.name}")
+    print(f"\n📊 Toplam {len(data_files)} dosya bulundu ve işlenecek")
     
     # Database bağlantısı
     db = SessionLocal()
@@ -474,7 +655,7 @@ def main():
     
     try:
         # Her dosyayı işle
-        for file_path in excel_files:
+        for file_path in data_files:
             # Dosya adından yılı çıkarmaya çalış
             year = 2024  # Varsayılan
             try:

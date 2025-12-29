@@ -22,14 +22,24 @@ class User(Base):
     name = Column(String(100), nullable=True)
     
     # Auth status
-    is_active = Column(Boolean, default=True)
-    is_onboarding_completed = Column(Boolean, default=False)
-    is_initial_setup_completed = Column(Boolean, default=False)
+    # ✅ CRITICAL: PostgreSQL için nullable=False ve default değer zorunlu
+    # SQLite'tan gelen NULL değerler için default değer kullanılır
+    is_active = Column(Boolean, nullable=False, default=True)
+    is_onboarding_completed = Column(Boolean, nullable=False, default=False)
+    is_initial_setup_completed = Column(Boolean, nullable=False, default=False)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     last_login_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Notification Preferences (JSON string)
+    notification_preferences = Column(Text, nullable=True)  # JSON: {"exam_results": true, "ai_recommendations": true, ...}
+    
+    # Security Settings
+    password_hash = Column(String(255), nullable=True)  # Şifre hash'i (bcrypt)
+    two_factor_enabled = Column(Boolean, nullable=False, default=False)  # 2FA aktif mi?
+    biometric_enabled = Column(Boolean, nullable=False, default=False)  # Face ID / Fingerprint aktif mi?
     
     # ✅ Relationships - String reference ile circular import'u önle
     student = relationship("Student", back_populates="user", uselist=False)
@@ -227,7 +237,7 @@ class Department(Base):
     
     # Fees
     tuition_fee = Column(Float, nullable=True)
-    has_scholarship = Column(Boolean, default=False)
+    has_scholarship = Column(Boolean, nullable=False, default=False)  # ✅ PostgreSQL için nullable=False
     
     # Statistics (en güncel yıl için - backward compatibility)
     last_year_min_score = Column(Float, nullable=True)
@@ -316,9 +326,9 @@ class Recommendation(Base):
     
     # Recommendation Details
     recommendation_reason = Column(Text, nullable=True)
-    is_safe_choice = Column(Boolean, default=False)
-    is_dream_choice = Column(Boolean, default=False)
-    is_realistic_choice = Column(Boolean, default=False)
+    is_safe_choice = Column(Boolean, nullable=False, default=False)  # ✅ PostgreSQL için nullable=False
+    is_dream_choice = Column(Boolean, nullable=False, default=False)  # ✅ PostgreSQL için nullable=False
+    is_realistic_choice = Column(Boolean, nullable=False, default=False)  # ✅ PostgreSQL için nullable=False
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

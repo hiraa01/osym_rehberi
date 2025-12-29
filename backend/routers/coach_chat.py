@@ -3,6 +3,10 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any, Tuple
 import os
+import warnings
+# ✅ Google Generative AI uyarılarını bastır (deprecation warnings)
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="google.generativeai")
+warnings.filterwarnings("ignore", message=".*google.generativeai.*", category=UserWarning)
 import google.generativeai as genai
 
 from database import get_db

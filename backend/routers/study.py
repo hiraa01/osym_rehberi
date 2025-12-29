@@ -19,7 +19,7 @@ from core.exceptions import StudentNotFoundError
 router = APIRouter()
 
 
-@router.get("/", response_model=StudySessionListResponse)
+@router.get("", response_model=StudySessionListResponse)
 async def get_study_sessions(
     student_id: int = Query(..., description="Öğrenci ID"),
     page: int = Query(1, ge=1, description="Sayfa numarası"),
@@ -69,7 +69,7 @@ async def get_study_sessions(
         raise HTTPException(status_code=500, detail="Ders çalışma oturumları alınırken bir hata oluştu")
 
 
-@router.post("/", response_model=StudySessionResponse)
+@router.post("", response_model=StudySessionResponse)
 async def create_study_session(
     session: StudySessionCreate,
     db: Session = Depends(get_db)
