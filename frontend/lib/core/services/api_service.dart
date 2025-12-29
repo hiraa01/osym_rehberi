@@ -236,15 +236,29 @@ class ApiService {
     return await _dio.post('/students/$id/calculate-scores');
   }
 
-  // ✅ Hedef bölüm ekleme (Preferred Department)
+  // ✅ Hedef bölüm ekleme (Preferred Department) - Backend: /api/targets/
   Future<Response> addPreferredDepartment(int studentId, int departmentId) async {
-    return await _dio.post('/students/$studentId/add-preferred-department/$departmentId');
+    return await _dio.post(
+      '/targets/',
+      data: {
+        'student_id': studentId,
+        'department_id': departmentId,
+      },
+      options: Options(
+        receiveTimeout: const Duration(seconds: 60),
+        sendTimeout: const Duration(seconds: 30),
+      ),
+    );
   }
 
   // ✅ Öğrencinin hedef bölümlerini detaylı olarak getir
   Future<Response> getStudentTargets(int studentId) async {
+    // ✅ Backend endpoint: /api/targets/?student_id=...
     return await _dio.get(
-      '/students/$studentId/targets',
+      '/targets/',
+      queryParameters: {
+        'student_id': studentId,
+      },
       options: Options(
         receiveTimeout: const Duration(seconds: 60),
         sendTimeout: const Duration(seconds: 30),

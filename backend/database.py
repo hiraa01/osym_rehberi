@@ -7,6 +7,14 @@ import logging
 # Logger setup
 api_logger = logging.getLogger("api")
 
+# ✅ CRITICAL: TÜM MODELLERİ BURADA IMPORT ET
+# SQLAlchemy'nin Base.metadata.create_all() çalışması için
+# modellerin Base'e kayıt olması gerekiyor. Bu import'lar
+# Base tanımlandıktan SONRA ama create_tables() çağrılmadan ÖNCE yapılmalı.
+# 
+# NOT: Import'ları try-except içine alarak eksik modellerin
+# uygulamayı çökertmesini engelliyoruz.
+
 # Database URL - PostgreSQL for production, SQLite for development
 # ✅ PostgreSQL'e geçiş yapıldı - performans için kritik
 # Environment variable'dan al, yoksa PostgreSQL varsayılan değerlerini kullan
@@ -73,6 +81,28 @@ Base = declarative_base()
 # Metadata for table creation
 metadata = MetaData()
 
+# ✅ IMPORT ALL MODELS FROM SINGLE FILE (After Base is created, before create_tables is called)
+# Tüm modeller tek dosyada (models.py) - circular import sorunu kesin çözüm
+try:
+    # ✅ Tek dosyadan tüm modelleri import et
+    from models import (  # noqa: F401
+        User, Student, ExamAttempt,
+        University, Department, DepartmentYearlyStats, Recommendation,
+        Preference, Swipe,
+        ForumPost, ForumComment,
+        AgendaItem, StudySession, ChatMessage,
+        YokUniversity, YokProgram, YokCity, ScoreCalculation
+    )
+    api_logger.info("✅ All models imported successfully from models.py")
+        
+except ImportError as e:
+    api_logger.error(f"❌ CRITICAL: Failed to import models: {e}")
+    api_logger.error("❌ Some models may not be registered with Base.metadata!")
+    import traceback
+    api_logger.error(f"❌ Traceback: {traceback.format_exc()}")
+    # Uygulamayı çökertme, sadece log
+    pass
+
 
 def get_db():
     """Dependency to get database session"""
@@ -83,19 +113,59 @@ def get_db():
         db.close()
 
 
-def create_tables():
-    """Create all tables in the database"""
-    # ✅ Tüm modelleri import et (Base.metadata'ya kayıt olmaları için)
-    # Modeller zaten import edilmiş olmalı, ama emin olmak için:
-    from models.student import Student
-    from models.exam_attempt import ExamAttempt
-    from models.university import University, Department, Recommendation
-    from models.user import User
+def create_tables(max_retries: int = 3, retry_delay: int = 2):
+    """
+    Create all tables in the database (Auto-Migration) with retry logic
     
-    # ✅ PostgreSQL için tabloları oluştur
-    try:
-        Base.metadata.create_all(bind=engine)
-        api_logger.info("✅ Database tables created successfully")
-    except Exception as e:
-        api_logger.error(f"❌ Error creating tables: {e}")
-        raise
+    NOT: Modeller zaten dosyanın üstünde import edildi (Base.metadata'ya kayıt için).
+    Bu fonksiyon sadece tabloları oluşturur.
+    
+    Args:
+        max_retries: Maksimum deneme sayısı (varsayılan: 3)
+        retry_delay: Her deneme arası bekleme süresi (saniye, varsayılan: 2)
+    
+    Returns:
+        bool: Tablolar başarıyla oluşturuldu ise True, aksi halde False
+    """
+    import time
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            api_logger.info(f"🔄 Starting database table creation (Auto-Migration)... (Deneme {attempt}/{max_retries})")
+            
+            # ✅ Modeller zaten import edildi (dosyanın üstünde)
+            # Sadece tabloları oluştur
+            api_logger.info("🔨 Creating database tables from registered models...")
+            
+            # Base.metadata'da kayıtlı tüm modeller için tabloları oluştur
+            Base.metadata.create_all(bind=engine)
+            
+            # Oluşturulan tabloları kontrol et
+            from sqlalchemy import inspect
+            inspector = inspect(engine)
+            created_tables = inspector.get_table_names()
+            
+            api_logger.info(f"✅ Tablolar başarıyla oluşturuldu! ({len(created_tables)} tablo)")
+            api_logger.info(f"📊 Oluşturulan tablolar: {', '.join(sorted(created_tables))}")
+            
+            # Kayıtlı modelleri kontrol et
+            registered_tables = list(Base.metadata.tables.keys())
+            api_logger.info(f"📋 Kayıtlı modeller: {len(registered_tables)} tablo metadata'da")
+            
+            return True
+            
+        except Exception as e:
+            if attempt < max_retries:
+                api_logger.warning(f"⚠️ Tablo oluşturma hatası (Deneme {attempt}/{max_retries}): {str(e)}")
+                api_logger.info(f"⏳ {retry_delay} saniye bekleniyor...")
+                time.sleep(retry_delay)
+            else:
+                api_logger.error(f"❌ TABLO OLUŞTURMA HATASI: {e}")
+                import traceback
+                api_logger.error(f"❌ Traceback: {traceback.format_exc()}")
+                # Hata olsa bile uygulama çalışmaya devam etsin (sadece log)
+                # Çünkü tablolar zaten var olabilir
+                api_logger.warning("⚠️ Tablo oluşturma hatasına rağmen devam ediliyor (tablolar zaten var olabilir)")
+                return False
+    
+    return False

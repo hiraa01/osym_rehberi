@@ -39,6 +39,11 @@ class StudentBase(BaseModel):
     budget_preference: Optional[str] = None
     scholarship_preference: bool = False
     interest_areas: Optional[List[str]] = None
+    
+    # Profile Information
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    target_university: Optional[str] = None
 
     @validator('field_type')
     def validate_field_type(cls, v):
@@ -94,6 +99,11 @@ class StudentUpdate(BaseModel):
     budget_preference: Optional[str] = None
     scholarship_preference: Optional[bool] = None
     interest_areas: Optional[List[str]] = None
+    
+    # Profile Information
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    target_university: Optional[str] = None
 
 
 class StudentResponse(StudentBase):
@@ -104,6 +114,9 @@ class StudentResponse(StudentBase):
     obp_score: Optional[float] = 0.0  # ✅ OBP eklendi
     rank: int
     percentile: float
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    target_university: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 

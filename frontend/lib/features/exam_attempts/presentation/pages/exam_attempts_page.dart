@@ -40,12 +40,20 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
         final response = await _apiService.getStudentAttempts(studentId);
         List<dynamic> attempts = [];
 
-        if (response.data != null) {
+        if (response.statusCode == 200 && response.data != null) {
+          // ✅ Backend formatı: {attempts: [...], total: ...} veya direkt List
           if (response.data is Map<String, dynamic>) {
-            attempts = response.data['attempts'] as List? ?? [];
+            final data = response.data as Map<String, dynamic>;
+            attempts = data['attempts'] as List? ?? [];
+            debugPrint('✅ Exam Attempts loaded: ${attempts.length} attempts from Map format');
           } else if (response.data is List) {
-            attempts = response.data;
+            attempts = response.data as List;
+            debugPrint('✅ Exam Attempts loaded: ${attempts.length} attempts from List format');
+          } else {
+            debugPrint('⚠️ Exam Attempts: Unknown data format: ${response.data.runtimeType}');
           }
+        } else {
+          debugPrint('⚠️ Exam Attempts: Response status: ${response.statusCode}, data: ${response.data}');
         }
 
         // Ortalamaları hesapla

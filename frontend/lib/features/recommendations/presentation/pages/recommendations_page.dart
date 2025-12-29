@@ -24,7 +24,8 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
   @override
   void initState() {
     super.initState();
-    _loadRecommendations();
+    // ✅ Sayfa açıldığında force refresh ile yeniden hesapla
+    _loadRecommendations(forceRefresh: true);
   }
 
   Future<void> _loadRecommendations({bool forceRefresh = false}) async {
@@ -140,15 +141,34 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
     return normalized;
   }
 
+  // ✅ PERFORMANS: Filtreleme işlemini optimize et - lazy evaluation
+  List<dynamic> _filteredRecommendationsCache = [];
+  String _lastCityFilter = '';
+  String _lastTypeFilter = '';
+  
   List<dynamic> get _filteredRecommendations {
+    // ✅ Cache kontrolü - filtreler değişmediyse cache'i döndür
+    if (_selectedCity == _lastCityFilter && 
+        _selectedType == _lastTypeFilter && 
+        _filteredRecommendationsCache.isNotEmpty) {
+      return _filteredRecommendationsCache;
+    }
+    
+    // ✅ Filtre yoksa direkt döndür
     if (_selectedCity == 'all' && _selectedType == 'all') {
-      return _recommendations; // Filtre yoksa tümünü döndür
+      _filteredRecommendationsCache = _recommendations;
+      _lastCityFilter = _selectedCity;
+      _lastTypeFilter = _selectedType;
+      return _filteredRecommendationsCache;
     }
 
+    // ✅ Filtreleme işlemi - optimize edilmiş
     final normalizedSelectedCity =
         _selectedCity != 'all' ? _normalizeCityName(_selectedCity) : '';
+    final selectedTypeLower = _selectedType.toLowerCase();
 
-    return _recommendations.where((rec) {
+    final filtered = <dynamic>[];
+    for (final rec in _recommendations) {
       // Backend response: {department: {university: {...}}}
       final dept = rec['department'] as Map<String, dynamic>?;
       final university = dept?['university'] as Map<String, dynamic>?;
@@ -157,9 +177,7 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
 
       // ✅ Şehir eşleştirmesi: Normalize edilmiş eşleşme
       bool matchesCity = _selectedCity == 'all';
-      if (!matchesCity &&
-          city.isNotEmpty &&
-          normalizedSelectedCity.isNotEmpty) {
+      if (!matchesCity && city.isNotEmpty && normalizedSelectedCity.isNotEmpty) {
         final normalizedCity = _normalizeCityName(city);
         matchesCity = normalizedCity == normalizedSelectedCity ||
             normalizedCity.contains(normalizedSelectedCity) ||
@@ -168,10 +186,19 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
 
       // ✅ Üniversite türü eşleştirmesi
       bool matchesType = _selectedType == 'all' ||
-          universityType.toLowerCase().contains(_selectedType.toLowerCase());
+          universityType.toLowerCase().contains(selectedTypeLower);
 
-      return matchesCity && matchesType;
-    }).toList();
+      if (matchesCity && matchesType) {
+        filtered.add(rec);
+      }
+    }
+    
+    // ✅ Cache'i güncelle
+    _filteredRecommendationsCache = filtered;
+    _lastCityFilter = _selectedCity;
+    _lastTypeFilter = _selectedType;
+    
+    return _filteredRecommendationsCache;
   }
 
   @override
@@ -413,12 +440,7 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
 
                   // Gerçek Öneriler
                   _filteredRecommendations.isEmpty
-                      ? const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(32.0),
-                            child: Text('Henüz öneri bulunmuyor'),
-                          ),
-                        )
+                      ? _buildEmptyState(context)
                       : ListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
@@ -595,8 +617,8 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                     if (value != null) {
                       setState(() => _selectedCity = value);
                       Navigator.pop(context);
-                      // ✅ Filtre değiştiğinde listeyi yenile
-                      _loadRecommendations();
+                      // ✅ Client-side filtreleme - API'ye tekrar istek atmaya gerek yok
+                      // Listeyi _filteredRecommendations getter'ı otomatik filtreler
                     }
                   },
                 ),
@@ -654,8 +676,8 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
                     if (value != null) {
                       setState(() => _selectedType = value);
                       Navigator.pop(context);
-                      // ✅ Filtre değiştiğinde listeyi yenile
-                      _loadRecommendations();
+                      // ✅ Client-side filtreleme - API'ye tekrar istek atmaya gerek yok
+                      // Listeyi _filteredRecommendations getter'ı otomatik filtreler
                     }
                   },
                 ),
@@ -686,11 +708,11 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
 
   // ✅ PDF Export
   Future<void> _exportToPDF(BuildContext context) async {
-    // Şimdilik basit bir SnackBar göster
+    // Kullanıcıya bilgi ver
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('PDF Hazırlanıyor...'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text('PDF İndiriliyor... (${_filteredRecommendations.length} öneri)'),
+        duration: const Duration(seconds: 2),
       ),
     );
 
@@ -712,5 +734,54 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
     // TODO: Gerçek Excel export implementasyonu
     // excel paketi kullanarak önerileri Excel'e çevir
     debugPrint('📊 Excel Export: ${_filteredRecommendations.length} öneri');
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.auto_awesome_outlined,
+              size: 80,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Henüz öneri bulunmuyor',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Size özel öneriler hazırlayabilmemiz için daha fazla deneme verisi girin veya tercih listenizi güncelleyin.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => _loadRecommendations(forceRefresh: true),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Yeniden Hesapla'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

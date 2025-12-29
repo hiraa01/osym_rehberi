@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Index
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 
@@ -49,6 +50,9 @@ class ExamAttempt(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # ✅ Relationships - String reference ile circular import'u önle
+    student = relationship("Student", back_populates="exam_attempts")
     
     def __repr__(self):
         return f"<ExamAttempt(id={self.id}, student_id={self.student_id}, attempt_number={self.attempt_number})>"

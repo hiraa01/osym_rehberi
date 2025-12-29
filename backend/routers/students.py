@@ -4,7 +4,7 @@ from typing import List, Optional
 import json
 
 from database import get_db
-from models.student import Student
+from models import Student
 from schemas.student import StudentCreate, StudentUpdate, StudentResponse, StudentListResponse
 from schemas.university import DepartmentWithUniversityResponse
 from services.score_calculator import ScoreCalculator
@@ -225,7 +225,7 @@ async def get_student_targets(
     Öğrencinin preferred_departments listesindeki bölüm isimlerine göre
     Department objelerini (University bilgileriyle birlikte) döndürür.
     """
-    from models.university import Department, University
+        from models import Department, University
     from schemas.university import DepartmentWithUniversityResponse
     from sqlalchemy.orm import selectinload
     

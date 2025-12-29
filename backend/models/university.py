@@ -71,6 +71,8 @@ class Department(Base):
     # ✅ OPTIMIZED: Relationship tanımlandı - eager loading için
     university = relationship("University", back_populates="departments")
     yearly_stats = relationship("DepartmentYearlyStats", back_populates="department", cascade="all, delete-orphan")  # ✅ Tarihsel veriler
+    preferences = relationship("Preference", back_populates="department")
+    swipes = relationship("Swipe", back_populates="department")
     
     def __repr__(self):
         return f"<Department(id={self.id}, name='{self.name}', normalized_name='{self.normalized_name}', university_id={self.university_id})>"

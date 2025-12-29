@@ -35,13 +35,17 @@ class DepartmentModel {
 
   factory DepartmentModel.fromJson(Map<String, dynamic> json) {
     // ✅ Güvenli null kontrolleri ile parse et
+    // ✅ Backend formatı: {department: {...}, university: {...}} veya direkt {...}
+    final universityData = json['university'] as Map<String, dynamic>?;
+    
     return DepartmentModel(
       id: json['id'] as int?,
       name: json['name'] as String? ?? '', // ✅ 'name' alanını kullan (original_name değil)
       fieldType: json['field_type'] as String? ?? 'SAY',
-      universityId: json['university_id'] as int? ?? 0,
-      universityName: json['university_name'] as String?,
-      city: json['city'] as String?,
+      universityId: json['university_id'] as int? ?? universityData?['id'] as int? ?? 0,
+      // ✅ University objesi içinden veya direkt alan
+      universityName: universityData?['name'] as String? ?? json['university_name'] as String?,
+      city: universityData?['city'] as String? ?? json['city'] as String?,
       // ✅ min_score null kontrolü: Eğer null ise null döndür, değilse double'a çevir
       minScore: json['min_score'] != null 
           ? (json['min_score'] is num 

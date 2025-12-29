@@ -6,9 +6,12 @@ import asyncio
 import os
 import contextlib
 
-from database import create_tables, get_db
-from routers import students, universities, recommendations, ml_recommendations, auth, exam_attempts, coach_chat
+# ✅ CRITICAL: Import database first to ensure all models are registered
+# database.py içinde tüm modeller zaten import ediliyor (Base.metadata'ya kayıt için)
+from database import create_tables, get_db, Base
 from core.logging_config import api_logger
+
+from routers import students, universities, recommendations, ml_recommendations, auth, exam_attempts, coach_chat, preferences, discovery, chatbot, profile, forum, stats, agenda, study, targets
 
 
 async def _periodic_ml_training_task():
@@ -41,41 +44,195 @@ async def _periodic_ml_training_task():
             api_logger.error("Periodic ML training failed", error=str(e))
 
 
+async def _wait_for_database(max_retries: int = 10, retry_delay: int = 5):
+    """
+    Veritabanı bağlantısını kontrol et ve hazır olana kadar bekle (Retry Logic - While Loop)
+    
+    ✅ CRITICAL: Bu fonksiyon asla exception fırlatmaz - sadece True/False döner
+    Container'ın restart loop'a girmesini önlemek için tüm hatalar yakalanır.
+    
+    Args:
+        max_retries: Maksimum deneme sayısı (varsayılan: 10)
+        retry_delay: Her deneme arası bekleme süresi (saniye, varsayılan: 5)
+    
+    Returns:
+        bool: Bağlantı başarılı ise True, aksi halde False
+    """
+    from sqlalchemy import text
+    from sqlalchemy.exc import OperationalError
+    from database import engine
+    
+    retries = max_retries
+    
+    while retries > 0:
+        try:
+            api_logger.info(f"🔄 Veritabanı bağlantısı deneniyor... ({max_retries - retries + 1}/{max_retries} deneme kaldı)")
+            
+            # Basit bir SQL sorgusu ile bağlantıyı test et
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+                conn.commit()
+            
+            api_logger.info("✅ Veritabanı bağlantısı başarılı!")
+            return True
+            
+        except OperationalError as e:
+            # ✅ Veritabanı henüz hazır değil - normal durum
+            retries -= 1
+            if retries > 0:
+                api_logger.warning(f"⚠️ Veritabanı henüz hazır değil ({retries} deneme kaldı): {str(e)}")
+                api_logger.info(f"⏳ {retry_delay} saniye bekleniyor...")
+                await asyncio.sleep(retry_delay)
+            else:
+                api_logger.error(f"❌ Veritabanı bağlantısı {max_retries} denemede başarısız oldu!")
+                api_logger.error(f"❌ Son hata: {str(e)}")
+                return False
+        except Exception as e:
+            # ✅ Beklenmeyen hatalar - logla ama devam et
+            retries -= 1
+            if retries > 0:
+                api_logger.warning(f"⚠️ Veritabanı bağlantı hatası ({retries} deneme kaldı): {str(e)}")
+                api_logger.info(f"⏳ {retry_delay} saniye bekleniyor...")
+                await asyncio.sleep(retry_delay)
+            else:
+                api_logger.error(f"❌ Veritabanı bağlantısı {max_retries} denemede başarısız oldu!")
+                api_logger.error(f"❌ Son hata: {str(e)}")
+                return False
+    
+    return False
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    api_logger.info("Starting application...")
-    create_tables()
+    api_logger.info("=" * 60)
+    api_logger.info("🚀 Starting ÖSYM Rehberi API...")
+    api_logger.info("=" * 60)
     
-    # ✅ Cache'i startup'ta yükle - statik veriler için
-    api_logger.info("Loading cache for static data...")
+    # ✅ CRITICAL: Tüm startup hatalarını yakala - uygulama çökmesin
     try:
-        db = next(get_db())
-        try:
-            # Cities cache
-            from sqlalchemy import distinct
-            from models.university import University, Department
-            cities_result = db.query(distinct(University.city)).filter(University.city.isnot(None)).all()
-            cities = [city[0] for city in cities_result if city[0]]
-            from core.cache import set_cache
-            from datetime import timedelta
-            set_cache("cities", cities, ttl=timedelta(hours=24))  # 24 saat cache
-            api_logger.info(f"Cached {len(cities)} cities")
-            
-            # Field types cache
-            field_types_result = db.query(distinct(Department.field_type)).filter(Department.field_type.isnot(None)).all()
-            field_types = [ft[0] for ft in field_types_result if ft[0]]
-            set_cache("field_types", field_types, ttl=timedelta(hours=24))  # 24 saat cache
-            api_logger.info(f"Cached {len(field_types)} field types")
-        finally:
-            db.close()
-    except Exception as e:
-        api_logger.warning(f"Cache loading failed (non-critical): {str(e)}")
+        # ✅ 0. VERİTABANI BAĞLANTISINI BEKLE (Retry Logic - While Loop)
+        api_logger.info("📋 Step 0: Waiting for database connection...")
+        db_ready = await _wait_for_database(max_retries=10, retry_delay=5)  # 10 deneme, 5 saniye aralık
+        
+        if not db_ready:
+            api_logger.error("❌ CRITICAL: Veritabanı bağlantısı kurulamadı!")
+            api_logger.error("❌ Tüm denemeler başarısız oldu. Lütfen veritabanı servisini kontrol edin.")
+            api_logger.warning("⚠️ Uygulama devam ediyor (logları kontrol edin). Bazı özellikler çalışmayabilir.")
+            # ✅ Uygulamayı kapatma, sadece log bas (Konteyner çöküp durmasın)
+            # raise RuntimeError("Database connection failed after multiple retries")  # Kaldırıldı
+    except Exception as startup_error:
+        # ✅ CRITICAL: Startup sırasında herhangi bir hata olsa bile uygulama çökmesin
+        api_logger.error(f"🔥 STARTUP HATASI (Yakalandı - Uygulama devam ediyor): {str(startup_error)}")
+        import traceback
+        api_logger.error(f"🔥 Traceback: {traceback.format_exc()}")
+        api_logger.warning("⚠️ Uygulama hata ile devam ediyor. Bazı özellikler çalışmayabilir.")
+        db_ready = False
     
-    # Periodik ML eğitim görevini başlat
-    app.state.ml_training_task = asyncio.create_task(_periodic_ml_training_task())
-    api_logger.info("Application started successfully")
+        # ✅ 1. VERİTABANI TABLOLARINI OLUŞTUR (Auto-Migration) - Sadece bağlantı başarılıysa
+        if db_ready:
+            api_logger.info("📋 Step 1: Creating database tables (Auto-Migration)...")
+            try:
+                tables_created = create_tables(max_retries=3, retry_delay=2)
+                if tables_created:
+                    api_logger.info("✅ Database tables ready!")
+                else:
+                    api_logger.warning("⚠️ Database table creation had issues, but continuing...")
+            except Exception as e:
+                # ✅ CRITICAL: Tablo oluşturma hatası uygulamayı çökertmesin
+                api_logger.error(f"❌ TABLO OLUŞTURMA HATASI (Yakalandı): {e}")
+                import traceback
+                api_logger.error(f"❌ Traceback: {traceback.format_exc()}")
+                api_logger.warning("⚠️ Uygulama devam ediyor (tablolar zaten var olabilir)")
+        else:
+            api_logger.warning("⚠️ Veritabanı bağlantısı olmadığı için tablo oluşturma atlandı.")
+    
+        # ✅ 2. Cache'i startup'ta yükle - statik veriler için (Sadece bağlantı başarılıysa)
+        if db_ready:
+            api_logger.info("📋 Step 2: Loading cache for static data...")
+            try:
+                db = next(get_db())
+                try:
+                    # Cities cache
+                    from sqlalchemy import distinct
+                    from models import University, Department
+                    cities_result = db.query(distinct(University.city)).filter(University.city.isnot(None)).all()
+                    cities = [city[0] for city in cities_result if city[0]]
+                    from core.cache import set_cache
+                    from datetime import timedelta
+                    set_cache("cities", cities, ttl=timedelta(hours=24))  # 24 saat cache
+                    api_logger.info(f"✅ Cached {len(cities)} cities")
+                    
+                    # Field types cache
+                    field_types_result = db.query(distinct(Department.field_type)).filter(Department.field_type.isnot(None)).all()
+                    field_types = [ft[0] for ft in field_types_result if ft[0]]
+                    set_cache("field_types", field_types, ttl=timedelta(hours=24))  # 24 saat cache
+                    api_logger.info(f"✅ Cached {len(field_types)} field types")
+                finally:
+                    db.close()
+            except Exception as e:
+                # ✅ CRITICAL: Cache yükleme hatası uygulamayı çökertmesin
+                api_logger.warning(f"⚠️ Cache loading failed (non-critical): {str(e)}")
+        else:
+            api_logger.warning("⚠️ Veritabanı bağlantısı olmadığı için cache yükleme atlandı.")
+        
+        # ✅ 3. Periodik ML eğitim görevini başlat
+        api_logger.info("📋 Step 3: Starting periodic ML training task...")
+        try:
+            app.state.ml_training_task = asyncio.create_task(_periodic_ml_training_task())
+        except Exception as e:
+            # ✅ CRITICAL: ML task başlatma hatası uygulamayı çökertmesin
+            api_logger.error(f"⚠️ ML training task başlatılamadı (non-critical): {str(e)}")
+    
+        api_logger.info("=" * 60)
+        api_logger.info("✅ Application started successfully!")
+        api_logger.info("=" * 60)
+        
+        # ✅ CRITICAL: Tablo oluşturma sonucunu tekrar kontrol et ve logla
+        if db_ready:
+            try:
+                from sqlalchemy import inspect
+                from database import engine
+                inspector = inspect(engine)
+                existing_tables = inspector.get_table_names()
+                api_logger.info(f"📊 Veritabanında mevcut tablolar: {len(existing_tables)} adet")
+                api_logger.info(f"📋 Tablo listesi: {', '.join(sorted(existing_tables))}")
+                
+                # ✅ Tüm modellerin tablolarının oluşturulduğunu kontrol et
+                expected_tables = [
+                    "users", "students", "exam_attempts", "universities", "departments",
+                    "agenda_items", "study_sessions", "forum_posts", "forum_comments",
+                    "preferences", "swipes", "chat_messages", "recommendations"
+                ]
+                missing_tables = [tbl for tbl in expected_tables if tbl not in existing_tables]
+                if missing_tables:
+                    api_logger.warning(f"⚠️ Eksik tablolar tespit edildi: {', '.join(missing_tables)}")
+                    api_logger.warning("⚠️ Bu tablolar oluşturulmaya çalışılacak...")
+                    # Tekrar tablo oluşturmayı dene
+                    try:
+                        create_tables(max_retries=1, retry_delay=1)
+                        api_logger.info("✅ Eksik tablolar oluşturuldu!")
+                    except Exception as e:
+                        # ✅ CRITICAL: Eksik tablo oluşturma hatası uygulamayı çökertmesin
+                        api_logger.error(f"❌ Eksik tablolar oluşturulamadı (non-critical): {e}")
+                else:
+                    api_logger.info("✅ Tüm beklenen tablolar mevcut!")
+            except Exception as e:
+                # ✅ CRITICAL: Tablo kontrolü hatası uygulamayı çökertmesin
+                api_logger.warning(f"⚠️ Tablo kontrolü sırasında hata (non-critical): {e}")
+    except Exception as critical_error:
+        # ✅ CRITICAL: Startup sırasında herhangi bir kritik hata olsa bile uygulama çökmesin
+        api_logger.error(f"🔥 KRİTİK STARTUP HATASI (Yakalandı - Uygulama devam ediyor): {str(critical_error)}")
+        import traceback
+        api_logger.error(f"🔥 Traceback: {traceback.format_exc()}")
+        api_logger.warning("⚠️ Uygulama hata ile devam ediyor. Bazı özellikler çalışmayabilir.")
+        # ✅ Uygulamayı çökertme - container restart loop'a girmesin
     yield
+    
+    # Shutdown
+    api_logger.info("=" * 60)
+    api_logger.info("🛑 Shutting down application...")
+    api_logger.info("=" * 60)
     # Shutdown
     api_logger.info("Shutting down application...")
     # Periodik görev iptali
@@ -148,6 +305,15 @@ app.include_router(recommendations.router, prefix="/api/recommendations", tags=[
 app.include_router(ml_recommendations.router, prefix="/api/ml", tags=["ml-recommendations"])
 app.include_router(exam_attempts.router, prefix="/api/exam-attempts", tags=["exam-attempts"])
 app.include_router(coach_chat.router, prefix="/api/chat", tags=["coach-chat"])
+app.include_router(preferences.router, prefix="/api/preferences", tags=["preferences"])
+app.include_router(discovery.router, prefix="/api/discovery", tags=["discovery"])
+app.include_router(chatbot.router, prefix="/api/chatbot", tags=["chatbot"])
+app.include_router(profile.router, prefix="/api/profile", tags=["profile"])
+app.include_router(forum.router, prefix="/api/forum", tags=["forum"])
+app.include_router(stats.router, prefix="/api/stats", tags=["stats"])
+app.include_router(agenda.router, prefix="/api/agenda", tags=["agenda"])
+app.include_router(study.router, prefix="/api/study", tags=["study"])
+app.include_router(targets.router, prefix="/api/targets", tags=["targets"])
 
 
 @app.get("/")

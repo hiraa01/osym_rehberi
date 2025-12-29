@@ -14,6 +14,7 @@ import '../../../exam_attempts/data/providers/exam_attempt_api_provider.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../recommendations/presentation/pages/recommendations_page.dart';
 import '../../../exam_attempts/presentation/pages/exam_attempts_page.dart';
+import '../../../preferences/presentation/pages/my_preferences_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -43,10 +44,11 @@ class _HomePageState extends ConsumerState<HomePage> {
         ref.read(recommendationListProvider(studentId));
         // ✅ Öğrenci detayı
         ref.read(studentDetailProvider(studentId));
-        // ✅ Tercihleri yükle (getStudentTargets API'si)
+        // ✅ Tercihleri yükle (getStudentTargets API'si) - Zorla çağır
         try {
           final apiService = ApiService();
-          await apiService.getStudentTargets(studentId);
+          final response = await apiService.getStudentTargets(studentId);
+          debugPrint('🟢 HomePage: Tercihler yüklendi: ${response.data?.length ?? 0} tercih');
         } catch (e) {
           debugPrint('⚠️ Error loading targets: $e');
         }
@@ -186,6 +188,12 @@ class _HomePageState extends ConsumerState<HomePage> {
 
                     // ✅ Öneriler
                     _buildRecommendationsCard(context, ref),
+                    SizedBox(
+                        height:
+                            ResponsiveUtils.getResponsiveSpacing(context, 16)),
+
+                    // ✅ Tercihlerim Widget
+                    _buildTargetsCard(context, ref),
                     SizedBox(
                         height:
                             ResponsiveUtils.getResponsiveSpacing(context, 16)),
@@ -1087,6 +1095,196 @@ class _HomePageState extends ConsumerState<HomePage> {
                   label: const Text('Tekrar Dene'),
                 ),
               ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ✅ Tercihlerim Card
+  Widget _buildTargetsCard(BuildContext context, WidgetRef ref) {
+    if (_studentId == null) {
+      return const SizedBox.shrink();
+    }
+
+    // Tercihleri API'den çek
+    return FutureBuilder<dynamic>(
+      future: ApiService().getStudentTargets(_studentId!),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Card(
+            child: Padding(
+              padding: ResponsiveUtils.getResponsivePadding(context),
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          debugPrint('🔴 Error loading targets: ${snapshot.error}');
+          return Card(
+            child: Padding(
+              padding: ResponsiveUtils.getResponsivePadding(context),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 32),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tercihler yüklenirken hata oluştu',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final targets = snapshot.data?.data as List? ?? [];
+        
+        if (targets.isEmpty) {
+          return Card(
+            child: InkWell(
+              onTap: () {
+                // Tercihlerim sayfasına git
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const MyPreferencesPage(),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: ResponsiveUtils.getResponsivePadding(context),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.bookmark_border, color: Colors.blue, size: 32),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Henüz bir tercih yapmadınız',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const MyPreferencesPage(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Tercih Ekle'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        // İlk 3 tercihi göster
+        final topTargets = targets.take(3).toList();
+
+        return Card(
+          child: InkWell(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const MyPreferencesPage(),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: ResponsiveUtils.getResponsivePadding(context),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Tercihlerim',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontSize: ResponsiveUtils.getResponsiveFontSize(
+                                  context, 18),
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const MyPreferencesPage(),
+                            ),
+                          );
+                        },
+                        child: const Text('Tümünü Gör'),
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                      height:
+                          ResponsiveUtils.getResponsiveSpacing(context, 12)),
+                  ...topTargets.map((target) {
+                    final dept = target['name'] ?? 'Bilinmeyen Bölüm';
+                    final uni = target['university']?['name'] ?? 'Bilinmeyen Üniversite';
+                    final city = target['university']?['city'] ?? '';
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom:
+                            ResponsiveUtils.getResponsiveSpacing(context, 8),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          SizedBox(
+                              width: ResponsiveUtils.getResponsiveSpacing(
+                                  context, 12)),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  dept,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                                if (uni != 'Bilinmeyen Üniversite')
+                                  Text(
+                                    '$uni - $city',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: Colors.grey[600],
+                                        ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ),
             ),
           ),
         );

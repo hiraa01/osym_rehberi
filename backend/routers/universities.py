@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from database import get_db
-from models.university import University, Department
+from models import University, Department
 from schemas.university import (
     UniversityCreate, UniversityUpdate, UniversityResponse,
     DepartmentCreate, DepartmentUpdate, DepartmentResponse, DepartmentWithUniversityResponse

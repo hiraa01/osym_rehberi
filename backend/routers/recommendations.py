@@ -4,8 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from database import get_db
-from models.student import Student
-from models.university import Recommendation
+from models import Student, Recommendation
 from schemas.university import RecommendationResponse
 from services.recommendation_engine import RecommendationEngine
 from services.score_calculator import ScoreCalculator
@@ -42,7 +41,7 @@ async def generate_recommendations(
             if existing_recs and len(existing_recs) > 0:
                 api_logger.info("Returning cached recommendations", user_id=student_id, count=len(existing_recs))
                 # Mevcut önerileri formatla ve döndür
-                from models.university import Department, University
+                from models import Department, University
                 from schemas.university import DepartmentWithUniversityResponse
                 
                 department_ids = {rec.department_id for rec in existing_recs}
@@ -134,7 +133,7 @@ async def generate_recommendations(
         
         # ✅ FALLBACK: Eğer öneri bulunamazsa, en yüksek puanlı veya en çok kontenjanlı 20 bölümü "Popüler Bölümler" olarak döndür
         api_logger.info("No recommendations found, returning popular departments", user_id=student_id)
-        from models.university import Department, University
+        from models import Department, University
         from schemas.university import DepartmentWithUniversityResponse
         
         # ✅ min_score None olan bölümleri filtreleme dışında bırak
@@ -213,7 +212,7 @@ async def generate_recommendations(
                 # Öğrenci yoksa bile popüler bölümleri döndür
                 student = None
             
-            from models.university import Department, University
+            from models import Department, University
             from schemas.university import DepartmentWithUniversityResponse
             
             # ✅ min_score None olan bölümleri filtreleme dışında bırak
@@ -290,7 +289,7 @@ async def get_student_recommendations(
     Öğrencinin mevcut önerilerini getir - Direkt List döndürür (Flutter uyumlu)
     ✅ BULLETPROOF: Herhangi bir hata durumunda fallback mekanizması devreye girer
     """
-    from models.university import Department, University
+            from models import Department, University
     from schemas.university import DepartmentWithUniversityResponse
     
     try:
@@ -509,7 +508,7 @@ async def get_recommendation(recommendation_id: int, db: Session = Depends(get_d
         raise HTTPException(status_code=404, detail="Öneri bulunamadı")
     
     # Department ve University bilgilerini getir
-    from models.university import Department, University
+            from models import Department, University
     from schemas.university import DepartmentWithUniversityResponse
     
     department = db.query(Department).filter(Department.id == recommendation.department_id).first()
@@ -535,7 +534,7 @@ async def get_goal_proximity(
     """Öğrencinin seçilen bölüme hedef yakınlığını döndürür.
     TYT/AYT hedefleri yoksa toplam puan vs bölüm min_score üzerinden yaklaşık yakınlık verir.
     """
-    from models.university import Department
+    from models import Department
 
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:

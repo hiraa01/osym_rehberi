@@ -4,6 +4,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     container_name: osym_rehberi_backend
+    restart: always # ✅ Her zaman yeniden başlat (unless-stopped yerine)
     ports:
       - "8002:8000"
     environment:
@@ -21,13 +22,21 @@ services:
       - ../backend:/app
       - backend_logs:/app/logs
       - ml_models:/app/ml_models
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --timeout-keep-alive 120
+    # ✅ CRITICAL: Uvicorn timeout ve retry ayarları - container çökmesini önlemek için
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --timeout-keep-alive 120 --timeout-graceful-shutdown 30 --log-level info
     depends_on:
       db:
-        condition: service_healthy
-    restart: unless-stopped
+        condition: service_healthy # ✅ Veritabanı hazır olana kadar bekle
     networks:
       - osym_network
+    # ✅ CRITICAL: Healthcheck ekle - container'ın sağlıklı olduğunu kontrol et
+    # Python ile HTTP isteği yap (curl yerine - daha güvenilir)
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s # ✅ Backend'in başlaması için yeterli süre (veritabanı bekleme dahil - 10 deneme x 5 saniye = 50 saniye + buffer)
 
   # frontend:
   #   build:
@@ -46,6 +55,7 @@ services:
   db:
     image: postgres:15-alpine
     container_name: osym_rehberi_db
+    restart: always # ✅ Her zaman yeniden başlat
     environment:
       - POSTGRES_DB=osym_rehber
       - POSTGRES_USER=osym_user
@@ -54,15 +64,14 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5435:5432"
-    restart: unless-stopped
     networks:
       - osym_network
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U osym_user -d osym_rehber" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      interval: 5s # ✅ 30s'den 5s'ye düşürüldü - daha hızlı kontrol
+      timeout: 5s # ✅ 10s'den 5s'ye düşürüldü
+      retries: 5 # ✅ 3'ten 5'e çıkarıldı - daha fazla deneme
+      start_period: 10s # ✅ 30s'den 10s'ye düşürüldü - daha hızlı başlangıç
 
   redis:
     image: redis:7-alpine

@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 from typing import List, Dict, Any, Tuple, Optional
 from sqlalchemy.orm import Session
-from models.student import Student
-from models.university import Department, University, Recommendation
+from models import Student, Department, University, Recommendation
 from schemas.university import RecommendationResponse, DepartmentWithUniversityResponse
 from core.logging_config import recommendation_logger
 from core.exceptions import RecommendationError, StudentNotFoundError
@@ -73,7 +72,7 @@ class RecommendationEngine:
             
             # ✅ Şehir önceliğine göre bölümleri sırala
             # Önce tercih edilen şehirlerdeki üniversiteler, sonra diğerleri
-            from models.university import University
+            from models import University
             departments_with_priority = []
             other_departments = []
             

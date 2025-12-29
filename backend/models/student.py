@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 
@@ -53,9 +54,26 @@ class Student(Base):
     # Interest Areas
     interest_areas = Column(Text, nullable=True)  # JSON string
     
+    # Profile Information
+    avatar_url = Column(String(500), nullable=True)  # Profil fotoğrafı URL'i
+    bio = Column(Text, nullable=True)  # Kısa biyografi
+    target_university = Column(String(200), nullable=True)  # Hedeflenen üniversite
+    
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # ✅ Relationships - String reference kullanarak circular import'u önle
+    # User ilişkisi (eğer varsa)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    user = relationship("User", back_populates="student")
+    
+    # Yeni Modüller - String reference ile
+    preferences = relationship("Preference", back_populates="student", cascade="all, delete-orphan")
+    forum_posts = relationship("ForumPost", back_populates="student", cascade="all, delete-orphan")
+    forum_comments = relationship("ForumComment", back_populates="student", cascade="all, delete-orphan")
+    exam_attempts = relationship("ExamAttempt", back_populates="student", cascade="all, delete-orphan")
+    swipes = relationship("Swipe", back_populates="student", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Student(id={self.id}, name='{self.name}', exam_type='{self.exam_type}')>"

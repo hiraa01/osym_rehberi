@@ -7,7 +7,7 @@ import google.generativeai as genai
 
 from database import get_db
 from core.logging_config import api_logger
-from models.student import Student
+from models import Student
 from services.recommendation_engine import RecommendationEngine
 from services.ml_recommendation_engine import MLRecommendationEngine
 
@@ -58,7 +58,7 @@ async def coach_chat(payload: ChatRequest, db: Session = Depends(get_db)):
         weights = _normalize_weights(payload.w_c, payload.w_s, payload.w_p)
 
         # ✅ Önce mevcut önerileri kontrol et (cache'den)
-        from models.university import Recommendation
+        from models import Recommendation
         existing_recs = db.query(Recommendation).filter(
             Recommendation.student_id == payload.student_id
         ).order_by(Recommendation.final_score.desc()).limit(payload.limit).all()
@@ -167,7 +167,7 @@ async def coach_chat(payload: ChatRequest, db: Session = Depends(get_db)):
         if payload.target_department_id:
             try:
                 from services.score_calculator import ScoreCalculator
-                from models.university import Department
+                from models import Department
                 dept = db.query(Department).filter(Department.id == payload.target_department_id).first()
                 if dept:
                     t_tyt = 0.0
@@ -257,7 +257,7 @@ async def coach_chat(payload: ChatRequest, db: Session = Depends(get_db)):
         # ✅ Tarihsel veri context injection - Bölüm isimlerini mesajdan çıkar ve trend analizi yap
         historical_context = ""
         try:
-            from models.university import Department, DepartmentYearlyStats
+            from models import Department, DepartmentYearlyStats
             import json
             
             # Kullanıcı mesajından bölüm isimlerini çıkarmaya çalış (basit keyword matching)

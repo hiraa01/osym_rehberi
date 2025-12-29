@@ -3,8 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from database import get_db
-from models.exam_attempt import ExamAttempt
-from models.student import Student
+from models import ExamAttempt, Student
 from schemas.exam_attempt import (
     ExamAttemptCreate, 
     ExamAttemptUpdate, 

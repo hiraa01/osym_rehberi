@@ -13,8 +13,7 @@ import joblib
 import os
 import json
 from sqlalchemy.orm import Session
-from models.student import Student
-from models.university import Department, Recommendation, University
+from models import Student, Department, Recommendation, University
 from core.logging_config import recommendation_logger
 
 class MLRecommendationEngine:
