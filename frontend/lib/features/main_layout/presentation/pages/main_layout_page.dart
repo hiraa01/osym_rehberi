@@ -16,9 +16,9 @@ class MainLayoutPage extends StatefulWidget {
 }
 
 class _MainLayoutPageState extends State<MainLayoutPage> {
-  int _currentIndex = 0;
+  int _currentIndex = 0; // ✅ Anasayfa başlangıçta seçili (Index 0)
   final PageController _pageController =
-      PageController(initialPage: 2); // Anasayfa ortada
+      PageController(initialPage: 0); // Anasayfa Index 0'da
 
   @override
   void dispose() {
@@ -39,9 +39,9 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
               });
             },
             children: const [
-              StitchExamAttemptsPage(), // 0: Netlerim
-              StitchGoalsPage(), // 1: Keşfet
-              StitchDashboardPage(), // 2: Anasayfa
+              StitchDashboardPage(), // 0: Anasayfa
+              StitchExamAttemptsPage(), // 1: Netlerim
+              StitchGoalsPage(), // 2: Keşfet
               StitchRecommendationsPage(), // 3: Öneriler
               StitchAgendaPage(), // 4: Ajandam
             ],

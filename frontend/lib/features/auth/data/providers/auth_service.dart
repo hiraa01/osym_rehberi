@@ -145,8 +145,15 @@ class AuthService {
       _currentUser = authResponse.user;
       _authToken = authResponse.token;
 
-      // ✅ REGISTER SONRASI: Student ID'yi bul ve kaydet (varsa)
-      await _loadAndSaveStudentId(authResponse.user.id);
+      // ✅ REGISTER SONRASI: Student ID'yi kaydet (Backend'den geldiyse direkt kaydet, yoksa bul)
+      if (authResponse.studentId != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt('student_id', authResponse.studentId!);
+        debugPrint('✅ Student ID from register response: ${authResponse.studentId}');
+      } else {
+        // Backend'den gelmediyse, manuel olarak bul
+        await _loadAndSaveStudentId(authResponse.user.id);
+      }
 
       return authResponse.user;
     } on DioException catch (e) {
@@ -208,8 +215,31 @@ class AuthService {
       _currentUser = authResponse.user;
       _authToken = authResponse.token;
 
-      // ✅ LOGIN SONRASI: Student ID'yi bul ve kaydet
-      await _loadAndSaveStudentId(authResponse.user.id);
+      // ✅ LOGIN SONRASI: Student ID'yi kaydet (Backend'den geldiyse direkt kaydet, yoksa /api/auth/me ile bul)
+      if (authResponse.studentId != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt('student_id', authResponse.studentId!);
+        debugPrint('✅ Student ID from login response: ${authResponse.studentId}');
+      } else {
+        // Backend'den gelmediyse, /api/auth/me endpoint'ine git
+        debugPrint('⚠️ No student_id in login response, trying /api/auth/me/{user_id}/student...');
+        try {
+          // ✅ /api/auth/me/{user_id}/student endpoint'ini kullan
+          final meResponse = await _apiService.getUserStudentProfile(authResponse.user.id);
+          if (meResponse.data != null && meResponse.data['student_id'] != null) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setInt('student_id', meResponse.data['student_id'] as int);
+            debugPrint('✅ Student ID from /api/auth/me/${authResponse.user.id}/student: ${meResponse.data['student_id']}');
+          } else {
+            // Hala bulunamadıysa, manuel olarak bul
+            debugPrint('⚠️ No student_id in /api/auth/me/{user_id}/student response, trying manual search...');
+            await _loadAndSaveStudentId(authResponse.user.id);
+          }
+        } catch (e) {
+          debugPrint('⚠️ /api/auth/me/${authResponse.user.id}/student failed, falling back to manual search: $e');
+          await _loadAndSaveStudentId(authResponse.user.id);
+        }
+      }
 
       return authResponse.user;
     } catch (e) {
@@ -236,16 +266,28 @@ class AuthService {
         }
       }
       
-      // Backend'den student profilini getir
+      // Backend'den student profilini getir (/api/auth/me/{user_id}/student)
       final response = await _apiService.getUserStudentProfile(userId);
-      final studentData = response.data['student'];
       
-      if (studentData != null && studentData['id'] != null) {
-        // Student ID'yi kaydet
-        await prefs.setInt('student_id', studentData['id'] as int);
-        debugPrint('✅ Student ID loaded and saved: ${studentData['id']}');
+      // ✅ Yeni endpoint formatı: {"user_id": int, "student_id": int?, "student": {...}}
+      if (response.data != null) {
+        // Önce student_id'yi direkt kontrol et
+        if (response.data['student_id'] != null) {
+          await prefs.setInt('student_id', response.data['student_id'] as int);
+          debugPrint('✅ Student ID loaded and saved from student_id field: ${response.data['student_id']}');
+          return;
+        }
+        
+        // Eğer student_id yoksa, student objesinden al
+        final studentData = response.data['student'];
+        if (studentData != null && studentData['id'] != null) {
+          await prefs.setInt('student_id', studentData['id'] as int);
+          debugPrint('✅ Student ID loaded and saved from student object: ${studentData['id']}');
+        } else {
+          debugPrint('⚠️ No student profile found for user $userId');
+        }
       } else {
-        debugPrint('⚠️ No student profile found for user $userId');
+        debugPrint('⚠️ No data in getUserStudentProfile response for user $userId');
       }
     } catch (e) {
       // Student bulunamadı - normal (henüz profil oluşturulmamış olabilir)

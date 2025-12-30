@@ -414,19 +414,44 @@ def create_seed_users() -> Dict[str, bool]:
 
 def get_all_tables_with_sequences() -> List[Tuple[str, str]]:
     """
-    ✅ Tüm tabloları ve ID kolonlarını bulur
+    ✅ Tüm tabloları ve ID kolonlarını bulur (public şeması dahil)
     
     Returns:
         list: [(table_name, id_column_name), ...]
     """
     inspector = inspect(engine)
-    tables = inspector.get_table_names()
+    
+    # ✅ PostgreSQL'de tablolar genelde 'public' şemasında
+    # Hem şema belirtmeden hem de 'public' şemasından tabloları al
+    try:
+        # Önce public şemasından tabloları al
+        tables = inspector.get_table_names(schema='public')
+    except Exception:
+        # Şema belirtmeden dene
+        try:
+            tables = inspector.get_table_names()
+        except Exception as e:
+            print_error(f"Tablo listesi alınamadı: {e}")
+            return []
+    
+    # Eğer boşsa, şema belirtmeden tekrar dene
+    if not tables:
+        try:
+            tables = inspector.get_table_names()
+        except Exception as e:
+            print_error(f"Tablo listesi alınamadı (şema belirtmeden): {e}")
+            return []
     
     tables_with_ids = []
     
     for table_name in tables:
         try:
-            columns = inspector.get_columns(table_name)
+            # ✅ Şema belirtmeden veya 'public' şemasından kolonları al
+            try:
+                columns = inspector.get_columns(table_name, schema='public')
+            except Exception:
+                columns = inspector.get_columns(table_name)
+            
             # ID kolonunu bul (primary key ve integer olan)
             for col in columns:
                 if col.get('primary_key') and 'int' in str(col.get('type')).lower():
@@ -441,31 +466,46 @@ def get_all_tables_with_sequences() -> List[Tuple[str, str]]:
 
 def fix_sequence_for_table(table_name: str, id_column: str, db) -> Tuple[bool, Optional[int], Optional[str]]:
     """
-    ✅ Bir tablonun sequence'ini düzeltir
+    ✅ Bir tablonun sequence'ini düzeltir (public şeması dahil)
     
     Returns:
         Tuple[bool, Optional[int], Optional[str]]: (başarılı mı, max_id, sequence_name)
     """
     try:
-        # ✅ Mevcut maksimum ID'yi bul
-        max_id_query = text(f"SELECT COALESCE(MAX({id_column}), 0) FROM {table_name}")
-        result = db.execute(max_id_query)
-        max_id = result.scalar() or 0
+        # ✅ Mevcut maksimum ID'yi bul (public şeması dahil)
+        # PostgreSQL'de tablolar genelde 'public' şemasında
+        max_id_query = text(f'SELECT COALESCE(MAX("{id_column}"), 0) FROM public."{table_name}"')
+        try:
+            result = db.execute(max_id_query)
+            max_id = result.scalar() or 0
+        except Exception:
+            # Şema belirtmeden dene
+            max_id_query = text(f'SELECT COALESCE(MAX("{id_column}"), 0) FROM "{table_name}"')
+            result = db.execute(max_id_query)
+            max_id = result.scalar() or 0
         
-        # ✅ Sequence adını bul
-        sequence_query = text(f"""
-            SELECT pg_get_serial_sequence(:table_name, :id_column)
+        # ✅ Sequence adını bul (public şeması dahil)
+        # pg_get_serial_sequence fonksiyonu şema adını da döndürür: 'public.table_id_seq'
+        sequence_query = text("""
+            SELECT pg_get_serial_sequence(:table_schema_table, :id_column)
         """)
-        result = db.execute(sequence_query, {"table_name": table_name, "id_column": id_column})
+        # Önce 'public.table_name' formatında dene
+        table_schema_table = f'public."{table_name}"'
+        result = db.execute(sequence_query, {"table_schema_table": table_schema_table, "id_column": id_column})
         sequence_name = result.scalar()
+        
+        # Eğer bulunamadıysa, sadece table_name ile dene
+        if not sequence_name:
+            table_schema_table = f'"{table_name}"'
+            result = db.execute(sequence_query, {"table_schema_table": table_schema_table, "id_column": id_column})
+            sequence_name = result.scalar()
         
         if not sequence_name:
             return False, max_id, None
         
         # ✅ Sequence'i maksimum ID + 1'e ayarla
-        setval_query = text(f"""
-            SELECT setval(:sequence_name, :max_id, false)
-        """)
+        # setval fonksiyonu sequence adını (şema dahil) alır
+        setval_query = text("SELECT setval(:sequence_name, :max_id, false)")
         db.execute(setval_query, {"sequence_name": sequence_name, "max_id": max_id})
         db.commit()
         

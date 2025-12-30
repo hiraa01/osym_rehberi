@@ -86,12 +86,24 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
             # Token oluştur
             token = generate_token()
             
-            api_logger.info(f"User registered successfully: user_id={new_user.id}")
+            # ✅ Student ID'yi bul (email veya phone ile)
+            student_id = None
+            if new_user.email:
+                student = db.query(Student).filter(Student.email == new_user.email).first()
+                if student:
+                    student_id = student.id
+            if not student_id and new_user.phone:
+                student = db.query(Student).filter(Student.phone == new_user.phone).first()
+                if student:
+                    student_id = student.id
+            
+            api_logger.info(f"User registered successfully: user_id={new_user.id}, student_id={student_id}")
             
             return AuthResponse(
                 user=new_user,
                 token=token,
-                message="Kayıt başarılı"
+                message="Kayıt başarılı",
+                student_id=student_id
             )
             
         except Exception as create_error:
@@ -170,12 +182,25 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
         # Token oluştur
         token = generate_token()
         
-        api_logger.info("User logged in successfully", user_id=user.id)
+        # ✅ Student ID'yi bul (email veya phone ile)
+        student_id = None
+        from models import Student
+        if user.email:
+            student = db.query(Student).filter(Student.email == user.email).first()
+            if student:
+                student_id = student.id
+        if not student_id and user.phone:
+            student = db.query(Student).filter(Student.phone == user.phone).first()
+            if student:
+                student_id = student.id
+        
+        api_logger.info("User logged in successfully", user_id=user.id, student_id=student_id)
         
         return AuthResponse(
             user=user,
             token=token,
-            message="Giriş başarılı"
+            message="Giriş başarılı",
+            student_id=student_id
         )
         
     except HTTPException:
@@ -192,6 +217,8 @@ async def get_current_user(user_id: int, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
     return user
+
+
 
 
 @router.put("/me/{user_id}", response_model=UserResponse)
@@ -211,9 +238,51 @@ async def update_user(user_id: int, user_update: UserUpdate, db: Session = Depen
     return user
 
 
-@router.get("/student/{user_id}")
+@router.get("/me/{user_id}/student")
 async def get_user_student_profile(user_id: int, db: Session = Depends(get_db)):
-    """Kullanıcının öğrenci profilini getir"""
+    """
+    Kullanıcının student profilini ve student_id'yi getir
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+    
+    # Student ID'yi bul
+    student_id = None
+    student = None
+    if user.email:
+        student = db.query(Student).filter(Student.email == user.email).first()
+        if student:
+            student_id = student.id
+    if not student_id and user.phone:
+        student = db.query(Student).filter(Student.phone == user.phone).first()
+        if student:
+            student_id = student.id
+    
+    # Student dict'ini oluştur (eğer varsa)
+    student_dict = None
+    if student:
+        student_dict = {
+            "id": student.id,
+            "user_id": student.user_id,
+            "name": student.name,
+            "email": student.email,
+            "phone": student.phone,
+            "class_level": student.class_level,
+            "exam_type": student.exam_type,
+            "field_type": student.field_type,
+        }
+    
+    return {
+        "user_id": user_id,
+        "student_id": student_id,
+        "student": student_dict
+    }
+
+
+@router.get("/student/{user_id}")
+async def get_user_student_profile_old(user_id: int, db: Session = Depends(get_db)):
+    """Kullanıcının öğrenci profilini getir (Eski endpoint - geriye dönük uyumluluk)"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")

@@ -266,6 +266,18 @@ class ApiService {
     );
   }
 
+  // ✅ Preferences endpoints
+  Future<Response> getPreferences(int studentId) async {
+    return await _dio.get(
+      '/preferences',
+      queryParameters: {'student_id': studentId},
+    );
+  }
+
+  Future<Response> deletePreference(int preferenceId) async {
+    return await _dio.delete('/preferences/$preferenceId');
+  }
+
   // ✅ Öğrencinin hedef bölümlerini detaylı olarak getir
   Future<Response> getStudentTargets(int studentId) async {
     // ✅ Backend endpoint: /api/targets?student_id=...
@@ -664,7 +676,8 @@ class ApiService {
 
   // ✅ Kullanıcının öğrenci profilini getir (user_id'den student_id bulmak için)
   Future<Response> getUserStudentProfile(int userId) async {
-    return await _dio.get('/auth/student/$userId');
+    // ✅ Yeni endpoint'i kullan: /auth/me/{user_id}/student
+    return await _dio.get('/auth/me/$userId/student');
   }
 
   Future<Response> updateUser({
@@ -855,6 +868,46 @@ class ApiService {
         if (biometricEnabled != null) 'biometric_enabled': biometricEnabled,
       },
     );
+  }
+
+  // ✅ Agenda Endpoints
+  Future<Response> getAgendaItems({
+    required int studentId,
+    int page = 1,
+    int size = 20,
+    bool? isCompleted,
+    String? category,
+  }) async {
+    final queryParams = <String, dynamic>{
+      'student_id': studentId,
+      'page': page,
+      'size': size,
+    };
+    if (isCompleted != null) queryParams['is_completed'] = isCompleted;
+    if (category != null) queryParams['category'] = category;
+    
+    return await _dio.get(
+      '/agenda',
+      queryParameters: queryParams,
+    );
+  }
+
+  Future<Response> createAgendaItem(Map<String, dynamic> data) async {
+    return await _dio.post(
+      '/agenda',
+      data: data,
+    );
+  }
+
+  Future<Response> updateAgendaItem(int itemId, Map<String, dynamic> data) async {
+    return await _dio.put(
+      '/agenda/$itemId',
+      data: data,
+    );
+  }
+
+  Future<Response> deleteAgendaItem(int itemId) async {
+    return await _dio.delete('/agenda/$itemId');
   }
 }
 

@@ -105,13 +105,33 @@ def extract_city_from_university(uni_name):
 
 
 def normalize_university_type(value):
-    """Üniversite tipini normalize et (devlet/vakif)"""
+    """
+    ✅ Üniversite tipini normalize et (devlet/vakif/kktc)
+    
+    Kapsamlı eşleştirme:
+    - 'VAKIF MYO', 'VAKIF', 'VAKIF ÜNİVERSİTESİ' -> 'vakif'
+    - 'DEVLET', 'DEVLET ÜNİVERSİTESİ' -> 'devlet'
+    - 'KKTC', 'KIBRIS' -> 'kktc'
+    - Diğerleri -> 'devlet' (default)
+    """
     if pd.isna(value):
         return 'devlet'
     
     value_upper = str(value).upper().strip()
-    if 'VAKIF' in value_upper or 'VAKÏF' in value_upper:
+    
+    # ✅ Vakıf üniversiteleri (kapsamlı kontrol)
+    if any(keyword in value_upper for keyword in ['VAKIF', 'VAKÏF', 'VAKIF MYO', 'VAKIF ÜNİVERSİTESİ', 'VAKIF ÜNİVERSİTE']):
         return 'vakif'
+    
+    # ✅ KKTC üniversiteleri
+    if any(keyword in value_upper for keyword in ['KKTC', 'KIBRIS', 'KIBRIS TÜRK', 'CYPRUS']):
+        return 'kktc'
+    
+    # ✅ Devlet üniversiteleri (açıkça belirtilmişse)
+    if any(keyword in value_upper for keyword in ['DEVLET', 'DEVLET ÜNİVERSİTESİ', 'DEVLET ÜNİVERSİTE']):
+        return 'devlet'
+    
+    # ✅ Default: devlet (çoğu üniversite devlet)
     return 'devlet'
 
 
@@ -303,8 +323,11 @@ def import_excel_file(file_path: Path, year: int, db: Session):
                     continue  # Üniversite adı yoksa atla
                 
                 # ✅ PostgreSQL uyumlu: Enum doğrulama
+                # Önce normalize et (kapsamlı eşleştirme), sonra validate et (sessiz mod)
                 uni_type_raw = row.get('Üniversite Türü', 'devlet')
-                uni_type = validate_enum_value(uni_type_raw, ['devlet', 'vakif', 'kktc'], default='devlet')
+                uni_type_normalized = normalize_university_type(uni_type_raw)
+                # Normalize edilmiş değer zaten geçerli enum değeri olmalı, sessiz mod ile validate et
+                uni_type = validate_enum_value(uni_type_normalized, ['devlet', 'vakif', 'kktc'], default=uni_type_normalized, silent=True)
                 
                 # Üniversite var mı kontrol et
                 university = db.query(University).filter(
@@ -322,6 +345,12 @@ def import_excel_file(file_path: Path, year: int, db: Session):
                     db.add(university)
                     db.flush()  # ID almak için
                     new_universities += 1
+                else:
+                    # ✅ Mevcut üniversite varsa, türünü güncelle (yanlışsa düzelt)
+                    if university.university_type != uni_type:
+                        print(f"   🔧 Üniversite türü güncelleniyor: {uni_name} ({university.university_type} → {uni_type})")
+                        university.university_type = uni_type
+                        db.flush()  # Değişikliği kaydet
                 
                 # ✅ Bölüm bilgilerini al ve normalize et
                 dept_name_raw = str(row.get('Program Adı', '')).strip()
@@ -432,9 +461,9 @@ def import_excel_file(file_path: Path, year: int, db: Session):
                     
                     # En güncel yılın verilerini güncelle (sadece daha yeni yıl ise)
                     if year >= (existing_dept.updated_at.year if existing_dept.updated_at else 0):
-                        existing_dept.min_score = min_score if min_score > 0 else existing_dept.min_score
-                        existing_dept.min_rank = min_rank if min_rank > 0 else existing_dept.min_rank
-                        existing_dept.quota = quota if quota > 0 else existing_dept.quota
+                        existing_dept.min_score = min_score if (min_score is not None and min_score > 0) else existing_dept.min_score
+                        existing_dept.min_rank = min_rank if (min_rank is not None and min_rank > 0) else existing_dept.min_rank
+                        existing_dept.quota = quota if (quota is not None and quota > 0) else existing_dept.quota
                     
                     department = existing_dept
                 else:
@@ -449,8 +478,8 @@ def import_excel_file(file_path: Path, year: int, db: Session):
                         duration=duration,  # ✅ Artık doğru hesaplanıyor (2 veya 4+)
                         degree_type=degree_type,  # ✅ Associate veya Bachelor
                         quota=quota,
-                        min_score=min_score if min_score > 0 else None,
-                        min_rank=min_rank if min_rank > 0 else None,
+                        min_score=min_score if (min_score is not None and min_score > 0) else None,
+                        min_rank=min_rank if (min_rank is not None and min_rank > 0) else None,
                     )
                     db.add(department)
                     db.flush()  # ID almak için
@@ -469,29 +498,29 @@ def import_excel_file(file_path: Path, year: int, db: Session):
                     
                     if existing_stats:
                         # Güncelle (daha iyi veriler varsa - min_score için en düşük, max_score için en yüksek)
-                        if min_score > 0 and (existing_stats.min_score is None or min_score < existing_stats.min_score):
+                        if (min_score is not None and min_score > 0) and (existing_stats.min_score is None or min_score < existing_stats.min_score):
                             existing_stats.min_score = min_score
-                        if max_score > 0 and (existing_stats.max_score is None or max_score > existing_stats.max_score):
+                        if (max_score is not None and max_score > 0) and (existing_stats.max_score is None or max_score > existing_stats.max_score):
                             existing_stats.max_score = max_score
-                        if min_rank > 0 and (existing_stats.min_rank is None or min_rank < existing_stats.min_rank):
+                        if (min_rank is not None and min_rank > 0) and (existing_stats.min_rank is None or min_rank < existing_stats.min_rank):
                             existing_stats.min_rank = min_rank
-                        if max_rank > 0 and (existing_stats.max_rank is None or max_rank > existing_stats.max_rank):
+                        if (max_rank is not None and max_rank > 0) and (existing_stats.max_rank is None or max_rank > existing_stats.max_rank):
                             existing_stats.max_rank = max_rank
-                        if quota > 0:
+                        if quota is not None and quota > 0:
                             existing_stats.quota = quota
-                        if placed_students > 0:
+                        if placed_students is not None and placed_students > 0:
                             existing_stats.placed_students = placed_students
                     else:
                         # Yeni yıllık istatistik ekle
                         yearly_stats = DepartmentYearlyStats(
                             department_id=department.id,
                             year=year,
-                            min_score=min_score if min_score > 0 else None,
-                            max_score=max_score if max_score > 0 else None,
-                            min_rank=min_rank if min_rank > 0 else None,
-                            max_rank=max_rank if max_rank > 0 else None,
-                            quota=quota if quota > 0 else None,
-                            placed_students=placed_students if placed_students > 0 else None,
+                            min_score=min_score if (min_score is not None and min_score > 0) else None,
+                            max_score=max_score if (max_score is not None and max_score > 0) else None,
+                            min_rank=min_rank if (min_rank is not None and min_rank > 0) else None,
+                            max_rank=max_rank if (max_rank is not None and max_rank > 0) else None,
+                            quota=quota if (quota is not None and quota > 0) else None,
+                            placed_students=placed_students if (placed_students is not None and placed_students > 0) else None,
                         )
                         db.add(yearly_stats)
                         db.flush()  # Flush yap ve hata varsa yakala
@@ -510,13 +539,13 @@ def import_excel_file(file_path: Path, year: int, db: Session):
                             ).first()
                             if existing_stats:
                                 # Mevcut kaydı güncelle
-                                if min_score > 0 and (existing_stats.min_score is None or min_score < existing_stats.min_score):
+                                if (min_score is not None and min_score > 0) and (existing_stats.min_score is None or min_score < existing_stats.min_score):
                                     existing_stats.min_score = min_score
-                                if max_score > 0 and (existing_stats.max_score is None or max_score > existing_stats.max_score):
+                                if (max_score is not None and max_score > 0) and (existing_stats.max_score is None or max_score > existing_stats.max_score):
                                     existing_stats.max_score = max_score
-                                if quota > 0:
+                                if quota is not None and quota > 0:
                                     existing_stats.quota = quota
-                                if placed_students > 0:
+                                if placed_students is not None and placed_students > 0:
                                     existing_stats.placed_students = placed_students
                         except Exception as retry_error:
                             # Eğer hala hata varsa, bu satırı atla (zaten kayıt var)

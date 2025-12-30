@@ -47,6 +47,7 @@ class AuthResponse(BaseModel):
     user: UserResponse
     token: str
     message: str
+    student_id: Optional[int] = None  # ✅ Öğrenci profili varsa ID'si
 
 
 class UserUpdate(BaseModel):

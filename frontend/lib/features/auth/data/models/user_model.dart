@@ -60,11 +60,13 @@ class AuthResponse {
   final UserModel user;
   final String token;
   final String message;
+  final int? studentId; // ✅ Backend'den gelen student_id
 
   AuthResponse({
     required this.user,
     required this.token,
     required this.message,
+    this.studentId,
   });
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
@@ -72,6 +74,7 @@ class AuthResponse {
       user: UserModel.fromJson(json['user'] as Map<String, dynamic>),
       token: json['token'] as String,
       message: json['message'] as String,
+      studentId: json['student_id'] as int?, // ✅ Backend'den gelen student_id
     );
   }
 

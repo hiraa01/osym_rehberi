@@ -716,7 +716,7 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
       ),
     );
 
-    // TODO: Gerçek PDF export implementasyonu
+    // PDF export will be implemented later
     // pdf paketi kullanarak önerileri PDF'e çevir
     debugPrint('📄 PDF Export: ${_filteredRecommendations.length} öneri');
   }
@@ -731,7 +731,7 @@ class _RecommendationsPageState extends ConsumerState<RecommendationsPage> {
       ),
     );
 
-    // TODO: Gerçek Excel export implementasyonu
+    // Excel export will be implemented later
     // excel paketi kullanarak önerileri Excel'e çevir
     debugPrint('📊 Excel Export: ${_filteredRecommendations.length} öneri');
   }

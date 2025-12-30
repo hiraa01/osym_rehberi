@@ -12,6 +12,7 @@ PostgreSQL katı tip kontrolü yapar, bu yüzden:
 """
 
 import pandas as pd
+import math
 import re
 from typing import Optional, Union, Any
 
@@ -96,7 +97,7 @@ def safe_to_float(value: Any, default: Optional[float] = None) -> Optional[float
         # Float'a çevir
         result = float(value)
         # NaN veya Infinity kontrolü
-        if pd.isna(result) or not pd.isfinite(result):
+        if pd.isna(result) or not math.isfinite(result):
             return default
         return result
     except (ValueError, TypeError, OverflowError):
@@ -175,7 +176,7 @@ def safe_to_boolean(value: Any, default: Optional[bool] = None) -> Optional[bool
         return default
 
 
-def validate_enum_value(value: Any, allowed_values: list[str], default: Optional[str] = None) -> Optional[str]:
+def validate_enum_value(value: Any, allowed_values: list[str], default: Optional[str] = None, silent: bool = False) -> Optional[str]:
     """
     ✅ Enum değerini doğrular (PostgreSQL ENUM veya CHECK constraint için)
     
@@ -183,6 +184,7 @@ def validate_enum_value(value: Any, allowed_values: list[str], default: Optional
         value: Doğrulanacak değer
         allowed_values: İzin verilen değerler listesi
         default: Geçersiz değer için döndürülecek değer (None = NULL)
+        silent: True ise uyarı log'u yazmaz (sessiz mod)
     
     Returns:
         str (geçerli enum değeri) veya None
@@ -197,10 +199,11 @@ def validate_enum_value(value: Any, allowed_values: list[str], default: Optional
         if value_str.lower() == allowed.lower():
             return allowed  # Orijinal case'i koru
     
-    # Geçersiz değer
-    import logging
-    logger = logging.getLogger("api")
-    logger.warning(f"⚠️ Invalid enum value '{value_str}', allowed: {allowed_values}, using default: {default}")
+    # Geçersiz değer - sadece silent=False ise uyarı ver
+    if not silent:
+        import logging
+        logger = logging.getLogger("api")
+        logger.warning(f"⚠️ Invalid enum value '{value_str}', allowed: {allowed_values}, using default: {default}")
     return default
 
 
@@ -259,7 +262,7 @@ def clean_excel_numeric(value: Any, default: Optional[float] = None) -> Optional
         result = float(value)
         
         # NaN veya Infinity kontrolü
-        if pd.isna(result) or not pd.isfinite(result):
+        if pd.isna(result) or not math.isfinite(result):
             return default
         
         return result

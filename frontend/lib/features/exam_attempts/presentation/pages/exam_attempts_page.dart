@@ -343,7 +343,7 @@ class _ExamAttemptsPageState extends State<ExamAttemptsPage> {
                             else
                               ..._attempts.map((attempt) {
                                 return _buildAttemptCard(attempt, isDark);
-                              }).toList(),
+                              }),
 
                             const SizedBox(height: 24),
                           ],

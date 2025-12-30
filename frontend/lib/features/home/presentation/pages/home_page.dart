@@ -14,6 +14,7 @@ import '../../../exam_attempts/data/providers/exam_attempt_api_provider.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../recommendations/presentation/pages/recommendations_page.dart';
 import '../../../exam_attempts/presentation/pages/exam_attempts_page.dart';
+import '../../../exam_attempts/presentation/pages/stitch_add_exam_attempt_page.dart';
 import '../../../preferences/presentation/pages/my_preferences_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -105,6 +106,20 @@ class _HomePageState extends ConsumerState<HomePage> {
       appBar: AppBar(
         title: const Text('ÖSYM Rehberi'),
         centerTitle: true,
+        actions: [
+          // ✅ AppBar'a (+) Ekle butonu
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Deneme Ekle',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const StitchAddExamAttemptPage(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: ResponsiveBuilder(
         builder: (context, deviceType) {
@@ -226,6 +241,19 @@ class _HomePageState extends ConsumerState<HomePage> {
                           childAspectRatio:
                               deviceType == DeviceType.mobile ? 3.5 : 2.5,
                           children: [
+                            _buildActionButton(
+                              context,
+                              icon: Icons.edit_note,
+                              title: 'Yeni Deneme Ekleme',
+                              subtitle: 'Yeni deneme sonuçlarınızı girin',
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const StitchAddExamAttemptPage(),
+                                  ),
+                                );
+                              },
+                            ),
                             _buildActionButton(
                               context,
                               icon: Icons.person_add,
@@ -569,18 +597,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     style: Theme.of(context).textTheme.bodyMedium,
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 8),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const ExamAttemptsPage(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Deneme Ekle'),
-                  ),
+                  // ✅ Büyük "Deneme Ekle" butonu kaldırıldı - AppBar'da (+) butonu var
                 ],
               ),
             ),
