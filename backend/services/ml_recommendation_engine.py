@@ -8,6 +8,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, GridSearchCV
+from xgboost import XGBRegressor
 from typing import List, Dict, Any, Tuple, Optional
 import joblib
 import os
@@ -24,7 +25,13 @@ class MLRecommendationEngine:
         self.models = {}
         self.scalers = {}
         self.is_trained = False
-        self.model_path = "models/"
+        # Docker volume'da ml_models, local'de models/ kullanılır
+        self.model_path = os.getenv("ML_MODELS_PATH", "models/")
+        # Docker volume kontrolü
+        if os.path.exists("/app/ml_models"):
+            self.model_path = "/app/ml_models/"
+        elif os.path.exists("ml_models"):
+            self.model_path = "ml_models/"
         
         # Model dosyalarını yükle
         self._load_models()
@@ -276,7 +283,7 @@ class MLRecommendationEngine:
         return combined
     
     def _train_compatibility_model(self, X: np.ndarray, y: np.ndarray):
-        """Uyumluluk modelini eğit - Gradient Boosting ile iyileştirilmiş"""
+        """Uyumluluk modelini eğit - XGBoost ile iyileştirilmiş"""
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         
         # Özellikleri ölçeklendir
@@ -284,14 +291,17 @@ class MLRecommendationEngine:
         X_train_scaled = scaler.fit_transform(X_train)
         X_test_scaled = scaler.transform(X_test)
         
-        # Gradient Boosting Regressor (daha güçlü model)
-        model = GradientBoostingRegressor(
+        # XGBoost Regressor (daha güçlü ve hızlı model)
+        model = XGBRegressor(
             n_estimators=200,
             max_depth=6,
             learning_rate=0.05,
             subsample=0.8,
+            colsample_bytree=0.8,
             random_state=42,
-            loss='squared_error'
+            objective='reg:squarederror',
+            n_jobs=-1,  # Tüm CPU çekirdeklerini kullan
+            tree_method='hist'  # Daha hızlı eğitim için
         )
         model.fit(X_train_scaled, y_train)
         
@@ -305,21 +315,26 @@ class MLRecommendationEngine:
         recommendation_logger.info("Compatibility model trained", train_score=train_score, test_score=test_score)
     
     def _train_success_model(self, X: np.ndarray, y: np.ndarray):
-        """Başarı olasılığı modelini eğit - Gradient Boosting ile iyileştirilmiş"""
+        """Başarı olasılığı modelini eğit - XGBoost ile iyileştirilmiş"""
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
         X_test_scaled = scaler.transform(X_test)
         
-        # Gradient Boosting (başarı olasılığı için daha önemli)
-        model = GradientBoostingRegressor(
+        # XGBoost (başarı olasılığı için daha önemli - daha derin ağaç)
+        model = XGBRegressor(
             n_estimators=250,
             max_depth=7,
             learning_rate=0.04,
             subsample=0.85,
+            colsample_bytree=0.85,
             random_state=42,
-            loss='squared_error'
+            objective='reg:squarederror',
+            n_jobs=-1,
+            tree_method='hist',
+            min_child_weight=3,  # Overfitting'i önlemek için
+            gamma=0.1  # Regularization
         )
         model.fit(X_train_scaled, y_train)
         
@@ -331,21 +346,24 @@ class MLRecommendationEngine:
         recommendation_logger.info("Success model trained", train_score=train_score, test_score=test_score)
     
     def _train_preference_model(self, X: np.ndarray, y: np.ndarray):
-        """Tercih modelini eğit - Gradient Boosting ile iyileştirilmiş"""
+        """Tercih modelini eğit - XGBoost ile iyileştirilmiş"""
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
         X_test_scaled = scaler.transform(X_test)
         
-        # Gradient Boosting (tercih skorları için)
-        model = GradientBoostingRegressor(
+        # XGBoost (tercih skorları için)
+        model = XGBRegressor(
             n_estimators=200,
             max_depth=5,
             learning_rate=0.05,
             subsample=0.8,
+            colsample_bytree=0.8,
             random_state=42,
-            loss='squared_error'
+            objective='reg:squarederror',
+            n_jobs=-1,
+            tree_method='hist'
         )
         model.fit(X_train_scaled, y_train)
         

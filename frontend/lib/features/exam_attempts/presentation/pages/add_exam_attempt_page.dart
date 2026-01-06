@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../auth/data/providers/auth_service.dart';
+import '../../../student_profile/presentation/pages/student_create_page.dart';
 
 class AddExamAttemptPage extends StatefulWidget {
   const AddExamAttemptPage({super.key});
@@ -25,7 +26,56 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
   @override
   void initState() {
     super.initState();
-    _loadStudentFieldType();
+    _checkStudentIdAndLoad();
+  }
+
+  // ✅ GUARD: Student ID kontrolü - yoksa profil oluşturma sayfasına yönlendir
+  Future<void> _checkStudentIdAndLoad() async {
+    try {
+      final authService = getAuthService(_apiService);
+      
+      // Önce cache'den kontrol et
+      int? studentId = await authService.getStudentId();
+      
+      // Eğer student_id yoksa, backend'den bulmaya çalış
+      if (studentId == null) {
+        debugPrint('⚠️ No student_id in cache, trying to load from backend...');
+        studentId = await authService.ensureStudentId();
+      }
+      
+      // Hala yoksa, kullanıcıyı profil oluşturma sayfasına yönlendir
+      if (studentId == null) {
+        debugPrint('⚠️ Student ID not found, redirecting to profile creation page...');
+        if (mounted) {
+          // Kısa bir gecikme ile yönlendir (UI render için)
+          await Future.delayed(const Duration(milliseconds: 100));
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => const StudentCreatePage(),
+              ),
+            );
+            // Kullanıcıya bilgi ver
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Deneme eklemek için önce profil oluşturmalısınız.'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+        return;
+      }
+      
+      // Student ID bulundu, field_type'ı yükle
+      await _loadStudentFieldType();
+    } catch (e) {
+      debugPrint('Error checking student ID: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   // ✅ Öğrencinin field_type'ını yükle
@@ -493,22 +543,45 @@ class _AddExamAttemptPageState extends State<AddExamAttemptPage> {
       setState(() => _isSaving = true);
 
       try {
-        // ✅ AUTO-REPAIR: Student ID'yi garanti et
+        // ✅ AUTO-REPAIR: Student ID'yi garanti et (her kayıt öncesi taze kontrol)
         final authService = getAuthService(_apiService);
-        int? studentId = await authService.ensureStudentId();
+        
+        // Önce cache'den kontrol et
+        int? studentId = await authService.getStudentId();
+        
+        // Cache'de yoksa veya geçersizse, backend'den taze olarak çek
+        if (studentId == null) {
+          debugPrint('⚠️ No student_id in cache, ensuring from backend...');
+          studentId = await authService.ensureStudentId();
+        } else {
+          // Cache'de varsa, backend'den doğrula (sessizce)
+          try {
+            await _apiService.getStudent(studentId);
+            debugPrint('✅ Cached student_id is valid: $studentId');
+          } catch (_) {
+            // Cache'deki ID geçersiz, backend'den taze çek
+            debugPrint('⚠️ Cached student_id is invalid, refreshing from backend...');
+            studentId = await authService.ensureStudentId();
+          }
+        }
 
         if (studentId == null) {
-          // Student ID oluşturulamadı - kullanıcıyı bilgilendir
+          // Student ID oluşturulamadı - kullanıcıyı profil oluşturma sayfasına yönlendir
           if (mounted) {
             setState(() => _isSaving = false);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Oturum süreniz doldu. Lütfen tekrar giriş yapın.'),
-                backgroundColor: Colors.red,
+                content: Text('Deneme eklemek için önce profil oluşturmalısınız.'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
               ),
             );
-            // Kullanıcıyı login sayfasına yönlendir
-            Navigator.of(context).pushNamedAndRemoveUntil('/auth', (route) => false);
+            // Kullanıcıyı profil oluşturma sayfasına yönlendir
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => const StudentCreatePage(),
+              ),
+            );
           }
           return;
         }

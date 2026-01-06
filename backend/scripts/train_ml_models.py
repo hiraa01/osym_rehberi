@@ -115,18 +115,32 @@ def train_models():
         print(f"📊 Eğitim verisi: {len(training_data)} örnek")
         print("🎯 Modeller kaydedildi: models/ klasörü")
         
-        # Test önerisi oluştur
+        # Test önerisi oluştur (veritabanından ilk öğrenciyi bul)
         print("\n🧪 Test önerisi oluşturuluyor...")
-        test_recommendations = ml_engine.generate_recommendations(1, limit=3)
+        first_student = db.query(Student).first()
         
-        for i, rec in enumerate(test_recommendations, 1):
-            print(f"\n{i}. Öneri:")
-            print(f"   Bölüm: {rec['department'].name}")
-            print(f"   Uyumluluk: {rec['compatibility_score']:.2f}")
-            print(f"   Başarı Olasılığı: {rec['success_probability']:.2f}")
-            print(f"   Tercih Skoru: {rec['preference_score']:.2f}")
-            print(f"   Final Skor: {rec['final_score']:.2f}")
-            print(f"   Sebep: {rec['recommendation_reason']}")
+        if not first_student:
+            print("⚠️  Veritabanında öğrenci bulunamadı - test atlandı")
+            print("💡 Test için önce bir öğrenci profili oluşturun")
+        else:
+            print(f"📝 Test öğrencisi: {first_student.name} (ID: {first_student.id})")
+            try:
+                test_recommendations = ml_engine.generate_recommendations(first_student.id, limit=3)
+                
+                if not test_recommendations:
+                    print("⚠️  Öneri oluşturulamadı (bölüm bulunamadı veya veri eksik)")
+                else:
+                    for i, rec in enumerate(test_recommendations, 1):
+                        print(f"\n{i}. Öneri:")
+                        print(f"   Bölüm: {rec['department'].name}")
+                        print(f"   Uyumluluk: {rec['compatibility_score']:.2f}")
+                        print(f"   Başarı Olasılığı: {rec['success_probability']:.2f}")
+                        print(f"   Tercih Skoru: {rec['preference_score']:.2f}")
+                        print(f"   Final Skor: {rec['final_score']:.2f}")
+                        print(f"   Sebep: {rec['recommendation_reason']}")
+            except Exception as test_error:
+                print(f"⚠️  Test önerisi oluşturulurken hata: {test_error}")
+                print("💡 Modeller eğitildi ancak test atlandı")
         
     except Exception as e:
         print(f"❌ Hata: {e}")

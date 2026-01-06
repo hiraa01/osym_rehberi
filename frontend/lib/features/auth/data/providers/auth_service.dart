@@ -226,13 +226,35 @@ class AuthService {
         try {
           // ✅ /api/auth/me/{user_id}/student endpoint'ini kullan
           final meResponse = await _apiService.getUserStudentProfile(authResponse.user.id);
-          if (meResponse.data != null && meResponse.data['student_id'] != null) {
+          if (meResponse.data != null) {
             final prefs = await SharedPreferences.getInstance();
-            await prefs.setInt('student_id', meResponse.data['student_id'] as int);
-            debugPrint('✅ Student ID from /api/auth/me/${authResponse.user.id}/student: ${meResponse.data['student_id']}');
+            int? studentIdToSave;
+            
+            // Önce student_id field'ını kontrol et
+            if (meResponse.data['student_id'] != null) {
+              studentIdToSave = meResponse.data['student_id'] as int;
+              debugPrint('✅ Student ID from /api/auth/me/${authResponse.user.id}/student (student_id field): $studentIdToSave');
+            } 
+            // Eğer student_id yoksa, student objesinden al
+            else if (meResponse.data['student'] != null) {
+              final studentData = meResponse.data['student'] as Map<String, dynamic>;
+              if (studentData['id'] != null) {
+                studentIdToSave = studentData['id'] as int;
+                debugPrint('✅ Student ID from /api/auth/me/${authResponse.user.id}/student (student object): $studentIdToSave');
+              }
+            }
+            
+            // Bulunan ID'yi kaydet
+            if (studentIdToSave != null) {
+              await prefs.setInt('student_id', studentIdToSave);
+            } else {
+              // Hala bulunamadıysa, manuel olarak bul
+              debugPrint('⚠️ No student_id in /api/auth/me/{user_id}/student response, trying manual search...');
+              await _loadAndSaveStudentId(authResponse.user.id);
+            }
           } else {
-            // Hala bulunamadıysa, manuel olarak bul
-            debugPrint('⚠️ No student_id in /api/auth/me/{user_id}/student response, trying manual search...');
+            // Response data null ise, manuel olarak bul
+            debugPrint('⚠️ No data in /api/auth/me/{user_id}/student response, trying manual search...');
             await _loadAndSaveStudentId(authResponse.user.id);
           }
         } catch (e) {
@@ -326,14 +348,30 @@ class AuthService {
       // 3. Backend'den student profilini getir
       try {
         final response = await _apiService.getUserStudentProfile(userId);
-        final studentData = response.data['student'];
         
-        if (studentData != null && studentData['id'] != null) {
-          // Student bulundu, kaydet
-          final studentId = studentData['id'] as int;
-          await prefs.setInt('student_id', studentId);
-          debugPrint('✅ Student ID loaded from backend: $studentId');
-          return studentId;
+        if (response.data != null) {
+          int? studentIdToSave;
+          
+          // Önce student_id field'ını kontrol et
+          if (response.data['student_id'] != null) {
+            studentIdToSave = response.data['student_id'] as int;
+            debugPrint('✅ Student ID found in student_id field: $studentIdToSave');
+          } 
+          // Eğer student_id yoksa, student objesinden al
+          else if (response.data['student'] != null) {
+            final studentData = response.data['student'] as Map<String, dynamic>;
+            if (studentData['id'] != null) {
+              studentIdToSave = studentData['id'] as int;
+              debugPrint('✅ Student ID found in student object: $studentIdToSave');
+            }
+          }
+          
+          // Bulunan ID'yi kaydet
+          if (studentIdToSave != null) {
+            await prefs.setInt('student_id', studentIdToSave);
+            debugPrint('✅ Student ID loaded from backend and saved: $studentIdToSave');
+            return studentIdToSave;
+          }
         }
       } catch (e) {
         debugPrint('⚠️ Could not load student profile: $e');

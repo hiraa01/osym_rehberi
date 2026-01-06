@@ -4,7 +4,7 @@ from typing import List, Optional
 import json
 
 from database import get_db
-from models import Student
+from models import Student, User
 from schemas.student import StudentCreate, StudentUpdate, StudentResponse, StudentListResponse
 from schemas.university import DepartmentWithUniversityResponse
 from services.score_calculator import ScoreCalculator
@@ -20,20 +20,49 @@ router = APIRouter()
 async def create_student(student: StudentCreate, db: Session = Depends(get_db)):
     """Yeni öğrenci profili oluştur"""
     try:
-        api_logger.info("Creating new student profile", name=student.name)
+        api_logger.info("Creating new student profile", name=student.name, email=student.email, phone=student.phone)
         
-        # Puanları hesapla
+        # ✅ 1. User ID'yi bul (email veya phone ile)
+        user_id = None
+        if student.email:
+            user = db.query(User).filter(User.email == student.email).first()
+            if user:
+                user_id = user.id
+                api_logger.info("User found by email", user_id=user_id, email=student.email)
+        
+        if not user_id and student.phone:
+            user = db.query(User).filter(User.phone == student.phone).first()
+            if user:
+                user_id = user.id
+                api_logger.info("User found by phone", user_id=user_id, phone=student.phone)
+        
+        if not user_id:
+            api_logger.warning("User not found for student creation", email=student.email, phone=student.phone)
+            raise HTTPException(
+                status_code=404, 
+                detail="Kullanıcı bulunamadı. Lütfen önce kayıt olun veya giriş yapın."
+            )
+        
+        # ✅ 2. Mükerrer kayıt kontrolü - Bu user_id'ye ait student var mı?
+        existing_student = db.query(Student).filter(Student.user_id == user_id).first()
+        if existing_student:
+            api_logger.info("Student profile already exists, returning existing", 
+                          student_id=existing_student.id, user_id=user_id)
+            return existing_student
+        
+        # ✅ 3. Puanları hesapla
         student_data = student.dict()
         scores = ScoreCalculator.calculate_all_scores(student_data)
         
-        # JSON alanları için dönüşüm
+        # ✅ 4. JSON alanları için dönüşüm
         preferred_cities = json.dumps(student.preferred_cities) if student.preferred_cities else None
         preferred_university_types = json.dumps(student.preferred_university_types) if student.preferred_university_types else None
         preferred_departments = json.dumps(student.preferred_departments) if student.preferred_departments else None
         interest_areas = json.dumps(student.interest_areas) if student.interest_areas else None
         
-        # Veritabanı nesnesi oluştur
+        # ✅ 5. Veritabanı nesnesi oluştur - user_id'yi zorla ata
         db_student = Student(
+            user_id=user_id,  # ✅ Authentication'dan gelen user_id zorla atanıyor
             name=student.name,
             email=student.email,
             phone=student.phone,
@@ -69,9 +98,12 @@ async def create_student(student: StudentCreate, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(db_student)
         
-        api_logger.info("Student profile created successfully", student_id=db_student.id)
+        api_logger.info("Student profile created successfully", student_id=db_student.id, user_id=user_id)
         return db_student
         
+    except HTTPException:
+        # HTTPException'ları olduğu gibi yukarı fırlat
+        raise
     except InvalidScoreError as e:
         api_logger.error(f"Invalid score error: {str(e)}")
         db.rollback()

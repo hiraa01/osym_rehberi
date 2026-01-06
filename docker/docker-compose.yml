@@ -63,6 +63,7 @@ services:
       - POSTGRES_USER=osym_user
       - POSTGRES_PASSWORD=osym_password
     volumes:
+      # ✅ CRITICAL: Kalıcı veri saklama - container silinse bile veriler korunur
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5435:5432"
@@ -127,6 +128,9 @@ networks:
     driver: bridge
 
 volumes:
+  # ✅ CRITICAL: PostgreSQL verileri için kalıcı volume
+  # Bu volume sayesinde container silinse bile veriler korunur
+  # Volume'u silmek için: docker volume rm osym_rehberi_postgres_data
   postgres_data:
   backend_logs:
   ml_models:
